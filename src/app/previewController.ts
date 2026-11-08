@@ -12,7 +12,8 @@
 // the canvas show its draft over the other live values (`liveTexts`, `liveTransforms`; a cue's draft
 // through `liveCaptions`, spec §20.3).
 import { animatedTransform } from "../core/document/keyframes.js";
-import type { CaptionClip, CaptionStyle, ClipId, Frame, MediaId, TextClip, TextContent, TextStyle, Transform } from "../core/document/types.js";
+import { RigResolver } from "../core/document/rig.js";
+import type { CaptionClip, CaptionStyle, ClipId, Frame, MediaId, Project, TextClip, TextContent, TextStyle, Transform } from "../core/document/types.js";
 import { detectPlatform } from "../core/keyboard/keys.js";
 import { createStore } from "../core/store/createStore.js";
 import { GRID_DIVISIONS_MAX, GRID_DIVISIONS_MIN, type PreviewSession } from "../core/store/sessionStore.js";
@@ -52,14 +53,20 @@ import { exportRunning } from "./exportState.js";
 import { mediaSources, mediaStatus, offlineReason, OFFLINE_LABEL, onRefreshMedia, sourceFile } from "./mediaOffline.js";
 import { actions, audioClock, documentStore, focusScopes, fontLibrary, idleQueue, layoutStore, scheduler, sessionStore, themeBridge, workerPool } from "./services.js";
 
-/** The last keyed text transform made for the inline editor (one object per clip and frame: its draft memo keys on it). */
-let keyedMemo: { clip: TextClip; frame: Frame; transform: Transform } | null = null;
+/** The last keyed text transform made for the inline editor (one object per clip, document and frame: its draft memo keys on it). */
+let keyedMemo: { clip: TextClip; project: Project; frame: Frame; transform: Transform } | null = null;
+const keyedRig = new RigResolver();
 
-/** `clip`'s transform at timeline `frame` (its own when unkeyed). */
+/** `clip`'s transform at timeline `frame` in the frame's space (its own when unkeyed and unparented). */
 function keyedTransformAt(clip: TextClip, frame: Frame): Transform {
-  if (keyedMemo?.clip === clip && keyedMemo.frame === frame) return keyedMemo.transform;
-  const transform = animatedTransform(clip, frame - clip.start);
-  if (transform !== clip.transform) keyedMemo = { clip, frame, transform };
+  const project = documentStore.getState();
+  if (keyedMemo?.clip === clip && keyedMemo.project === project && keyedMemo.frame === frame) return keyedMemo.transform;
+  let transform = animatedTransform(clip, frame - clip.start);
+  if (clip.parentId !== undefined) {
+    keyedRig.begin(project, frame, null);
+    transform = keyedRig.resolve(clip, transform, {} as Transform);
+  }
+  if (transform !== clip.transform) keyedMemo = { clip, project, frame, transform };
   return transform;
 }
 import { timelineView } from "./timelineController.js";

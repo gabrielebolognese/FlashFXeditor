@@ -34,6 +34,7 @@ import type { Point } from "../../timeline/edit/transform.js";
 import type { Mat3 } from "../mat3.js";
 import type { Quad } from "./canvasLayers.js";
 import type { GizmoScene } from "./CanvasEditInput.js";
+import { flattenPath, type PathScene } from "./pathGizmo.js";
 import { CORNERS, EDGES, edgeHandlesShown, handlePoint, toScreen, type HandleId } from "./gizmo.js";
 import { ACTION_SAFE, centeredRect, gridLines, rulerStep, safeZoneOn, ticksIn, TITLE_SAFE } from "./overlays.js";
 import type { PreviewPlacement } from "./PreviewView.js";
@@ -205,6 +206,7 @@ export class PreviewOverlayView implements RenderView {
       if (scene.crop) quad(scene.crop.media); else out.push(0);
       out.push(scene.textBox ? 1 : 0, scene.captionBox ? 1 : 0);
       out.push(scene.keyframe ? (scene.keyframe.on ? 2 : 1) : 0);
+      flattenPath(scene.path ?? null, out);
       const editing = scene.text;
       if (editing) {
         out.push(1);
@@ -221,6 +223,49 @@ export class PreviewOverlayView implements RenderView {
     this.nextNumbers = previous;
     this.sceneText = text;
     return changed;
+  }
+
+  /** The motion path of the selected clip (Batch 69): the curve, a square per key, a round handle per tangent. */
+  private drawPath(ctx: CanvasRenderingContext2D, t: Mat3, dpr: number, scene: PathScene): void {
+    const { color, gizmo } = this.theme;
+    const line = Math.max(1, Math.round(gizmo.lineWidth * dpr));
+    const at = (x: number, y: number) => toScreen(t, { x, y });
+    ctx.save();
+    ctx.lineWidth = line;
+    ctx.strokeStyle = color.accentDim;
+    ctx.beginPath();
+    for (let i = 0; i + 1 < scene.line.length; i += 2) {
+      const p = at(scene.line[i] as number, scene.line[i + 1] as number);
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    }
+    ctx.stroke();
+    ctx.strokeStyle = color.accent;
+    for (const handle of scene.handles) {
+      const from = at(handle.fromX, handle.fromY);
+      const to = at(handle.x, handle.y);
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.stroke();
+    }
+    const size = Math.round(gizmo.handleSize * dpr);
+    ctx.fillStyle = color.textPrimary;
+    for (const handle of scene.handles) {
+      const p = at(handle.x, handle.y);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, size / 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    for (const key of scene.keys) {
+      const p = at(key.x, key.y);
+      const x = Math.round(p.x - size / 2);
+      const y = Math.round(p.y - size / 2);
+      ctx.fillStyle = color.accent;
+      ctx.fillRect(x, y, size, size);
+    }
+    ctx.restore();
   }
 
   /** The canvas selection and the gizmo (spec §7.2, §7.3), in device px. */
@@ -262,6 +307,7 @@ export class PreviewOverlayView implements RenderView {
       path(quad);
       ctx.stroke();
     }
+    if (scene.path) this.drawPath(ctx, t, dpr, scene.path);
     if (scene.guides) this.drawGuides(ctx, t, dpr, scene.guides);
     const box = scene.box;
     if (box && scene.crop) this.drawCrop(ctx, t, dpr, box, scene.crop.media);

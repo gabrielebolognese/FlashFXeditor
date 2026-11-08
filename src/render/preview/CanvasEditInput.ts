@@ -47,7 +47,8 @@
 //   (`All cues`). Selected with other layers it is outlined but not held. A double-click edits its text
 //   inline.
 import type { Command } from "../../core/commands/command.js";
-import type { CaptionStyle, ClipId, Crop, Project, TextContent, TextStyle, Transform } from "../../core/document/types.js";
+import { ancestorsOf, worldToLocal } from "../../core/document/rig.js";
+import type { CaptionStyle, Clip, ClipId, Crop, Project, TextContent, TextStyle, Transform } from "../../core/document/types.js";
 import { isEditableTarget } from "../../core/keyboard/KeyDispatcher.js";
 import { isSnapKey, type Platform } from "../../core/keyboard/keys.js";
 import type { FrameScheduler } from "../../core/scheduler/FrameScheduler.js";
@@ -100,6 +101,8 @@ import { CanvasSnapIndex, handleGuides, isAxisAligned, measureGuides, moveGuides
 import { textHandleKind, textSizeGesture, textWidthGesture, type TextGestureStart } from "./textGizmo.js";
 import { solidSizeGesture, type SolidGestureStart } from "./solidGizmo.js";
 import { setSolids, solidLook, type SolidLook } from "../../timeline/edit/solid.js";
+import { setPathKeys } from "../../timeline/edit/rig.js";
+import { hitPath, liveByFrame, pathDragEdit, pathScene, type PathHit, type PathLive, type PathScene } from "./pathGizmo.js";
 
 /** Inline text editing as the canvas drives it (InlineTextEditor, spec §7.7). */
 export interface CanvasTextEditing {
@@ -181,6 +184,8 @@ export interface GizmoScene {
   text: TextEditScene | null;
   /** The keyframe diamond (§7.3): a held layer's transform is keyed; `on` while every keyed one has a key at the playhead. */
   keyframe?: { on: boolean } | null;
+  /** The selected clip motion path with its key points and tangent handles (Batch 69), or null. */
+  path?: PathScene | null;
 }
 
 type GestureKind = "move" | "scale" | "rotate" | "anchor" | "crop" | "textSize" | "textWidth" | "captionSize";
@@ -264,6 +269,8 @@ export class CanvasEditInput {
   private marquee: Marquee | null = null;
   /** A press placing the caret or selecting in the text edited inline. */
   private textPress: number | null = null;
+  /** A motion-path key or tangent handle being dragged (Batch 69): ephemeral edits, one command on release. */
+  private pathDrag: { pointerId: number; clipId: ClipId; hit: PathHit; start: Point; offset: Point; live: PathLive | null } | null = null;
   /** The pointer: client px, and canvas CSS px for the readout. */
   private pointer: { clientX: number; clientY: number; x: number; y: number } | null = null;
   private hover: ClipId | null = null;
@@ -357,7 +364,7 @@ export class CanvasEditInput {
 
   /** A gesture or marquee runs. */
   get active(): boolean {
-    return this.drag !== null || this.marquee !== null || this.textPress !== null;
+    return this.drag !== null || this.marquee !== null || this.textPress !== null || this.pathDrag !== null;
   }
 
   /** The snap toggle, inverted while S is held during a drag (one snap state with the timeline). */
@@ -455,14 +462,15 @@ export class CanvasEditInput {
 
   /** Esc (spec §6.8 for drags): drops a gesture or marquee with no document change; true when one ran. */
   cancel(): boolean {
-    const running = this.press !== null || this.drag !== null || this.marquee !== null;
-    const pointerId = this.press?.pointerId ?? this.drag?.pointerId ?? this.marquee?.pointerId ?? this.textPress ?? undefined;
+    const running = this.press !== null || this.drag !== null || this.marquee !== null || this.pathDrag !== null;
+    const pointerId = this.press?.pointerId ?? this.drag?.pointerId ?? this.marquee?.pointerId ?? this.textPress ?? this.pathDrag?.pointerId ?? undefined;
     if (this.drag?.kind === "crop") this.deps.crops?.write(null);
     if (this.textPress !== null) this.deps.textEditor?.release();
     this.press = null;
     this.drag = null;
     this.marquee = null;
     this.textPress = null;
+    this.pathDrag = null;
     this.snapHeld = false;
     if (pointerId !== undefined && this.element?.hasPointerCapture?.(pointerId)) this.element.releasePointerCapture(pointerId);
     if (running) {
@@ -614,6 +622,7 @@ export class CanvasEditInput {
       captionBox: caption !== null,
       text: null,
       keyframe: box && !marquee && !cropLayer ? this.keyframeMark(selected) : null,
+      path: marquee ? null : this.pathSceneNow(),
     };
   }
 
@@ -641,7 +650,7 @@ export class CanvasEditInput {
   // --- Pointer -----------------------------------------------------------------------------------
 
   private onPointerDown(event: PointerEvent): void {
-    if (event.button !== 0 || this.press || this.drag || this.marquee || this.textPress !== null) return;
+    if (event.button !== 0 || this.press || this.drag || this.marquee || this.textPress !== null || this.pathDrag !== null) return;
     if (this.deps.panning() || this.deps.session.state.getState().activeTool === "hand") return;
     const placement = this.deps.placement();
     const point = this.projectPoint(event, placement);
@@ -662,6 +671,15 @@ export class CanvasEditInput {
         return;
       }
       editor.end(true);
+    }
+    const pathHit = this.pathHitAt(point, placement);
+    if (pathHit) {
+      event.preventDefault();
+      this.pathDrag = { pointerId: event.pointerId, clipId: pathHit.clipId, hit: pathHit.hit, start: point, offset: pathHit.offset, live: null };
+      this.element?.setPointerCapture?.(event.pointerId);
+      this.hover = null;
+      this.invalidate();
+      return;
     }
     const { session } = this.deps;
     const selection = session.selection.getState();
@@ -720,6 +738,10 @@ export class CanvasEditInput {
       if (point) this.deps.textEditor?.drag(point);
       return;
     }
+    if (this.pathDrag?.pointerId === event.pointerId) {
+      this.updatePathDrag(event);
+      return;
+    }
     // The modifiers ride on pointer events too (a key pressed while the window had no focus).
     const mods = this.modifiersOf(event);
     if (mods.shift !== this.modifiers.shift || mods.alt !== this.modifiers.alt || mods.mod !== this.modifiers.mod) {
@@ -749,6 +771,10 @@ export class CanvasEditInput {
       this.deps.textEditor?.release();
       if (this.element?.hasPointerCapture?.(event.pointerId)) this.element.releasePointerCapture(event.pointerId);
       this.updateCursor();
+      return;
+    }
+    if (this.pathDrag?.pointerId === event.pointerId) {
+      this.finishPathDrag(event);
       return;
     }
     if (!this.ownsPointer(event.pointerId)) return;
@@ -782,6 +808,67 @@ export class CanvasEditInput {
       this.deps.scheduler.invalidate("preview");
       if (command) this.deps.commit(command);
       if (drag.kind === "crop") this.deps.crops?.write(null);
+    }
+    this.updateHover(event);
+    this.invalidate();
+    this.updateCursor();
+  }
+
+  /** The clip whose motion path the canvas shows: the one selected clip with position keys (not while editing text). */
+  private pathClip(): Clip | null {
+    if (this.deps.textEditor?.editing) return null;
+    const selection = this.deps.session.selection.getState();
+    if (selection.kind !== "clips" || selection.clipIds.size !== 1) return null;
+    const id = [...selection.clipIds][0] as ClipId;
+    const project = this.deps.document.getState();
+    const clip = project.clips[id];
+    if (!clip || isClipLocked(project, id)) return null;
+    return "keyframes" in clip && (clip.keyframes?.["transform.position"]?.length ?? 0) > 0 ? clip : null;
+  }
+
+  /** The path scene of the selected clip, with the drag live edits. */
+  private pathSceneNow(): PathScene | null {
+    const clip = this.pathClip();
+    if (!clip) return null;
+    const frame = this.deps.session.state.getState().playhead;
+    return pathScene(this.deps.document.getState(), clip, frame, this.pathDrag?.clipId === clip.id ? this.pathDrag.live : null);
+  }
+
+  private pathHitAt(point: Point, placement: PreviewPlacement): { clipId: ClipId; hit: PathHit; offset: Point } | null {
+    const scene = this.pathSceneNow();
+    if (!scene) return null;
+    const reach = (this.theme.gizmo.handleHit * placement.dpr) / 2 / placement.transform[0];
+    const hit = hitPath(scene, point.x, point.y, reach);
+    if (!hit) return null;
+    const mark = hit.kind === "key" ? scene.keys.find((key) => key.index === hit.index) : scene.handles.find((handle) => handle.index === hit.index && handle.side === hit.side);
+    return { clipId: scene.clipId, hit, offset: mark ? { x: mark.x - point.x, y: mark.y - point.y } : { x: 0, y: 0 } };
+  }
+
+  private updatePathDrag(event: PointerEvent): void {
+    const drag = this.pathDrag;
+    const placement = this.deps.placement();
+    if (!drag || !placement) return;
+    const point = this.projectPoint(event, placement);
+    const project = this.deps.document.getState();
+    const clip = project.clips[drag.clipId];
+    if (!point || !clip) return;
+    const frame = this.deps.session.state.getState().playhead;
+    // A key moves with the travel of the pointer; a handle follows the pointer (keeping the grab offset).
+    const to = drag.hit.kind === "key" ? point : { x: point.x + drag.offset.x, y: point.y + drag.offset.y };
+    drag.live = pathDragEdit(project, clip, frame, drag.hit, drag.start, to, this.modifiersOf(event).alt);
+    this.invalidate();
+  }
+
+  private finishPathDrag(event: PointerEvent): void {
+    const drag = this.pathDrag;
+    this.pathDrag = null;
+    if (this.element?.hasPointerCapture?.(event.pointerId)) this.element.releasePointerCapture(event.pointerId);
+    const project = this.deps.document.getState();
+    const clip = drag ? project.clips[drag.clipId] : undefined;
+    if (drag?.live && clip) {
+      const command = setPathKeys(project, drag.clipId, liveByFrame(clip, drag.live), drag.hit.kind === "key" ? "Move path point" : "Move path handle");
+      this.deps.scheduler.invalidate("preview");
+      if (command) this.deps.commit(command);
     }
     this.updateHover(event);
     this.invalidate();
@@ -901,6 +988,28 @@ export class CanvasEditInput {
     this.deps.onDragStart();
   }
 
+  /**
+   * A gesture works on the layers as they show (a parented clip in the frame's space); its transforms
+   * are stored in each clip's own space, under the parent as the gesture leaves it (spec §21.14).
+   */
+  private localizeResult(drag: Drag): void {
+    const result = drag.result;
+    if (!result || result.transforms.size === 0) return;
+    const project = this.deps.document.getState();
+    const parented = [...result.transforms.keys()].filter((id) => project.clips[id]?.parentId !== undefined);
+    if (parented.length === 0) return;
+    const frame = this.deps.session.state.getState().playhead;
+    // Parents first: a child is converted under its parent's new local transform.
+    const depth = (id: ClipId) => ancestorsOf(project, project.clips[id] as Clip).length;
+    parented.sort((a, b) => depth(a) - depth(b));
+    const live = new Map(result.transforms);
+    for (const id of parented) {
+      const local = worldToLocal(project, id, result.transforms.get(id) as Transform, frame, live);
+      live.set(id, local);
+      result.transforms.set(id, local);
+    }
+  }
+
   private updateDrag(): void {
     const drag = this.drag;
     const placement = this.deps.placement();
@@ -990,6 +1099,7 @@ export class CanvasEditInput {
         break;
       }
     }
+    this.localizeResult(drag);
     // A caption's move reads the Custom position it will leave (its middle, spec §20.3).
     const held = drag.start.layers[0];
     const moved = drag.cue && drag.kind === "move" && held ? drag.result?.transforms.get(drag.cue) : undefined;

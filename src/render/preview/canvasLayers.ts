@@ -18,9 +18,10 @@
 //   values and a drag's position), hit on its glyphs and boxes like text. Hidden caption tracks have
 //   none; a locked one is in the picture only.
 import { animatedTransform } from "../../core/document/keyframes.js";
+import { RigResolver } from "../../core/document/rig.js";
 import type { ClipId, Crop, Frame, Project, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
 import { clipInIndex, trackIndex } from "../../timeline/model/queries.js";
-import { isLayerClip, layerContent, layerCorners, layerPoint, scaleYOf, type ContentBox, type Point, type Size } from "../../timeline/edit/transform.js";
+import { isTransformClip, layerContent, layerCorners, layerPoint, scaleYOf, type ContentBox, type Point, type Size } from "../../timeline/edit/transform.js";
 import type { LiveCaptions, LiveText } from "../compositor/Compositor.js";
 import { cueGeometry } from "./captionGizmo.js";
 import type { SolidLook } from "../../timeline/edit/solid.js";
@@ -78,6 +79,9 @@ export function pictureLayersAt(project: Project, frame: Frame, transforms: Read
   return layersAt(project, frame, transforms, null, null, null, null, (track) => !track.hidden && (track.kind === "caption" || !track.muted));
 }
 
+/** Parent chains of the frame being listed. */
+const rig = new RigResolver();
+
 function layersAt(
   project: Project,
   frame: Frame,
@@ -90,18 +94,21 @@ function layersAt(
 ): CanvasLayer[] {
   const layers: CanvasLayer[] = [];
   let cueTrack: Track | null = null;
+  rig.begin(project, frame, transforms);
   for (const track of project.tracks) {
     if (track.kind === "caption" && include(track)) cueTrack = track;
     if (track.kind !== "video" || !include(track)) continue;
     const found = clipInIndex(trackIndex(project, track), frame);
-    if (!found?.enabled || !isLayerClip(found)) continue;
+    if (!found?.enabled || !isTransformClip(found)) continue;
     const live = found.kind === "text" ? texts?.get(found.id) : undefined;
     const look = found.kind === "solid" ? solids?.get(found.id) : undefined;
     const clip = live && found.kind === "text" ? { ...found, text: live.text, style: live.style } : look && found.kind === "solid" ? { ...found, ...look } : found;
     const box = layerContent(project, clip, crops?.get(clip.id));
     if (!box) continue;
     // A keyed transform as it is at the frame (spec §7.3: the gizmo edits the keyframe there).
-    const transform = transforms?.get(clip.id) ?? animatedTransform(clip, frame - clip.start);
+    const local = transforms?.get(clip.id) ?? animatedTransform(clip, frame - clip.start);
+    // A parented clip is shown where its parent chain puts it (spec §21.14); the gizmo works in that space.
+    const transform = rig.parentSpace(clip) ? rig.resolve(clip, local, {} as Transform) : local;
     const layer: CanvasLayer = { clipId: clip.id, trackId: track.id, transform, box, quad: layerCorners(transform, box, project.settings) };
     if (clip.kind === "text") layer.hits = textHits(spannedContent(clip), clip.style, transform, box, project.settings);
     const reach = drawnReach(clip);

@@ -69,6 +69,11 @@ function planMake(project: Project, ids: Iterable<ClipId>): MakePlan | string {
     const other = project.clips[id];
     if (other && !taken.has(id) && other.start < end && other.start + other.duration > start) return `Other clips on ${host.name} sit between the selected ones`;
   }
+  // A parent and its children cannot be split by the compound's edge (a parent is in its own sequence only).
+  for (const key in project.clips) {
+    const other = project.clips[key] as Clip;
+    if (other.parentId !== undefined && taken.has(other.id) !== taken.has(other.parentId) && project.clips[other.parentId]) return "A layer and the layers that follow it must be in the compound together";
+  }
   const memo = new Map<SequenceId, number>();
   const inner = Math.max(0, ...clips.filter((clip): clip is CompoundClip => clip.kind === "compound").map((clip) => 1 + sequenceHeight(project, clip.sequenceId, memo)));
   // Inside an open compound (a sequence view), the new level sits under the levels above that sequence.

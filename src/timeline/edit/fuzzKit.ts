@@ -116,6 +116,7 @@ import { counterText } from "../../text/counter.js";
 import { applyMoveRequest, dropClips, moveToAdjacentLane, NO_LANE_DELTA, nudgeClips, type MoveMode, type MoveResult } from "./move.js";
 import { ATTRIBUTE_GROUPS, attributeTargets, pasteAttributes, pastedSpeed, type AttributeGroup } from "./pasteAttributes.js";
 import { closeSilences, cutSilences, REMOVE_SILENCE_LABEL, silencePlan, silenceTargets, spanFrames, type SilenceGroup } from "./silence.js";
+import { addNull, convertFromMotionPath, convertToMotionPath, parentCandidates, setAutoOrient, setParent, smoothMotionPath } from "./rig.js";
 import { addSolid, newSolidClip, setSolids, type SolidEdit, type SolidLook } from "./solid.js";
 import { normalizeSpans } from "../../text/spans.js";
 import { setSpeedDurations, setSpeeds } from "./speed.js";
@@ -818,9 +819,10 @@ export type FuzzArea =
   | "text"
   | "captions"
   | "media"
-  | "markers";
+  | "markers"
+  | "rig";
 
-export const FUZZ_AREAS: readonly FuzzArea[] = ["move", "trim", "split", "delete", "gaps", "links", "tracks", "keyframes", "transitions", "fades", "speed", "audio", "silence", "clipboard", "props", "solids", "text", "captions", "media", "markers"];
+export const FUZZ_AREAS: readonly FuzzArea[] = ["move", "trim", "split", "delete", "gaps", "links", "tracks", "keyframes", "transitions", "fades", "speed", "audio", "silence", "clipboard", "props", "solids", "text", "captions", "media", "markers", "rig"];
 
 export interface FuzzOp {
   name: string;
@@ -1860,6 +1862,47 @@ const MARKER_OPS: FuzzOp[] = [
   }),
 ];
 
+/** Parenting, null clips and motion paths (Batch 69). */
+const RIG_OPS: FuzzOp[] = [
+  op(
+    "rig.addNull",
+    "rig",
+    (store, rng, ctx) => {
+      const p = store.getState();
+      if (p.tracks.length >= MAX_TRACKS) return false;
+      return exec(store, addNull(p, anyFrame(p, rng), ctx.newId).command);
+    },
+    { effect: "grow" },
+  ),
+  op("rig.setParent", "rig", (store, rng) => {
+    const p = store.getState();
+    const child = some(rng, Object.values(p.clips).filter((clip) => clip.kind !== "audio" && clip.kind !== "caption"));
+    if (!child) return false;
+    const parent = some(rng, parentCandidates(p, child.id));
+    return parent ? exec(store, setParent(p, [child.id], parent.id, anyFrame(p, rng))) : false;
+  }),
+  op("rig.clearParent", "rig", (store, rng) => {
+    const p = store.getState();
+    const child = some(rng, Object.values(p.clips).filter((clip) => clip.parentId !== undefined));
+    return child ? exec(store, setParent(p, [child.id], null, anyFrame(p, rng))) : false;
+  }),
+  op("rig.motionPath", "rig", (store, rng) => {
+    const p = store.getState();
+    const clip = some(rng, Object.values(p.clips).filter(isLayerClip));
+    return clip ? exec(store, convertToMotionPath(p, [clip.id], anyFrame(p, rng))) : false;
+  }),
+  op("rig.unMotionPath", "rig", (store, rng) => {
+    const p = store.getState();
+    const clip = some(rng, Object.values(p.clips).filter((c) => "keyframes" in c && (c.keyframes?.["transform.position"]?.length ?? 0) > 0));
+    return clip ? exec(store, rng.chance(0.5) ? convertFromMotionPath(p, [clip.id]) : smoothMotionPath(p, [clip.id])) : false;
+  }),
+  op("rig.autoOrient", "rig", (store, rng) => {
+    const p = store.getState();
+    const clip = some(rng, Object.values(p.clips).filter(isLayerClip));
+    return clip ? exec(store, setAutoOrient(p, [clip.id], rng.chance(0.6))) : false;
+  }),
+];
+
 /** Every edit operation of the catalogue, with random but sensible arguments. */
 export const FUZZ_OPS: readonly FuzzOp[] = [
   ...MOVE_OPS,
@@ -1882,6 +1925,7 @@ export const FUZZ_OPS: readonly FuzzOp[] = [
   ...CAPTION_OPS,
   ...MEDIA_OPS,
   ...MARKER_OPS,
+  ...RIG_OPS,
 ];
 
 /** The operations of some areas. */

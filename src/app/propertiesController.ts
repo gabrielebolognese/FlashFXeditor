@@ -11,7 +11,9 @@ import type { ClipId, RGBA } from "../core/document/types.js";
 import { pushRecentColor } from "../project/appSettings.js";
 import { retimeClips, setEnabled, type ClipTimeField } from "../timeline/edit/clipProps.js";
 import { isCropClip, quickCrops, type QuickCrop } from "../timeline/edit/crop.js";
-import { isLayerClip, quickTransforms, type QuickTransform } from "../timeline/edit/transform.js";
+import { addNull, convertFromMotionPath, convertToMotionPath, onMotionPath, setAutoOrient, setParent, smoothMotionPath } from "../timeline/edit/rig.js";
+import { isLayerClip, isTransformClip, quickTransforms, type QuickTransform } from "../timeline/edit/transform.js";
+import { selectClips, toSnapshot } from "../core/store/selection.js";
 import { isClipLocked } from "../timeline/model/queries.js";
 import { projectSettingsLocked } from "./conversionController.js";
 import { MAX_CLIP_NAME } from "./cutController.js";
@@ -29,6 +31,49 @@ function selectedClips(): { ids: ClipId[]; primary: ClipId | null } {
 /** Fit, Fill, Center, Flip H / V or Reset on the selected layers (spec §7.2, §11): one undo step. */
 export function quickTransform(action: QuickTransform): void {
   const command = quickTransforms(documentStore.getState(), selectedClips().ids, action, sessionStore.state.getState().playhead);
+  if (command) documentStore.dispatch(command);
+}
+
+/** `+ Null` (Batch 69): an invisible controller at the playhead, selected. */
+export function addNullClip(): ClipId {
+  const result = addNull(documentStore.getState(), sessionStore.state.getState().playhead, () => crypto.randomUUID());
+  documentStore.dispatch(result.command, { selection: toSnapshot(selectClips([result.clipId])) });
+  return result.clipId;
+}
+
+/** The Parent picker (Batch 69): the selected clips follow `parentId` (null clears), keeping their place at the playhead. */
+export function changeParent(parentId: ClipId | null): void {
+  const command = setParent(documentStore.getState(), selectedClips().ids, parentId, sessionStore.state.getState().playhead);
+  if (command) documentStore.dispatch(command);
+}
+
+/** The Motion path toggle: x / y keys become one path (or a key at the playhead), or the path becomes x / y keys. */
+export function toggleMotionPath(): void {
+  const project = documentStore.getState();
+  const ids = selectedClips().ids.filter((id) => {
+    const clip = project.clips[id];
+    return clip !== undefined && isTransformClip(clip);
+  });
+  const on = ids.length > 0 && ids.every((id) => onMotionPath(project.clips[id] as never));
+  const command = on ? convertFromMotionPath(project, ids) : convertToMotionPath(project, ids, sessionStore.state.getState().playhead);
+  if (command) documentStore.dispatch(command);
+}
+
+/** Auto tangents through every key of the selected motion paths. */
+export function smoothPath(): void {
+  const command = smoothMotionPath(documentStore.getState(), selectedClips().ids);
+  if (command) documentStore.dispatch(command);
+}
+
+/** Auto-orient on or off for the selected clips (on unless all already have it). */
+export function toggleAutoOrient(): void {
+  const project = documentStore.getState();
+  const ids = selectedClips().ids.filter((id) => {
+    const clip = project.clips[id];
+    return clip !== undefined && isTransformClip(clip);
+  });
+  const on = ids.length > 0 && ids.every((id) => project.clips[id]?.autoOrient === true);
+  const command = setAutoOrient(project, ids, !on);
   if (command) documentStore.dispatch(command);
 }
 
@@ -121,6 +166,11 @@ export function installPropertiesController(): () => void {
     actions.register("transform.flipH", () => quickTransform("flipH")),
     actions.register("transform.flipV", () => quickTransform("flipV")),
     actions.register("transform.reset", () => quickTransform("reset")),
+    actions.register("add.null", () => void addNullClip()),
+    actions.register("clip.clearParent", () => changeParent(null)),
+    actions.register("clip.motionPath", toggleMotionPath),
+    actions.register("clip.smoothPath", smoothPath),
+    actions.register("clip.autoOrient", toggleAutoOrient),
     actions.register("clip.toggleEnabled", toggleEnabled),
     actions.register("crop.toFrame", () => quickCrop("frame")),
     actions.register("crop.reset", () => quickCrop("reset")),

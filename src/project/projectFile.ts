@@ -33,6 +33,8 @@ export type Migration = (raw: JsonObject) => JsonObject;
  * - 10 -> 11 (Batch 67): `TextClip.spans` (optional): older projects open unchanged.
  * - 11 -> 12 (Batch 68): `TextClip.counter` and `TextClip.animators` (optional), the kinetic In and Out animation ids and the
  *   `text.counter.value` and `animators.<id>.*` keyframe properties: older projects open unchanged.
+ * - 12 -> 13 (Batch 69): `ClipBase.parentId` and `.autoOrient` (optional), the `null` clip kind, the `transform.position` keyframe
+ *   property and `spatialIn` / `spatialOut` on its keys: older projects open unchanged.
  * - 7 -> 8 (Batch 62): `sequences` (empty) and the `compound` clip kind: older projects open unchanged.
  * - 6 -> 7 (Batch 60): the 30 Penner eases, `bezier` and `spring` on keys, vector (color) key values and the keyframe
  *   properties of spec §21.9 (all new values of existing fields): older projects open unchanged.
@@ -66,6 +68,8 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   10: (raw) => raw,
   // 11 -> 12 (Batch 68): counters and animators: none in an older project.
   11: (raw) => raw,
+  // 12 -> 13 (Batch 69): parenting, null clips and motion paths: none in an older project.
+  12: (raw) => raw,
 };
 
 function isObject(value: unknown): value is JsonObject {

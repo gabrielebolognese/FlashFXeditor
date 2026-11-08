@@ -1,7 +1,7 @@
 // The persistent document (spec §5.2). Plain JSON only: no classes, Maps, Sets or undefined-valued
 // keys, so a Project can be serialized as-is and diffed by Immer patches.
 
-export const SCHEMA_VERSION = 12;
+export const SCHEMA_VERSION = 13;
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: JsonValue };
@@ -183,6 +183,9 @@ export interface KeyData {
   bezier?: [number, number, number, number];
   /** Ease `spring`: defaults 0.7 and 4. */
   spring?: { damping: number; frequency: number };
+  /** `transform.position` keys (spec §21.14): tangent offsets of the motion path, relative to the key's point. */
+  spatialIn?: [number, number];
+  spatialOut?: [number, number];
 }
 
 /** The transitions (spec §6.15, Batch 36), in the order of the properties panel's chips. Audio crossfades are `crossDissolve`. */
@@ -511,7 +514,7 @@ export interface Track {
   height: "S" | "M" | "L";
 }
 
-export const CLIP_KINDS = ["video", "audio", "image", "text", "solid", "caption", "compound", "shape"] as const;
+export const CLIP_KINDS = ["video", "audio", "image", "text", "solid", "caption", "compound", "shape", "null"] as const;
 export type ClipKind = (typeof CLIP_KINDS)[number];
 
 export interface ClipBase {
@@ -528,6 +531,10 @@ export interface ClipBase {
   enabled: boolean;
   /** Set when the clip is a baked stand-in for a clip kind or feature this build lacks (spec §21.4). */
   fallbackOf?: FallbackOf;
+  /** Visual clips of video tracks (spec §21.14): the clip's transform is in this clip's space. Same sequence, no cycles. */
+  parentId?: ClipId;
+  /** Rotation follows the tangent of the `transform.position` motion path (added to `transform.rotation`). */
+  autoOrient?: boolean;
 }
 
 export interface MediaClip extends ClipBase {
@@ -773,7 +780,15 @@ export interface ShapeClip extends ClipBase {
   fades?: { in: Frame; out: Frame };
 }
 
-export type Clip = MediaClip | TextClip | SolidClip | CaptionClip | CompoundClip | ShapeClip;
+/** An invisible controller (spec §21.14, Batch 69): never drawn or exported; `size` is the outline shown when it is selected. */
+export interface NullClip extends ClipBase {
+  kind: "null";
+  transform: Transform;
+  keyframes?: Keyframes;
+  size: { w: number; h: number };
+}
+
+export type Clip = MediaClip | TextClip | SolidClip | CaptionClip | CompoundClip | ShapeClip | NullClip;
 
 /** x,y in project pixels relative to project center; scale 1 = native media size; rotation degrees. */
 export interface Transform {

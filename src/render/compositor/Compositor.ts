@@ -63,6 +63,7 @@
 import { sequenceView } from "../../core/document/sequences.js";
 import { isRgba } from "../../core/document/color.js";
 import { animatedOpacity, animatedTransform, maxKeyedScale } from "../../core/document/keyframes.js";
+import { RigResolver } from "../../core/document/rig.js";
 import { framesToSourceUs, secondsToFrames } from "../../core/document/time.js";
 import { handleTimeUs, transitionMix } from "../../core/document/transitions.js";
 import type { CaptionClip, CaptionStyle, CaptionWord, Clip, ClipId, CompoundClip, Crop, Frame, MediaClip, MediaId, Project, RGBA, ShadowStyle, ShapeClip, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
@@ -280,6 +281,9 @@ export class Compositor {
   private readonly cueAnim = newCueAnimState();
   private readonly captionTransform: Transform = { x: 0, y: 0, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false };
   /** A keyed clip's transform at the frame (read before the next layer). */
+  /** Parent chains of the frame (spec §21.14): world transforms of parented clips. */
+  private readonly rig = new RigResolver();
+  private readonly world: Transform = { x: 0, y: 0, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false };
   private readonly animated: Transform = { x: 0, y: 0, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false };
   /** The crop, solid look, text motion and drawn transform of keyed clips at the frame (read before the next layer). */
   private readonly cropScratch: Crop = { left: 0, top: 0, right: 0, bottom: 0 };
@@ -321,6 +325,7 @@ export class Compositor {
     out.height = height;
     out.background = background;
     out.layers.length = 0;
+    this.rig.begin(doc, frame, transforms);
     let media = 0;
     let solidLayers = 0;
     let textLayers = 0;
@@ -341,7 +346,7 @@ export class Compositor {
       if (track.kind !== "video" || track.hidden || track.muted) continue;
       const index = trackIndex(doc, track);
       const clip = clipInIndex(index, frame);
-      if (!clip?.enabled || clip.kind === "audio" || clip.kind === "caption") continue;
+      if (!clip?.enabled || clip.kind === "audio" || clip.kind === "caption" || clip.kind === "null") continue;
       // A frame of a transition (Batch 36): the track's two clips.
       const pair = (clip.kind === "video" || clip.kind === "image") && (clip.transitionIn || clip.transitionOut) ? transitionPair(index, clip, frame) : null;
       if (pair) {
@@ -386,7 +391,7 @@ export class Compositor {
       }
       // The keyed values at the frame (the clip's own when unkeyed; `animated` is reused per layer).
       const rel = frame - clip.start;
-      const transform = transforms?.get(clip.id) ?? animatedTransform(clip, rel, this.animated);
+      const transform = this.rig.resolve(clip, transforms?.get(clip.id) ?? animatedTransform(clip, rel, this.animated), this.world);
       const opacity = opacities?.get(clip.id) ?? animatedOpacity(clip, rel);
       if (clip.kind === "video" || clip.kind === "image") {
         const reason = this.offline?.label(clip.mediaId) ?? null;
@@ -444,7 +449,7 @@ export class Compositor {
       } else if (clip.kind === "text") {
         const layer = (this.textPool[textLayers] ??= newTextLayer());
         // Live transforms (a gesture) raster at their own scale; keyed ones at the largest they reach.
-        const rasterScale = transforms?.has(clip.id) ? null : maxKeyedScale(clip.keyframes, clip.transform);
+        const rasterScale = transforms?.has(clip.id) || clip.parentId !== undefined ? null : maxKeyedScale(clip.keyframes, clip.transform);
         const shown = this.spannedText(clip, texts?.get(clip.id));
         // Keyed font size, letter spacing and fill (Batch 60; not while the text is edited inline).
         const motion = ("editing" in shown && shown.editing) ? null : textMotion(clip.keyframes, shown.style, rel, this.motion);
@@ -670,7 +675,7 @@ export class Compositor {
     crops: ReadonlyMap<ClipId, Crop> | null,
   ): boolean {
     const rel = Math.min(clip.duration - 1, Math.max(0, frame - clip.start));
-    const transform = transforms?.get(clip.id) ?? animatedTransform(clip, rel, this.animated);
+    const transform = this.rig.resolve(clip, transforms?.get(clip.id) ?? animatedTransform(clip, rel, this.animated), this.world);
     const opacity = opacities?.get(clip.id) ?? animatedOpacity(clip, rel);
     if (!this.writeMedia(layer, doc, clip, frame, transform, opacity, crops?.get(clip.id) ?? animatedCrop(clip.keyframes, clip.crop, rel, this.cropScratch), true)) return false;
     layer.trackId = slot;

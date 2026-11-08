@@ -92,6 +92,24 @@ describe("keyframe edits (Batch 35 follow-up)", { timeout: 30_000 }, () => {
   }
 });
 
+describe("parenting, nulls and motion paths (Batch 69)", { timeout: 60_000 }, () => {
+  const ops = [...opsOf("rig", "delete", "move", "split", "keyframes", "props", "clipboard", "tracks")];
+  for (const seed of [691, 692, 693]) {
+    it(`set and clear parents, nulls, paths and auto-orient mixed with edits keep every invariant (seed ${seed})`, () => {
+      property({
+        seed,
+        steps: 400,
+        ops,
+        check: (_before, after) => {
+          const issues: string[] = [];
+          for (const clip of Object.values(after.clips)) if ("keyframes" in clip && clip.keyframes) issues.push(...keyframeIssues(clip.keyframes).map((issue) => `${clip.id}: ${issue}`));
+          return issues;
+        },
+      });
+    });
+  }
+});
+
 describe("transitions and fades (Batch 36 follow-up)", { timeout: 30_000 }, () => {
   const ops = [
     ...opsOf("transitions", "fades"),

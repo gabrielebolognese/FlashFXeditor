@@ -82,7 +82,7 @@ function sectionBody(id: SectionId, context: PropertiesContext): ReactNode {
     case "captionStyle":
       return (context.kind === "clips" || context.kind === "track") && context.captionTrackId ? <CaptionStyleSection trackId={context.captionTrackId} cueIds={context.kind === "clips" ? context.cueIds : NO_CUES} /> : null;
     case "transform":
-      return context.kind === "clips" ? <TransformSection ids={context.layerIds} /> : null;
+      return context.kind === "clips" ? <TransformSection ids={context.transformIds} /> : null;
     case "crop":
       return context.kind === "clips" ? <CropSection ids={context.mediaIds} /> : null;
     case "frame":
@@ -111,7 +111,7 @@ function sectionBody(id: SectionId, context: PropertiesContext): ReactNode {
  */
 function sectionActions(id: SectionId, context: PropertiesContext): ReactNode {
   if (context.kind !== "clips") return null;
-  if (id === "transform" || id === "opacity") return <KeyframeControls ids={context.layerIds} section={id} />;
+  if (id === "transform" || id === "opacity") return <KeyframeControls ids={id === "transform" ? context.transformIds : context.layerIds} section={id} />;
   if (id === "audio") return context.audioIds.length > 0 ? <KeyframeControls ids={context.audioIds} section="volume" /> : null;
   if (id !== "crop") return null;
   return <CropModeToggle ids={context.mediaIds} single={context.layerIds.length === 1 && context.mediaIds.length === 1} />;

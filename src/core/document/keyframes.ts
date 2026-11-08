@@ -18,6 +18,7 @@
 // - Speed changes and rate stretches (`retimeKeyframes`) scale the frames; keys landing on one frame
 //   merge (the later one wins), eases and holds stay.
 import { ease as bezierEase, type CubicBezier } from "../theme/easing.js";
+import { positionOnSegment, segmentAngle, type Vec2 } from "./positionPath.js";
 import { cubicBezier, EASINGS, springProgress, type EasingName } from "./easings.js";
 import { EASE_IDS, PENNER_EASES, type EaseId, type Frame, type KeyData, type Keyframes, type Transform } from "./types.js";
 
@@ -37,7 +38,9 @@ export const EXTRA_KEYFRAME_PROPS = [
 ] as const;
 /** The properties added in Batch 68 (spec §21.13): the counter's value (the animators' are `ANIMATOR_PROP_PATTERN`). */
 export const TEXT_KEYFRAME_PROPS = ["text.counter.value"] as const;
-export const KEYFRAME_PROPS = [...SECTION_KEYFRAME_PROPS, ...EXTRA_KEYFRAME_PROPS, ...TEXT_KEYFRAME_PROPS] as const;
+/** The motion path of Batch 69 (spec §21.14): `transform.position` is a vector [x, y] whose keys may carry spatial tangents. */
+export const MOTION_KEYFRAME_PROPS = ["transform.position"] as const;
+export const KEYFRAME_PROPS = [...SECTION_KEYFRAME_PROPS, ...EXTRA_KEYFRAME_PROPS, ...TEXT_KEYFRAME_PROPS, ...MOTION_KEYFRAME_PROPS] as const;
 export type KeyframeProp = (typeof KEYFRAME_PROPS)[number];
 /** The properties of the Transform, Opacity and Volume sections (the ones the panel's stopwatches key). */
 export type SectionKeyframeProp = (typeof SECTION_KEYFRAME_PROPS)[number];
@@ -84,8 +87,8 @@ export function isAnimatorProp(prop: string): boolean {
 
 /** The clip kinds each new property is valid on (the section properties are valid on any clip with them). */
 const PROP_KINDS: Readonly<Record<string, readonly string[]>> = {
-  "transform.anchor.x": ["video", "image", "solid", "text", "compound", "shape"],
-  "transform.anchor.y": ["video", "image", "solid", "text", "compound", "shape"],
+  "transform.anchor.x": ["video", "image", "solid", "text", "compound", "shape", "null"],
+  "transform.anchor.y": ["video", "image", "solid", "text", "compound", "shape", "null"],
   "crop.left": ["video", "image"],
   "crop.top": ["video", "image"],
   "crop.right": ["video", "image"],
@@ -121,7 +124,7 @@ export const KEYFRAME_SECTIONS = ["transform", "opacity", "volume", "anchor", "s
 export type KeyframeSection = (typeof KEYFRAME_SECTIONS)[number];
 
 export const SECTION_PROPS: Readonly<Record<KeyframeSection, readonly KeyframeProp[]>> = {
-  transform: ["transform.x", "transform.y", "transform.scale", "transform.scaleY", "transform.rotation"],
+  transform: ["transform.x", "transform.y", "transform.scale", "transform.scaleY", "transform.rotation", "transform.position"],
   opacity: ["opacity"],
   volume: ["volume.gainDb"],
   /** The stopwatch groups of Batch 61 (spec §21.9, §11): each sits in the panel's Transform, Crop, Solid, Frame or Text section. */
@@ -155,6 +158,11 @@ export function isKeyframeSection(value: unknown): value is KeyframeSection {
 
 export function isEaseId(value: unknown): value is EaseId {
   return typeof value === "string" && (EASE_IDS as readonly string[]).includes(value);
+}
+
+/** Properties whose key values are [x, y] points. */
+export function isPointProp(prop: string): boolean {
+  return prop === "transform.position";
 }
 
 export function sectionOf(prop: KeyframeProp): KeyframeSection {
@@ -329,12 +337,59 @@ export function hasAnyKeys(keyframes: Keyframes | undefined): boolean {
 interface Keyed {
   transform: Transform;
   keyframes?: Keyframes | undefined;
+  autoOrient?: boolean | undefined;
 }
 
 /** Whether the transform moves over time: keys in the Transform section or on the anchor (spec §21.9). */
 export function hasTransformKeys(keyframes: Keyframes | undefined): boolean {
   if (!keyframes) return false;
   return hasSectionKeys(keyframes, "transform") || (keyframes["transform.anchor.x"]?.length ?? 0) > 0 || (keyframes["transform.anchor.y"]?.length ?? 0) > 0;
+}
+
+const pathPoint: [number, number] = [0, 0];
+const pathA: [number, number] = [0, 0];
+const pathB: [number, number] = [0, 0];
+
+/**
+ * The point of the motion path `keys` at `rel`, written into `out`; the direction of travel there (degrees
+ * clockwise from +x) comes back, null when it has none (a single key, a zero-length segment). Before the
+ * first key the path starts at it, after the last it stays.
+ */
+export function samplePath(keys: readonly Key[], rel: number, out: [number, number]): number | null {
+  const at = keyIndexAt(keys, rel);
+  const n = keys.length;
+  // At or past the last key, or before the first: the end point, heading as the nearest segment does there.
+  if (at < 0 || at >= n - 1) {
+    const end = (at < 0 ? keys[0] : keys[n - 1]) as Key;
+    const v = end.value as number[];
+    out[0] = v[0] ?? 0;
+    out[1] = v[1] ?? 0;
+    if (n < 2) return null;
+    if (at < 0) return segmentAt(keys[0] as Key, keys[1] as Key, 0);
+    return segmentAt(keys[n - 2] as Key, end, 1);
+  }
+  const left = keys[at] as Key;
+  const right = keys[at + 1] as Key;
+  const progress = keyEase(left, (rel - left.frame) / (right.frame - left.frame));
+  const point = segmentPoint(left, right, progress);
+  out[0] = point[0];
+  out[1] = point[1];
+  return segmentAt(left, right, progress);
+}
+
+function pointOf(key: Key, into: [number, number]): Vec2 {
+  const v = key.value as number[];
+  into[0] = v[0] ?? 0;
+  into[1] = v[1] ?? 0;
+  return into;
+}
+
+function segmentPoint(left: Key, right: Key, progress: number): [number, number] {
+  return positionOnSegment(pointOf(left, pathA), pointOf(right, pathB), left.spatialOut, right.spatialIn, progress);
+}
+
+function segmentAt(left: Key, right: Key, progress: number): number | null {
+  return segmentAngle(pointOf(left, pathA), pointOf(right, pathB), left.spatialOut, right.spatialIn, progress);
 }
 
 /** The anchor objects animated transforms own (written per frame; never the clip's own). */
@@ -352,12 +407,20 @@ export function animatedTransform(clip: Keyed, rel: number, out?: Transform): Tr
   const target: Transform = out ?? { ...base };
   target.x = propValue(keyframes, "transform.x", rel, base.x);
   target.y = propValue(keyframes, "transform.y", rel, base.y);
+  const path = keyframes?.["transform.position"];
+  let heading: number | null = null;
+  if (path && path.length > 0) {
+    heading = samplePath(path, rel, pathPoint);
+    target.x = pathPoint[0];
+    target.y = pathPoint[1];
+  }
   target.scale = propValue(keyframes, "transform.scale", rel, base.scale);
   const scaleY = keyframes?.["transform.scaleY"];
   if (scaleY && scaleY.length > 0) target.scaleY = sampleKeys(scaleY, rel);
   else if (base.scaleY !== undefined) target.scaleY = base.scaleY;
   else delete target.scaleY;
   target.rotation = propValue(keyframes, "transform.rotation", rel, base.rotation);
+  if (clip.autoOrient && heading !== null) target.rotation += heading;
   const anchorX = keyframes?.["transform.anchor.x"];
   const anchorY = keyframes?.["transform.anchor.y"];
   if ((anchorX && anchorX.length > 0) || (anchorY && anchorY.length > 0)) {
@@ -504,6 +567,26 @@ export function setKey(keys: readonly Key[], frame: Frame, value: number | numbe
 /** `keyframes` with a key for every property of `values` at `rel` (`setKey` rules). */
 export function writeKeys(keyframes: Keyframes | undefined, rel: Frame, values: Partial<Record<KeyframeProp, number | number[]>>, ease?: EaseId): Keyframes | undefined {
   let next = keyframes;
+  // A clip on a motion path (spec §21.14): x and y edits move the path's key there.
+  const path = next?.["transform.position"];
+  if (path && path.length > 0 && (values["transform.x"] !== undefined || values["transform.y"] !== undefined)) {
+    const at = path.find((key) => key.frame === rel);
+    const now = at ? (at.value as number[]) : (sampleVector(path, rel, []) as number[]);
+    const x = values["transform.x"];
+    const y = values["transform.y"];
+    const px = typeof x === "number" && Number.isFinite(x) ? x : (now[0] ?? 0);
+    const py = typeof y === "number" && Number.isFinite(y) ? y : (now[1] ?? 0);
+    const keys = setKey(path, rel, [px, py], ease);
+    if (at) {
+      const written = keys.find((key) => key.frame === rel) as Key;
+      if (at.spatialIn) written.spatialIn = [...at.spatialIn];
+      if (at.spatialOut) written.spatialOut = [...at.spatialOut];
+    }
+    next = withKeys(next, "transform.position", keys);
+    values = { ...values };
+    delete values["transform.x"];
+    delete values["transform.y"];
+  }
   for (const prop of KEYFRAME_PROPS) {
     const value = values[prop];
     if (value === undefined || !(Array.isArray(value) ? value.every(Number.isFinite) : Number.isFinite(value))) continue;
@@ -662,7 +745,7 @@ export function sliceKeyframes(keyframes: Keyframes, from: Frame, to: Frame, new
         if (side === "in") out.set(at, { frame: at, value: left.value, ease: left.ease });
         return;
       }
-      if (cuttable(left.ease)) out.set(at, { frame: at, value: sampleValue(keys, at), ease: left.ease });
+      if (cuttable(left.ease) && !(prop === "transform.position" && (left.spatialOut || right.spatialIn))) out.set(at, { frame: at, value: sampleValue(keys, at), ease: left.ease });
       else if (side === "in") out.set(left.frame, { ...left });
       else out.set(right.frame, { ...right });
     };
@@ -705,6 +788,21 @@ export function retimeKeyframes(keyframes: Keyframes, ratio: number): Keyframes 
 export function mapKeyValues(keyframes: Keyframes, map: Partial<Record<KeyframeProp, (value: number) => number>>): Keyframes {
   const result: Keyframes = {};
   for (const [prop, keys] of Object.entries(keyframes)) {
+    if (prop === "transform.position") {
+      const fx = map["transform.x"];
+      const fy = map["transform.y"];
+      // Tangents are offsets: they scale by the slope of the (affine) map.
+      const kx = fx ? fx(1) - fx(0) : 1;
+      const ky = fy ? fy(1) - fy(0) : 1;
+      result[prop] = keys.map((key) => {
+        const v = key.value as number[];
+        const next: Key = { ...key, value: [fx ? fx(v[0] ?? 0) : (v[0] ?? 0), fy ? fy(v[1] ?? 0) : (v[1] ?? 0)] };
+        if (key.spatialIn) next.spatialIn = [key.spatialIn[0] * kx, key.spatialIn[1] * ky];
+        if (key.spatialOut) next.spatialOut = [key.spatialOut[0] * kx, key.spatialOut[1] * ky];
+        return next;
+      });
+      continue;
+    }
     const fn = isKeyframeProp(prop) ? map[prop] : undefined;
     result[prop] = fn ? keys.map((key) => ({ ...key, value: fn(scalar(key.value)) })) : keys.map((key) => ({ ...key }));
   }
@@ -765,6 +863,7 @@ export function keyframeIssues(keyframes: Keyframes, clip?: { kind: string; fill
     else if (clip && !propValidFor(prop, clip.kind)) issues.push(`keyframes.${prop}: not a property of a ${clip.kind} clip`);
     else if (clip && prop === "fill" && clip.kind === "solid" && !isColorFill(clip.fill)) issues.push("keyframes.fill: the solid's fill is not a plain color");
     const vector = isColorProp(prop);
+    const point = isPointProp(prop);
     if (!Array.isArray(keys) || keys.length === 0) {
       issues.push(`keyframes.${prop}: an empty list`);
       continue;
@@ -775,6 +874,11 @@ export function keyframeIssues(keyframes: Keyframes, clip?: { kind: string; fill
       if (!(key.frame > previous)) issues.push(`keyframes.${prop}: frame ${key.frame} must come after ${previous}`);
       if (vector) {
         if (!Array.isArray(key.value) || key.value.length !== 4 || !key.value.every((channel) => Number.isFinite(channel))) issues.push(`keyframes.${prop}: value at frame ${key.frame} must be a color [r, g, b, a]`);
+      } else if (point) {
+        if (!Array.isArray(key.value) || key.value.length !== 2 || !key.value.every((c) => Number.isFinite(c))) issues.push(`keyframes.${prop}: value at frame ${key.frame} must be a point [x, y]`);
+        for (const tangent of [key.spatialIn, key.spatialOut]) {
+          if (tangent !== undefined && !(Array.isArray(tangent) && tangent.length === 2 && tangent.every((c) => Number.isFinite(c)))) issues.push(`keyframes.${prop}: the tangents at frame ${key.frame} must be [x, y] offsets`);
+        }
       } else if (typeof key.value !== "number" || !Number.isFinite(key.value)) issues.push(`keyframes.${prop}: value ${String(key.value)} at frame ${key.frame} must be a finite number`);
       if (!isEaseId(key.ease)) issues.push(`keyframes.${prop}: unknown ease "${String(key.ease)}" at frame ${key.frame}`);
       if (key.bezier !== undefined && !validBezier(key.bezier)) issues.push(`keyframes.${prop}: the bezier at frame ${key.frame} needs four finite numbers with x1 and x2 in 0..1`);

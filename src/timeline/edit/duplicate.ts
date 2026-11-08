@@ -83,8 +83,12 @@ export function copyClips(clips: readonly Clip[], newId: () => string, options: 
     if (clip.transitionIn) ins.add(clip.transitionIn.id);
   }
   const renamed = new Map([...outs].filter((id) => options.transitions && ins.has(id)).map((id) => [id, newId()]));
-  return clips.map((clip) => {
-    let copy = { ...structuredClone(clip), id: newId() } as Clip;
+  const ids = clips.map(() => newId());
+  const copied = new Map<string, string>(clips.map((clip, i) => [clip.id, ids[i] as string]));
+  return clips.map((clip, index) => {
+    let copy = { ...structuredClone(clip), id: ids[index] as string } as Clip;
+    // A parent copied along is followed by the copy (Batch 69); one left behind stays the parent.
+    if (clip.parentId !== undefined && copied.has(clip.parentId)) copy.parentId = copied.get(clip.parentId) as string;
     copy = withField(copy, "linkGroup", options.links && clip.linkGroup !== undefined ? links.get(clip.linkGroup) : undefined);
     copy = withField(copy, "group", clip.group !== undefined ? groups.get(clip.group) : undefined);
     if (isMediaClip(copy)) {

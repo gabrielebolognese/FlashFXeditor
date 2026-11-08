@@ -11,12 +11,12 @@ import { CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, SCHEMA_VERSIO
 /** The `manifestVersion`: changes only when a key changes meaning (new keys do not change it). */
 export const MANIFEST_VERSION = 1;
 /** The last batch that touched the manifest (spec §21.1: each batch sets it to its own number). */
-export const LAST_BATCH = 68;
+export const LAST_BATCH = 69;
 
 /** The flags of the manifest: a batch that adds a capability flips its key here (spec §21.2 table). */
 export const FEATURES = {
   media: { videoAlpha: true, imageSequence: true, lottie: false },
-  transform: { rotation3d: false, parenting: false, motionPaths: false, autoOrient: false },
+  transform: { rotation3d: false, parenting: true, motionPaths: true, autoOrient: true },
   keyframes: { bezier: true, spring: true, vectorValues: true },
   solid: { stroke: true, shadow: true, cornerRadii: true },
   mediaFrame: { stroke: true, shadow: true, cornerRadius: true },

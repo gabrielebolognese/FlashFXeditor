@@ -1,9 +1,13 @@
-import { Droplet, FlipHorizontal2, FlipVertical2, Link2, RotateCw, Unlink2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Droplet, FlipHorizontal2, FlipVertical2, Link2, Navigation, RotateCw, Spline, Unlink2 } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 import { liveEdit } from "../../app/liveEdit.js";
+import { changeParent, smoothPath, toggleAutoOrient, toggleMotionPath } from "../../app/propertiesController.js";
 import { documentStore, sessionStore } from "../../app/services.js";
-import type { Clip, ClipId } from "../../core/document/types.js";
-import { isLayerClip, scaleYOf } from "../../timeline/edit/transform.js";
+import { useStoreSelector } from "../../core/store/useStoreSelector.js";
+import type { Clip, ClipId, Project } from "../../core/document/types.js";
+import { onMotionPath, parentCandidates } from "../../timeline/edit/rig.js";
+import { isLayerClip, isTransformClip, scaleYOf } from "../../timeline/edit/transform.js";
+import { Select } from "../../ui/Select.js";
 import { IconButton } from "../../ui/IconButton.js";
 import { NumberField } from "../../ui/NumberField.js";
 import { layerBinding, type BindingDeps } from "./bindings.js";
@@ -28,6 +32,49 @@ const DEPS: BindingDeps = {
   live: liveEdit,
   playhead: { get: () => sessionStore.state.getState().playhead, subscribe: (listener) => sessionStore.state.select((state) => state.playhead, listener) },
 };
+
+const getParent = (clip: Clip) => (isTransformClip(clip) ? (clip.parentId ?? "") : SKIP);
+const getMotionPath = (clip: Clip) => (isTransformClip(clip) ? onMotionPath(clip) : SKIP);
+const getAutoOrient = (clip: Clip) => (isTransformClip(clip) ? clip.autoOrient === true : SKIP);
+const NO_PARENT = "";
+
+/** The clips every one of `ids` may follow, as JSON text (a primitive, so the selector is cheap). */
+function candidateLines(project: Project, ids: readonly ClipId[]): string {
+  let common: Clip[] | null = null;
+  for (const id of ids) {
+    if (!project.clips[id]) continue;
+    const mine = parentCandidates(project, id);
+    common = common === null ? mine : common.filter((clip) => mine.some((other) => other.id === clip.id));
+  }
+  return JSON.stringify((common ?? []).map((clip) => ({ value: clip.id, label: clip.name ?? clip.kind })));
+}
+
+/** Parent, Motion path and Auto-orient (Batch 69): what a layer follows and how its position moves. */
+function RigRows({ ids }: { ids: readonly ClipId[] }) {
+  const parent = useClipsShared(ids, getParent);
+  const onPath = useClipsShared(ids, getMotionPath);
+  const orient = useClipsShared(ids, getAutoOrient);
+  const lines = useStoreSelector(documentStore, useCallback((project: Project) => candidateLines(project, ids), [ids]));
+  const options = useMemo(() => {
+    const list: { value: string; label: string }[] = JSON.parse(lines) as { value: string; label: string }[];
+    return [{ value: NO_PARENT, label: "None" }, ...list];
+  }, [lines]);
+  const value = typeof parent === "string" && options.some((option) => option.value === parent) ? parent : NO_PARENT;
+  return (
+    <>
+      <Row label="Parent">
+        <Select label="Parent" value={value} options={options} onChange={(next) => changeParent(next === NO_PARENT ? null : next)} />
+      </Row>
+      <Row label="Motion path">
+        <div className={styles.buttons}>
+          <IconButton control icon={Spline} label={onPath === true ? "Back to X and Y keys" : "Move along a path"} pressed={onPath === true} onClick={toggleMotionPath} />
+          <IconButton control icon={Navigation} label="Auto-orient" pressed={orient === true} onClick={toggleAutoOrient} />
+          <IconButton commandId="clip.smoothPath" label="Smooth path" icon={Spline} disabled={onPath !== true} onClick={smoothPath} />
+        </div>
+      </Row>
+    </>
+  );
+}
 
 const getFlipH = (clip: Clip) => (isLayerClip(clip) ? clip.transform.flipH : SKIP);
 const getFlipV = (clip: Clip) => (isLayerClip(clip) ? clip.transform.flipV : SKIP);
@@ -82,6 +129,7 @@ export function TransformSection({ ids }: { ids: readonly ClipId[] }) {
         </div>
       </Row>
       <KeyRows ids={ids} section="anchor" />
+      <RigRows ids={ids} />
       <Row label="Flip">
         <div className={styles.buttons}>
           <IconButton icon={FlipHorizontal2} label="Flip horizontal" commandId="transform.flipH" pressed={flipH === true} />

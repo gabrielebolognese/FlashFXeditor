@@ -198,6 +198,8 @@ const SCHEMAS: ObjectSchema[] = [
       ease: req(oneOf(EASE_IDS), "The curve to the next key.", "linear"),
       bezier: opt({ t: "array", item: num, length: 4 }, "Ease `bezier`: the CSS cubic-bezier(x1, y1, x2, y2); x1 and x2 are 0..1 (Batch 60)."),
       spring: opt(obj("KeySpring"), "Ease `spring`: damping and frequency; 0.7 and 4 when absent (Batch 60)."),
+      spatialIn: opt({ t: "array", item: num, length: 2 }, "`transform.position` keys: the motion path's incoming tangent [x, y], relative to the key's point (Batch 69)."),
+      spatialOut: opt({ t: "array", item: num, length: 2 }, "`transform.position` keys: the motion path's outgoing tangent [x, y], relative to the key's point (Batch 69)."),
     },
   },
   {
@@ -718,6 +720,17 @@ const SCHEMAS: ObjectSchema[] = [
     },
   },
   {
+    name: "Clip.null",
+    doc: "An invisible controller (Batch 69): never drawn or exported, a parent for other layers. `size` is the outline shown when it is selected.",
+    types: ["NullClip"],
+    fields: {
+      ...clipBaseFields("null"),
+      size: req(obj("Size"), "The selection outline: width and height at scale 1, project px.", { w: 100, h: 100 }),
+      transform: req(obj("Transform"), "Placement."),
+      keyframes: opt(obj("Keyframes"), "Animated properties, including `transform.position`."),
+    },
+  },
+  {
     name: "ShapePath",
     doc: "One path of a shape clip (Batch 65). With `primitive`, the path is generated from it and `d` holds the generated data.",
     types: ["ShapePath"],
@@ -863,6 +876,8 @@ function clipBaseFields(kind?: string): Record<string, Field> {
     group: opt(text, "Clips sharing it select together."),
     enabled: req(bool, "Drawn and heard.", true),
     fallbackOf: opt(obj("FallbackOf"), "Set when the clip is a baked stand-in."),
+    parentId: opt(text, "A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles."),
+    autoOrient: opt(bool, "Rotation follows the tangent of the `transform.position` motion path (Batch 69)."),
   };
 }
 

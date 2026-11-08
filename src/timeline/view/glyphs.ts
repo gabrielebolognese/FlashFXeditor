@@ -72,7 +72,7 @@ const PATHS = {
 
 export type GlyphName = keyof typeof PATHS;
 
-export const CLIP_GLYPHS: Record<ClipKind, GlyphName> = { video: "film", audio: "audioLines", image: "image", text: "type", solid: "square", caption: "captions", compound: "layers", shape: "shapes" };
+export const CLIP_GLYPHS: Record<ClipKind, GlyphName> = { video: "film", audio: "audioLines", image: "image", text: "type", solid: "square", caption: "captions", compound: "layers", shape: "shapes", null: "crosshair" };
 export const TRACK_GLYPHS: Record<TrackKind, GlyphName> = { video: "film", audio: "audioLines", caption: "captions" };
 
 const VIEWBOX = 24;

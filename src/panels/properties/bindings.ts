@@ -18,7 +18,7 @@ import type { Store } from "../../core/store/createStore.js";
 import type { DocumentStore } from "../../core/store/DocumentStore.js";
 import { setOpacities } from "../../timeline/edit/clipProps.js";
 import { isCropClip, setCrops } from "../../timeline/edit/crop.js";
-import { isLayerClip, setTransforms, type LayerClip } from "../../timeline/edit/transform.js";
+import { isTransformClip, setTransforms, type LayerClip } from "../../timeline/edit/transform.js";
 import { isClipLocked } from "../../timeline/model/queries.js";
 import { roundTo, type NumberBinding } from "../../ui/NumberField.js";
 import { NO_LIVE_EDIT, type LiveEdit } from "../../app/liveEdit.js";
@@ -37,7 +37,7 @@ function layers(project: Project, ids: readonly ClipId[], prop: LayerNumberProp)
   const out: LayerClip[] = [];
   for (const id of ids) {
     const clip = project.clips[id];
-    if (clip && isLayerClip(clip) && (prop.applies?.(clip) ?? true)) out.push(clip);
+    if (clip && isTransformClip(clip) && (prop.applies?.(clip as LayerClip) ?? true)) out.push(clip as LayerClip);
   }
   return out;
 }

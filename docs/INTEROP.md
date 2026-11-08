@@ -588,6 +588,62 @@ A `text` clip may count a number and may carry `animators`. Both are optional; a
 
 `fixtures/interop/kinetic` is a complete project with a counter, every animator field and every new preset, and expected frames 0, 12 and 24.
 
+### 5.8 Parenting, null clips and motion paths (manifest keys `transform.parenting`, `transform.motionPaths`, `transform.autoOrient`, `clipKinds` (adds `null`), `keyframes.props` (adds `transform.position`); schema 13)
+
+**Parent.** `parentId` on a visual clip of a video track (`video`, `image`, `text`, `solid`, `shape`, `compound` or `null`) names another such clip of the same sequence (the project's own tracks, or one sequence's tracks). The clip's `transform` is then in the parent's space: the parent's world transform applies after the clip's own, with the parent's `x` and `y` as the origin (the parent's anchor point), so rotating a parent turns its children around that point. Opacity is not inherited, and neither are flips. The parent is read at the frame clamped into its own range. A clip is never its own ancestor (a cycle is refused). A transform has no skew: with a non-uniform parent scale and a rotated child the editor draws the closest rotation and scales.
+
+**Null.** `{ "kind": "null", ... }` is an invisible controller: `transform`, optional `keyframes`, and `size` (the outline shown when it is selected). It is never drawn or exported, has no fades or opacity, and sits on a video track like any other clip (put it on a track of its own: a track holds one clip at a time).
+
+**Motion path.** The vector key property `transform.position` has `[x, y]` values. A key may carry `spatialIn` and `spatialOut`, tangent offsets `[x, y]` relative to the key's point. A segment between two keys is a cubic bezier through them when either has a tangent (a straight line otherwise); positions move along it by arc length, so a linear ease is a constant speed and the key's `ease` shapes progress along the curve. A clip uses either `transform.x` and `transform.y` keys or `transform.position` keys: when it has position keys, they win.
+
+**Auto-orient.** `autoOrient: true` adds the direction of travel on the path (degrees clockwise from +x, y pointing down) to `transform.rotation`. It has no effect without position keys.
+
+```json Clip.null
+{
+  "id": "rig",
+  "trackId": "v2",
+  "kind": "null",
+  "name": "Rig",
+  "start": 0,
+  "duration": 90,
+  "enabled": true,
+  "size": { "w": 100, "h": 100 },
+  "transform": { "x": 0, "y": 0, "scale": 1, "rotation": 0, "anchor": { "x": 0.5, "y": 0.5 }, "flipH": false, "flipV": false },
+  "keyframes": {
+    "transform.rotation": [
+      { "frame": 0, "value": 0, "ease": "linear" },
+      { "frame": 89, "value": 90, "ease": "linear" }
+    ]
+  }
+}
+```
+
+```json Clip.shape
+{
+  "id": "badge",
+  "trackId": "v1",
+  "kind": "shape",
+  "name": "Badge",
+  "start": 0,
+  "duration": 90,
+  "enabled": true,
+  "parentId": "rig",
+  "autoOrient": true,
+  "size": { "w": 100, "h": 100 },
+  "paths": [{ "id": "p", "d": "M10 10 L90 10 L90 90 L10 90 Z", "fill": { "r": 1, "g": 1, "b": 1, "a": 1 }, "fillRule": "nonzero" }],
+  "transform": { "x": 0, "y": 0, "scale": 1, "rotation": 0, "anchor": { "x": 0.5, "y": 0.5 }, "flipH": false, "flipV": false },
+  "opacity": 1,
+  "keyframes": {
+    "transform.position": [
+      { "frame": 0, "value": [-300, 0], "ease": "linear", "spatialOut": [0, -200] },
+      { "frame": 89, "value": [300, 0], "ease": "linear", "spatialIn": [0, -200] }
+    ]
+  }
+}
+```
+
+`fixtures/interop/rig` is a complete project with a null and five children, a text parented to a rotating card and a curved motion path with auto-orient, and expected frames 0, 30 and 60.
+
 ## 6. Captions and word timings
 
 The caption track's `captionTracks[<track id>].style` styles every cue; a cue's `styleOverride` sets only the fields it changes. A cue is a `caption` clip with `text` (`\n` for line breaks) and optional `words`: `start` and `end` are integer frames relative to the cue's start, `end` after `start`. A word may start before the cue or end after it: an in-trim keeps the words it hides (negative frames), so a trim back shows them again. With word timings the active word is highlighted as the style's `highlight` says.
@@ -869,6 +925,8 @@ One keyframe: a value at a frame relative to the clip start. A key's `ease` shap
 | `ease` | `"linear"` | `"easeIn"` | `"easeOut"` | `"easeInOut"` | `"hold"` | `"smooth"` | `"snap"` | `"overshoot"` | `"sineIn"` | `"sineOut"` | `"sineInOut"` | `"quadIn"` | `"quadOut"` | `"quadInOut"` | `"cubicIn"` | `"cubicOut"` | `"cubicInOut"` | `"quartIn"` | `"quartOut"` | `"quartInOut"` | `"quintIn"` | `"quintOut"` | `"quintInOut"` | `"expoIn"` | `"expoOut"` | `"expoInOut"` | `"circIn"` | `"circOut"` | `"circInOut"` | `"backIn"` | `"backOut"` | `"backInOut"` | `"elasticIn"` | `"elasticOut"` | `"elasticInOut"` | `"bounceIn"` | `"bounceOut"` | `"bounceInOut"` | `"bezier"` | `"spring"` | yes | `"linear"` | The curve to the next key. |
 | `bezier` | number[] (4 items) | no |  | Ease `bezier`: the CSS cubic-bezier(x1, y1, x2, y2); x1 and x2 are 0..1 (Batch 60). |
 | `spring` | [KeySpring](#keyspring) | no |  | Ease `spring`: damping and frequency; 0.7 and 4 when absent (Batch 60). |
+| `spatialIn` | number[] (2 items) | no |  | `transform.position` keys: the motion path's incoming tangent [x, y], relative to the key's point (Batch 69). |
+| `spatialOut` | number[] (2 items) | no |  | `transform.position` keys: the motion path's outgoing tangent [x, y], relative to the key's point (Batch 69). |
 
 #### KeySpring
 
@@ -883,7 +941,7 @@ The parameters of a `spring` ease: a damped cosine over the segment that ends ex
 
 Keyframe lists by property id, each sorted by frame.
 
-Value: object of [Keyframe](#keyframe)[] (keys: `transform.x`, `transform.y`, `transform.scale`, `transform.scaleY`, `transform.rotation`, `opacity`, `volume.gainDb`, `transform.anchor.x`, `transform.anchor.y`, `crop.left`, `crop.top`, `crop.right`, `crop.bottom`, `size.w`, `size.h`, `cornerRadius`, `fill`, `stroke.width`, `stroke.color`, `stroke.dashOffset`, `shadow.x`, `shadow.y`, `shadow.blur`, `shadow.spread`, `shadow.color`, `style.fontSize`, `style.letterSpacing`, `style.fill`, `text.counter.value`, and keys matching `^paths\.([A-Za-z0-9_-]+)\.(trim\.(?:start|end|offset)|stroke\.(?:width|color|dashOffset)|fill|primitive\.([A-Za-z]+))$`, `^animators\.([A-Za-z0-9_-]+)\.(selector\.(?:start|end|offset)|props\.(?:x|y|scale|rotation|opacity|blur|tracking|fill))$`).
+Value: object of [Keyframe](#keyframe)[] (keys: `transform.x`, `transform.y`, `transform.scale`, `transform.scaleY`, `transform.rotation`, `opacity`, `volume.gainDb`, `transform.anchor.x`, `transform.anchor.y`, `crop.left`, `crop.top`, `crop.right`, `crop.bottom`, `size.w`, `size.h`, `cornerRadius`, `fill`, `stroke.width`, `stroke.color`, `stroke.dashOffset`, `shadow.x`, `shadow.y`, `shadow.blur`, `shadow.spread`, `shadow.color`, `style.fontSize`, `style.letterSpacing`, `style.fill`, `text.counter.value`, `transform.position`, and keys matching `^paths\.([A-Za-z0-9_-]+)\.(trim\.(?:start|end|offset)|stroke\.(?:width|color|dashOffset)|fill|primitive\.([A-Za-z]+))$`, `^animators\.([A-Za-z0-9_-]+)\.(selector\.(?:start|end|offset)|props\.(?:x|y|scale|rotation|opacity|blur|tracking|fill))$`).
 
 #### Transition
 
@@ -1322,7 +1380,7 @@ project.json.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `schemaVersion` | integer (>= 1) | yes | `12` | The schema version; this build writes and reads up to the current one. |
+| `schemaVersion` | integer (>= 1) | yes | `13` | The schema version; this build writes and reads up to the current one. |
 | `id` | string (not empty) | yes |  | Unique id, never changes (uuid v4 recommended). |
 | `name` | string | yes |  | Project name. |
 | `settings` | [Settings](#settings) | yes |  | Frame and time base. |
@@ -1340,7 +1398,7 @@ project.json.
 
 A clip: the `kind` field selects its description.
 
-Told apart by `kind`: `video` is [Clip.video](#clip-video), `audio` is [Clip.audio](#clip-audio), `image` is [Clip.image](#clip-image), `text` is [Clip.text](#clip-text), `solid` is [Clip.solid](#clip-solid), `caption` is [Clip.caption](#clip-caption), `compound` is [Clip.compound](#clip-compound), `shape` is [Clip.shape](#clip-shape).
+Told apart by `kind`: `video` is [Clip.video](#clip-video), `audio` is [Clip.audio](#clip-audio), `image` is [Clip.image](#clip-image), `text` is [Clip.text](#clip-text), `solid` is [Clip.solid](#clip-solid), `caption` is [Clip.caption](#clip-caption), `compound` is [Clip.compound](#clip-compound), `shape` is [Clip.shape](#clip-shape), `null` is [Clip.null](#clip-null).
 
 #### ClipBase
 
@@ -1350,7 +1408,7 @@ The fields every clip has.
 | --- | --- | --- | --- | --- |
 | `id` | string (not empty) | yes |  | Unique id; the key it is stored under. |
 | `trackId` | string (not empty) | yes |  | The track listing it. |
-| `kind` | `"video"` | `"audio"` | `"image"` | `"text"` | `"solid"` | `"caption"` | `"compound"` | `"shape"` | yes |  | Kind. |
+| `kind` | `"video"` | `"audio"` | `"image"` | `"text"` | `"solid"` | `"caption"` | `"compound"` | `"shape"` | `"null"` | yes |  | Kind. |
 | `name` | string | yes |  | Display name. |
 | `start` | integer (>= 0) | yes |  | First frame on the timeline. Integer frames at the project frame rate. |
 | `duration` | integer (>= 1) | yes |  | Length, at least 1. Integer frames at the project frame rate. |
@@ -1359,6 +1417,8 @@ The fields every clip has.
 | `group` | string (not empty) | no |  | Clips sharing it select together. |
 | `enabled` | boolean | yes | `true` | Drawn and heard. |
 | `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
+| `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
+| `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
 
 #### Clip.video
 
@@ -1377,6 +1437,8 @@ A video clip.
 | `group` | string (not empty) | no |  | Clips sharing it select together. |
 | `enabled` | boolean | yes | `true` | Drawn and heard. |
 | `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
+| `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
+| `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
 | `mediaId` | string (not empty) | yes |  | The media item it plays; a clip whose item was removed stays as an offline clip. |
 | `in` | integer (>= 0) | yes |  | Source in point. Integer microseconds. |
 | `out` | integer (>= 1) | yes |  | Source out point; `out - in` equals `duration * speed` frame times (within one frame). Integer microseconds. |
@@ -1410,6 +1472,8 @@ A audio clip.
 | `group` | string (not empty) | no |  | Clips sharing it select together. |
 | `enabled` | boolean | yes | `true` | Drawn and heard. |
 | `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
+| `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
+| `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
 | `mediaId` | string (not empty) | yes |  | The media item it plays; a clip whose item was removed stays as an offline clip. |
 | `in` | integer (>= 0) | yes |  | Source in point. Integer microseconds. |
 | `out` | integer (>= 1) | yes |  | Source out point; `out - in` equals `duration * speed` frame times (within one frame). Integer microseconds. |
@@ -1440,6 +1504,8 @@ A image clip.
 | `group` | string (not empty) | no |  | Clips sharing it select together. |
 | `enabled` | boolean | yes | `true` | Drawn and heard. |
 | `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
+| `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
+| `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
 | `mediaId` | string (not empty) | yes |  | The media item it plays; a clip whose item was removed stays as an offline clip. |
 | `in` | integer (>= 0) | yes |  | Source in point. Integer microseconds. |
 | `out` | integer (>= 1) | yes |  | Source out point; `out - in` equals `duration * speed` frame times (within one frame). Integer microseconds. |
@@ -1473,6 +1539,8 @@ A text clip.
 | `group` | string (not empty) | no |  | Clips sharing it select together. |
 | `enabled` | boolean | yes | `true` | Drawn and heard. |
 | `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
+| `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
+| `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
 | `text` | [TextContent](#textcontent) | yes |  | What it says. |
 | `style` | [TextStyle](#textstyle) | yes |  | Its look. |
 | `animIn` | [TextAnim](#textanim) | no |  | In animation. |
@@ -1581,6 +1649,8 @@ A solid or shape layer: `size` project px at scale 1.
 | `group` | string (not empty) | no |  | Clips sharing it select together. |
 | `enabled` | boolean | yes | `true` | Drawn and heard. |
 | `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
+| `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
+| `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
 | `fill` | [RGBA](#rgba) | [Gradient](#gradient) | [GradientFill](#gradientfill) | yes |  | A color or a vertical two-stop gradient. |
 | `shape` | `"rect"` | `"roundedRect"` | `"ellipse"` | `"line"` | yes | `"rect"` | The shape. |
 | `size` | [Size](#size) | yes |  | Width and height at scale 1, project px. |
@@ -1610,6 +1680,8 @@ A nested sequence shown as one layer (Batch 62): inner frame = `offset + (frame 
 | `group` | string (not empty) | no |  | Clips sharing it select together. |
 | `enabled` | boolean | yes | `true` | Drawn and heard. |
 | `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
+| `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
+| `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
 | `sequenceId` | string (not empty) | yes |  | The sequence it shows (a key of `Project.sequences`); instances may share one. |
 | `offset` | integer (>= 0) | yes | `0` | The sequence frame shown at the clip's first frame. Integer frames at the project frame rate. |
 | `transform` | [Transform](#transform) | yes |  | Placement. |
@@ -1635,12 +1707,37 @@ A vector graphic (Batch 65): paths drawn in order in a view box of `size` projec
 | `group` | string (not empty) | no |  | Clips sharing it select together. |
 | `enabled` | boolean | yes | `true` | Drawn and heard. |
 | `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
+| `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
+| `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
 | `size` | [Size](#size) | yes |  | The view box: width and height at scale 1, project px. |
 | `paths` | [ShapePath](#shapepath)[] | yes | `[]` | The paths, bottom to top. |
 | `transform` | [Transform](#transform) | yes |  | Placement. |
 | `opacity` | number (>= 0, <= 1) | yes | `1` | Opacity. |
 | `keyframes` | [Keyframes](#keyframes) | no |  | Animated properties, including `paths.<id>.*`. |
 | `fades` | [Fades](#fades) | no |  | Opacity fades. |
+
+#### Clip.null
+
+An invisible controller (Batch 69): never drawn or exported, a parent for other layers. `size` is the outline shown when it is selected.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `id` | string (not empty) | yes |  | Unique id; the key it is stored under. |
+| `trackId` | string (not empty) | yes |  | The track listing it. |
+| `kind` | `"null"` | yes |  | Kind. |
+| `name` | string | yes |  | Display name. |
+| `start` | integer (>= 0) | yes |  | First frame on the timeline. Integer frames at the project frame rate. |
+| `duration` | integer (>= 1) | yes |  | Length, at least 1. Integer frames at the project frame rate. |
+| `color` | `"red"` | `"orange"` | `"green"` | `"teal"` | `"blue"` | `"violet"` | `"pink"` | `"grey"` | no |  | Label color. |
+| `linkGroup` | string (not empty) | no |  | Clips sharing it move and trim together. |
+| `group` | string (not empty) | no |  | Clips sharing it select together. |
+| `enabled` | boolean | yes | `true` | Drawn and heard. |
+| `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
+| `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
+| `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
+| `size` | [Size](#size) | yes | `{"w":100,"h":100}` | The selection outline: width and height at scale 1, project px. |
+| `transform` | [Transform](#transform) | yes |  | Placement. |
+| `keyframes` | [Keyframes](#keyframes) | no |  | Animated properties, including `transform.position`. |
 
 #### ShapePath
 
@@ -1802,6 +1899,8 @@ A caption cue. Its style is its track's with `styleOverride` on top.
 | `group` | string (not empty) | no |  | Clips sharing it select together. |
 | `enabled` | boolean | yes | `true` | Drawn and heard. |
 | `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
+| `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
+| `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
 | `text` | string | yes |  | Plain text with `\n` line breaks. |
 | `words` | [CaptionWord](#captionword)[] | no |  | Word timings (karaoke), relative to the cue start. |
 | `styleOverride` | [CaptionStyleOverride](#captionstyleoverride) | no |  | The cue's own style. |

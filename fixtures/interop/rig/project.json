@@ -1,0 +1,640 @@
+{
+  "schemaVersion": 13,
+  "id": "5d2e8b17-6a40-4c93-b1f8-27e0c94a3d56",
+  "name": "Interop rig",
+  "settings": {
+    "width": 800,
+    "height": 600,
+    "fps": {
+      "num": 30,
+      "den": 1
+    },
+    "background": {
+      "r": 0.1,
+      "g": 0.1,
+      "b": 0.12,
+      "a": 1
+    },
+    "sampleRate": 48000
+  },
+  "media": {},
+  "bins": [],
+  "tracks": [
+    {
+      "id": "v1",
+      "kind": "video",
+      "name": "V1",
+      "clipIds": [
+        "rig"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v2",
+      "kind": "video",
+      "name": "V2",
+      "clipIds": [
+        "dot0"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v3",
+      "kind": "video",
+      "name": "V3",
+      "clipIds": [
+        "dot1"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v4",
+      "kind": "video",
+      "name": "V4",
+      "clipIds": [
+        "dot2"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v5",
+      "kind": "video",
+      "name": "V5",
+      "clipIds": [
+        "dot3"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v6",
+      "kind": "video",
+      "name": "V6",
+      "clipIds": [
+        "dot4"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v7",
+      "kind": "video",
+      "name": "V7",
+      "clipIds": [
+        "card"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v8",
+      "kind": "video",
+      "name": "V8",
+      "clipIds": [
+        "label"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v9",
+      "kind": "video",
+      "name": "V9",
+      "clipIds": [
+        "arrow"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v10",
+      "kind": "video",
+      "name": "V10",
+      "clipIds": [],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    }
+  ],
+  "clips": {
+    "rig": {
+      "id": "rig",
+      "trackId": "v1",
+      "kind": "null",
+      "name": "Rig",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "size": {
+        "w": 100,
+        "h": 100
+      },
+      "transform": {
+        "x": -220,
+        "y": -170,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "keyframes": {
+        "transform.rotation": [
+          {
+            "frame": 0,
+            "value": 0,
+            "ease": "linear"
+          },
+          {
+            "frame": 59,
+            "value": 90,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    "dot0": {
+      "kind": "shape",
+      "name": "dot0",
+      "enabled": true,
+      "size": {
+        "w": 100,
+        "h": 100
+      },
+      "paths": [
+        {
+          "id": "p",
+          "d": "M10 10 L90 10 L90 90 L10 90 Z",
+          "fill": {
+            "r": 1,
+            "g": 0.42,
+            "b": 0.32,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        }
+      ],
+      "transform": {
+        "x": 60,
+        "y": 0,
+        "scale": 0.25,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "id": "dot0",
+      "trackId": "v2",
+      "start": 0,
+      "duration": 60,
+      "parentId": "rig"
+    },
+    "dot1": {
+      "kind": "shape",
+      "name": "dot1",
+      "enabled": true,
+      "size": {
+        "w": 100,
+        "h": 100
+      },
+      "paths": [
+        {
+          "id": "p",
+          "d": "M10 10 L90 10 L90 90 L10 90 Z",
+          "fill": {
+            "r": 1,
+            "g": 0.86,
+            "b": 0.2,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        }
+      ],
+      "transform": {
+        "x": 90,
+        "y": 0,
+        "scale": 0.25,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "id": "dot1",
+      "trackId": "v3",
+      "start": 0,
+      "duration": 60,
+      "parentId": "rig"
+    },
+    "dot2": {
+      "kind": "shape",
+      "name": "dot2",
+      "enabled": true,
+      "size": {
+        "w": 100,
+        "h": 100
+      },
+      "paths": [
+        {
+          "id": "p",
+          "d": "M10 10 L90 10 L90 90 L10 90 Z",
+          "fill": {
+            "r": 0.4,
+            "g": 0.85,
+            "b": 0.5,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        }
+      ],
+      "transform": {
+        "x": 120,
+        "y": 0,
+        "scale": 0.25,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "id": "dot2",
+      "trackId": "v4",
+      "start": 0,
+      "duration": 60,
+      "parentId": "rig"
+    },
+    "dot3": {
+      "kind": "shape",
+      "name": "dot3",
+      "enabled": true,
+      "size": {
+        "w": 100,
+        "h": 100
+      },
+      "paths": [
+        {
+          "id": "p",
+          "d": "M10 10 L90 10 L90 90 L10 90 Z",
+          "fill": {
+            "r": 0.35,
+            "g": 0.7,
+            "b": 1,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        }
+      ],
+      "transform": {
+        "x": 150,
+        "y": 0,
+        "scale": 0.25,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "id": "dot3",
+      "trackId": "v5",
+      "start": 0,
+      "duration": 60,
+      "parentId": "rig"
+    },
+    "dot4": {
+      "kind": "shape",
+      "name": "dot4",
+      "enabled": true,
+      "size": {
+        "w": 100,
+        "h": 100
+      },
+      "paths": [
+        {
+          "id": "p",
+          "d": "M10 10 L90 10 L90 90 L10 90 Z",
+          "fill": {
+            "r": 0.8,
+            "g": 0.5,
+            "b": 1,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        }
+      ],
+      "transform": {
+        "x": 180,
+        "y": 0,
+        "scale": 0.25,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "id": "dot4",
+      "trackId": "v6",
+      "start": 0,
+      "duration": 60,
+      "parentId": "rig"
+    },
+    "card": {
+      "kind": "shape",
+      "name": "card",
+      "enabled": true,
+      "size": {
+        "w": 100,
+        "h": 100
+      },
+      "paths": [
+        {
+          "id": "p",
+          "d": "M10 10 L90 10 L90 90 L10 90 Z",
+          "fill": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        }
+      ],
+      "transform": {
+        "x": 200,
+        "y": -100,
+        "scale": 2,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "id": "card",
+      "trackId": "v7",
+      "start": 0,
+      "duration": 60,
+      "keyframes": {
+        "transform.rotation": [
+          {
+            "frame": 0,
+            "value": 0,
+            "ease": "linear"
+          },
+          {
+            "frame": 59,
+            "value": 45,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    "label": {
+      "id": "label",
+      "trackId": "v8",
+      "kind": "text",
+      "name": "CARD",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "text": {
+        "value": "CARD",
+        "box": {
+          "mode": "auto",
+          "width": 300
+        }
+      },
+      "style": {
+        "fontFamily": "Inter",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 22,
+        "fill": {
+          "r": 0.1,
+          "g": 0.1,
+          "b": 0.12,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": false,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "parentId": "card"
+    },
+    "arrow": {
+      "kind": "shape",
+      "name": "arrow",
+      "enabled": true,
+      "size": {
+        "w": 100,
+        "h": 100
+      },
+      "paths": [
+        {
+          "id": "p",
+          "d": "M10 20 L70 20 L70 5 L95 50 L70 95 L70 80 L10 80 Z",
+          "fill": {
+            "r": 0.35,
+            "g": 0.7,
+            "b": 1,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        }
+      ],
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 0.6,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "id": "arrow",
+      "trackId": "v9",
+      "start": 0,
+      "duration": 60,
+      "autoOrient": true,
+      "keyframes": {
+        "transform.position": [
+          {
+            "frame": 0,
+            "value": [
+              -300,
+              220
+            ],
+            "ease": "linear",
+            "spatialOut": [
+              0,
+              -260
+            ]
+          },
+          {
+            "frame": 30,
+            "value": [
+              0,
+              100
+            ],
+            "ease": "linear",
+            "spatialIn": [
+              -120,
+              0
+            ],
+            "spatialOut": [
+              120,
+              0
+            ]
+          },
+          {
+            "frame": 59,
+            "value": [
+              300,
+              220
+            ],
+            "ease": "linear",
+            "spatialIn": [
+              0,
+              -260
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "markers": [],
+  "captionTracks": {},
+  "textPresetsLocal": [],
+  "sequences": {},
+  "meta": {
+    "createdAt": "2026-11-08T12:00:00.000Z",
+    "modifiedAt": "2026-11-08T12:00:00.000Z",
+    "appVersion": "1.1.0",
+    "generator": {
+      "name": "interop-fixture",
+      "version": "1",
+      "source": "fixtures/interop/rig (Batch 69)"
+    }
+  }
+}

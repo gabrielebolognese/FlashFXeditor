@@ -7,7 +7,7 @@ import { usPerFrame } from "./time.js";
 import { sequenceDurationUs, sequenceRecordIssues } from "./sequence.js";
 import { pathDataIssue } from "../shapes/pathData.js";
 import { PRIMITIVE_LIMITS, PRIMITIVE_PARAMS } from "../shapes/primitives.js";
-import { CAPTION_HIGHLIGHTS, COUNTER_SEPARATORS, CUE_ANIM_KINDS, FILL_RULES, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_UNITS, isFreeze, isMediaClip, LABEL_COLORS, LINE_CAPS, LINE_JOINS, PRIMITIVE_KINDS, SOLID_SHAPE_IDS, type PrimitiveKind, type ShapeClip, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type CompoundClip, type Sequence, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextSpan, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
+import { CAPTION_HIGHLIGHTS, COUNTER_SEPARATORS, CUE_ANIM_KINDS, FILL_RULES, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_UNITS, isFreeze, isMediaClip, LABEL_COLORS, LINE_CAPS, LINE_JOINS, PRIMITIVE_KINDS, SOLID_SHAPE_IDS, type NullClip, type PrimitiveKind, type ShapeClip, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type CompoundClip, type Sequence, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextSpan, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
 
 export class DocumentInvariantError extends Error {
   readonly issues: readonly string[];
@@ -20,7 +20,7 @@ export class DocumentInvariantError extends Error {
 }
 
 const ALLOWED_CLIPS: Record<TrackKind, ReadonlySet<ClipKind>> = {
-  video: new Set(["video", "image", "text", "solid", "compound", "shape"]),
+  video: new Set(["video", "image", "text", "solid", "compound", "shape", "null"]),
   audio: new Set(["audio"]),
   caption: new Set(["caption"]),
 };
@@ -79,6 +79,9 @@ function clipIssues(project: Project, clip: Clip): string[] {
   if (clip.kind === "solid") issues.push(...solidIssues(clip, label));
   if (clip.kind === "compound") issues.push(...compoundIssues(project, clip, label));
   if (clip.kind === "shape") issues.push(...shapeIssues(clip, label));
+  if (clip.kind === "null") issues.push(...nullIssues(clip, label));
+  if (clip.autoOrient !== undefined && typeof clip.autoOrient !== "boolean") issues.push(`${label}: autoOrient must be true or false`);
+  if (clip.parentId !== undefined && typeof clip.parentId !== "string") issues.push(`${label}: parentId must be a clip id`);
   // Frame styles (spec §21.7): pictures have rounded corners, an outline and a shadow.
   if (clip.kind === "video" || clip.kind === "image") issues.push(...frameIssues(clip, label));
   // Keyframes (Batch 35): known properties, one key per integer frame in order, finite values, known eases.
@@ -384,6 +387,53 @@ const FILL_RULE_SET: ReadonlySet<string> = new Set(FILL_RULES);
 const CAP_SET: ReadonlySet<string> = new Set(LINE_CAPS);
 const JOIN_SET: ReadonlySet<string> = new Set(LINE_JOINS);
 
+/** A null clip (spec §21.14): a positive outline size. */
+function nullIssues(clip: NullClip, label: string): string[] {
+  const issues: string[] = [];
+  if (!(clip.size?.w > 0) || !(clip.size?.h > 0)) issues.push(`${label}: null size ${String(clip.size?.w)}x${String(clip.size?.h)} must be positive`);
+  return issues;
+}
+
+/**
+ * Parents (spec §21.14): a visual clip of a video track, in the same sequence, never itself, no cycle.
+ * Audio clips and cues take no parent; a parent is a clip with a transform.
+ */
+function parentIssues(project: Project): string[] {
+  const issues: string[] = [];
+  const scopes = new Map<ClipId, string>();
+  const scan = (tracks: readonly Track[] | undefined, scope: string) => {
+    for (const track of Array.isArray(tracks) ? tracks : []) {
+      for (const id of track?.clipIds ?? []) scopes.set(id, track.kind === "video" ? scope : `${scope}:${track.kind}`);
+    }
+  };
+  scan(project.tracks, "");
+  for (const [key, sequence] of Object.entries(project.sequences ?? {})) scan(sequence?.tracks, key);
+  for (const clip of Object.values(project.clips)) {
+    if (typeof clip.parentId !== "string") continue;
+    const label = clipLabel(clip);
+    const parent = project.clips[clip.parentId];
+    if (clip.kind === "audio" || clip.kind === "caption") issues.push(`${label}: a ${clip.kind} clip cannot have a parent`);
+    else if (clip.parentId === clip.id) issues.push(`${label}: is its own parent`);
+    // A parent that is gone (deleted, or never there) is ignored by the evaluation: the clip simply has none.
+    else if (!parent) continue;
+    else if (!("transform" in parent) || scopes.get(parent.id)?.includes(":")) issues.push(`${label}: parent ${clip.parentId} is a ${parent.kind} clip, which has no transform`);
+    else if (scopes.get(parent.id) !== scopes.get(clip.id)) issues.push(`${label}: parent ${clip.parentId} is in another sequence`);
+    else if (reachesItself(project, clip)) issues.push(`${label}: its parent chain loops back to it`);
+  }
+  return issues;
+}
+
+function reachesItself(project: Project, clip: Clip): boolean {
+  const seen = new Set<ClipId>([clip.id]);
+  let at: Clip | undefined = clip;
+  while (at?.parentId !== undefined) {
+    if (seen.has(at.parentId)) return true;
+    seen.add(at.parentId);
+    at = project.clips[at.parentId];
+  }
+  return false;
+}
+
 /** A shape clip (spec §21.12, Batch 65): a view box, paths with unique ids, path data that parses, known styles and primitives. */
 function shapeIssues(clip: ShapeClip, label: string): string[] {
   const issues: string[] = [];
@@ -577,6 +627,7 @@ export function validateProject(project: Project): string[] {
     issues.push(...trackIssues(project, sequence.tracks, sequence, state));
   }
   issues.push(...sequenceGraphIssues(project));
+  issues.push(...parentIssues(project));
 
   for (const [key, clip] of Object.entries(project.clips)) {
     if (key !== clip.id) issues.push(`${clipLabel(clip)}: stored under key ${key}`);

@@ -159,6 +159,8 @@ function clipName(clip: Obj, media: Obj | undefined): string | undefined {
       return CUE_NAME;
     case "solid":
       return "Solid";
+    case "null":
+      return "Null";
     default:
       return undefined;
   }
@@ -184,9 +186,10 @@ function normalizeClip(id: string, raw: Obj, project: Project): Obj {
   } else defaults.transform = IDENTITY_TRANSFORM;
   // A solid starts as `+ Solid` makes it in this frame (rounded rectangle, white).
   if (clip.kind === "solid") Object.assign(defaults, defaultSolid(project.settings));
+  if (clip.kind === "null") defaults.size = { w: 100, h: 100 };
   const merged = merge(defaults, clip) as Obj;
   // Only a clip kind with a transform gets one.
-  if (!(clip.kind === "video" || clip.kind === "audio" || clip.kind === "image" || clip.kind === "text" || clip.kind === "solid" || clip.kind === "shape")) delete merged.transform;
+  if (!(clip.kind === "video" || clip.kind === "audio" || clip.kind === "image" || clip.kind === "text" || clip.kind === "solid" || clip.kind === "shape" || clip.kind === "null")) delete merged.transform;
   return fillObject("Clip", merged);
 }
 

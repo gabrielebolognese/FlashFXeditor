@@ -36,6 +36,7 @@ describe("properties context (spec §11)", () => {
       clipIds: ["a", "v"],
       primary: "a",
       layerIds: ["v"],
+      transformIds: ["v"],
       layerPrimary: "v",
       mediaIds: ["v"],
       speedIds: ["a", "v"],

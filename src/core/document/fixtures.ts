@@ -3,7 +3,7 @@ import { createProject } from "./project.js";
 import { frameToUs } from "./time.js";
 import { defaultCaptionStyle } from "../../text/captions.js";
 import { DEFAULT_TEXT_STYLE, textContent } from "../../text/style.js";
-import type { CaptionClip, CaptionWord, Clip, CompoundClip, MediaClip, MediaItem, Project, ShapeClip, ShapePath, SolidClip, TextClip, Track, TrackKind } from "./types.js";
+import type { CaptionClip, CaptionWord, Clip, CompoundClip, MediaClip, MediaItem, Project, ShapeClip, SolidClip, TextClip, Track, TrackKind } from "./types.js";
 
 export function makeProject(): Project {
   return createProject({ id: "project-1", name: "Test", now: "2026-01-01T00:00:00.000Z", appVersion: "test" });
@@ -62,7 +62,7 @@ export function makeSolidClip(fields: { id: string; trackId: string; start: numb
 }
 
 /** A shape clip (Batch 65): a 100 x 100 view box with one filled square path `p` unless `paths` are given. */
-export function makeShapeClip(fields: { id: string; trackId: string; start: number; duration: number; paths?: ShapePath[]; size?: { w: number; h: number } }): ShapeClip {
+export function makeShapeClip(fields: Partial<ShapeClip> & { id: string; trackId: string; start: number; duration: number }): ShapeClip {
   return {
     kind: "shape",
     name: fields.id,

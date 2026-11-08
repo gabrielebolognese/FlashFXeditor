@@ -17,7 +17,7 @@ import type { Clip, ClipId, Project, TrackId } from "../../core/document/types.j
 import { selectedTrackIds, type Selection } from "../../core/store/selection.js";
 import { transitionAt, type Cut } from "../../timeline/edit/transitions.js";
 import { isCropClip } from "../../timeline/edit/crop.js";
-import { isLayerClip } from "../../timeline/edit/transform.js";
+import { isLayerClip, isTransformClip } from "../../timeline/edit/transform.js";
 import { audioTargets, canDetach } from "../../timeline/edit/volume.js";
 
 /** The registered sections, top to bottom in their order of appearance. */
@@ -43,6 +43,8 @@ export type PropertiesContext =
       primary: ClipId;
       /** The layer clips among them: what Transform, Opacity and the transform quick actions edit. */
       layerIds: readonly ClipId[];
+      /** The layers and the null clips: what Transform and its keyframes edit (Batch 69). */
+      transformIds: readonly ClipId[];
       /** The primary when it is a layer, else the first layer (the fields read their value from it). */
       layerPrimary: ClipId | null;
       /** The video and image clips among the layers: what Crop edits. */
@@ -100,6 +102,10 @@ export function propertiesContext(selection: Selection, markerId: string | null,
         const clip = project.clips[id];
         return clip !== undefined && isLayerClip(clip);
       });
+      const transformIds = clipIds.filter((id) => {
+        const clip = project.clips[id];
+        return clip !== undefined && isTransformClip(clip);
+      });
       const layerPrimary = layerIds.includes(primary) ? primary : (layerIds[0] ?? null);
       const mediaIds = layerIds.filter((id) => isCropClip(project.clips[id] as Clip));
       const speedIds = clipIds.filter((id) => {
@@ -113,7 +119,7 @@ export function propertiesContext(selection: Selection, markerId: string | null,
       const cue = cueIds.length > 0 ? project.clips[cueIds[0] as ClipId] : undefined;
       const audioIds = audioTargets(project, clipIds);
       const detachIds = clipIds.filter((id) => canDetach(project, id));
-      return { kind: "clips", clipIds, primary, layerIds, layerPrimary, mediaIds, speedIds, textIds, solidIds, shapeIds, audioIds, detachIds, captionTrackId: cue?.trackId ?? null, cueIds };
+      return { kind: "clips", clipIds, primary, layerIds, transformIds, layerPrimary, mediaIds, speedIds, textIds, solidIds, shapeIds, audioIds, detachIds, captionTrackId: cue?.trackId ?? null, cueIds };
     }
   }
 }
@@ -148,7 +154,7 @@ export function sectionIds(context: PropertiesContext): SectionId[] {
       if (context.solidIds.length > 0) ids.push("solid");
       if (context.shapeIds.length > 0) ids.push("shape");
       if (context.captionTrackId) ids.push("captionStyle");
-      if (context.layerIds.length > 0) ids.push("transform");
+      if (context.transformIds.length > 0) ids.push("transform");
       if (context.mediaIds.length > 0) ids.push("crop");
       // Frame (Batch 58): stroke, shadow and corners of the solids and the pictures.
       if (context.solidIds.length > 0 || context.mediaIds.length > 0) ids.push("frame");

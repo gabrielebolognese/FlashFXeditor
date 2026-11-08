@@ -22,12 +22,12 @@ export const FADE_PRESET_SECONDS = [0.25, 0.5, 1] as const;
 
 /** Clips with fades: every kind but cues. */
 export function canFade(clip: Clip): boolean {
-  return clip.kind !== "caption";
+  return clip.kind !== "caption" && clip.kind !== "null";
 }
 
 /** A clip's fades (none for a solid that never had one, or a cue). */
 export function fadesOf(clip: Clip): { in: Frame; out: Frame } {
-  return clip.kind === "caption" ? { in: 0, out: 0 } : (clip.fades ?? { in: 0, out: 0 });
+  return clip.kind === "caption" || clip.kind === "null" ? { in: 0, out: 0 } : (clip.fades ?? { in: 0, out: 0 });
 }
 
 /** The longest `edge` fade the clip takes (its other fade stays). */
@@ -63,7 +63,7 @@ export function setFades(project: Project, edge: FadeEdge, changes: ReadonlyMap<
     run(draft) {
       for (const { id, fades } of writes) {
         const clip = draft.clips[id] as Draft<Clip> | undefined;
-        if (!clip || clip.kind === "caption") throw new Error(`clip.fades: clip ${id} does not exist or has no fades`);
+        if (!clip || clip.kind === "caption" || clip.kind === "null") throw new Error(`clip.fades: clip ${id} does not exist or has no fades`);
         clip.fades = fades;
       }
     },

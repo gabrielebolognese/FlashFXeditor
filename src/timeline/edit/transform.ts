@@ -15,7 +15,7 @@
 import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import { animatedTransform, clipRel, hasSectionKeys, mapKeyValues, transformValues, writeKeys } from "../../core/document/keyframes.js";
-import type { Clip, ClipId, CompoundClip, Crop, Frame, Keyframes, MediaClip, Project, ShapeClip, SolidClip, TextClip, Transform } from "../../core/document/types.js";
+import type { Clip, ClipId, CompoundClip, Crop, Frame, Keyframes, MediaClip, NullClip, Project, ShapeClip, SolidClip, TextClip, Transform } from "../../core/document/types.js";
 import { IDENTITY_TRANSFORM } from "../../core/document/placement.js";
 import { displaySize } from "../../media/probe/rotation.js";
 import { spannedContent, textLayout } from "../../render/text/layoutCache.js";
@@ -24,6 +24,13 @@ import { defaultTransform } from "./insertMedia.js";
 
 /** Clips drawn on the canvas with a transform (spec §5.2): video, image, solid, text, compound and shape (`isLayerClip`; audio clips carry one but draw nothing). */
 export type LayerClip = MediaClip | TextClip | SolidClip | CompoundClip | ShapeClip;
+
+/** A clip with a transform the canvas edits: the layers and the null controllers (spec §21.14). */
+export type TransformClip = LayerClip | NullClip;
+
+export function isTransformClip(clip: Clip): clip is TransformClip {
+  return isLayerClip(clip) || clip.kind === "null";
+}
 
 export function isLayerClip(clip: Clip): clip is LayerClip {
   return clip.kind === "video" || clip.kind === "image" || clip.kind === "solid" || clip.kind === "text" || clip.kind === "compound" || clip.kind === "shape";
@@ -72,7 +79,7 @@ export function layerContent(project: Project, clip: Clip, crop?: Crop): Content
     const bottom = (1 - clamp01(shown.bottom)) * height;
     return right > left && bottom > top ? { width, height, left, top, right, bottom } : null;
   }
-  if (clip.kind === "solid" || clip.kind === "shape") {
+  if (clip.kind === "solid" || clip.kind === "shape" || clip.kind === "null") {
     // Every solid shape is drawn in its size's box; a vector shape's layout box is its view box (spec §21.12) (an ellipse inscribed, a line `h` thick).
     const { w, h } = clip.size;
     if (!(w > 0) || !(h > 0)) return null;
@@ -162,7 +169,7 @@ export interface TransformWrite {
 }
 
 /** The transform `clip` shows where an edit at `at` writes (its own when unkeyed or `at` is absent). */
-export function editedTransform(clip: LayerClip, at: Frame | undefined): Transform {
+export function editedTransform(clip: TransformClip, at: Frame | undefined): Transform {
   return at !== undefined ? animatedTransform(clip, clipRel(clip, at)) : clip.transform;
 }
 
@@ -180,7 +187,7 @@ export function setTransforms(project: Project, changes: ReadonlyMap<ClipId, Tra
   let keyed = false;
   for (const [id, transform] of changes) {
     const clip = project.clips[id];
-    if (!clip || !isLayerClip(clip) || isClipLocked(project, id) || !finite(transform)) continue;
+    if (!clip || !isTransformClip(clip) || isClipLocked(project, id) || !finite(transform)) continue;
     const write = transformWrite(clip, transform, options.at);
     if (!write) continue;
     writes.push({ id, ...write });
@@ -193,7 +200,7 @@ export function setTransforms(project: Project, changes: ReadonlyMap<ClipId, Tra
     ...(options.coalesceKey !== undefined && { coalesceKey: options.coalesceKey }),
     affects: keyed ? ["composite", "clips"] : ["composite"],
     run(draft) {
-      for (const { id, ...write } of writes) applyTransformWrite(draft.clips[id] as Draft<LayerClip>, write);
+      for (const { id, ...write } of writes) applyTransformWrite(draft.clips[id] as Draft<TransformClip>, write);
     },
   };
 }
@@ -203,7 +210,7 @@ export function setTransforms(project: Project, changes: ReadonlyMap<ClipId, Tra
  * unkeyed (or no `at`) its own transform; keyed, keys at `at` for every Transform property (an anchor
  * moved there shifts every position key by the same amount) and the anchor and flips on its transform.
  */
-export function transformWrite(clip: LayerClip, transform: Transform, at: Frame | undefined): TransformWrite | null {
+export function transformWrite(clip: TransformClip, transform: Transform, at: Frame | undefined): TransformWrite | null {
   const keyed = at !== undefined && hasSectionKeys(clip.keyframes, "transform");
   const shown = keyed ? editedTransform(clip, at) : clip.transform;
   if (sameTransform(shown, transform)) return null;
@@ -223,7 +230,7 @@ export function transformWrite(clip: LayerClip, transform: Transform, at: Frame 
  * `clip` moved by (`dx`, `dy`) project px at every frame: its transform and, when keyed, every position
  * key (a layout change, e.g. a text growing around its anchored point, Batch 35); null for no move.
  */
-export function shiftedWrite(clip: LayerClip, dx: number, dy: number): TransformWrite | null {
+export function shiftedWrite(clip: TransformClip, dx: number, dy: number): TransformWrite | null {
   if ((dx === 0 && dy === 0) || !Number.isFinite(dx) || !Number.isFinite(dy)) return null;
   const transform = { ...clip.transform, x: clip.transform.x + dx, y: clip.transform.y + dy };
   if (!hasSectionKeys(clip.keyframes, "transform") || !clip.keyframes) return { transform };
@@ -231,7 +238,7 @@ export function shiftedWrite(clip: LayerClip, dx: number, dy: number): Transform
 }
 
 /** Writes `write` into a drafted clip. */
-export function applyTransformWrite(clip: Draft<LayerClip>, write: TransformWrite): void {
+export function applyTransformWrite(clip: Draft<TransformClip>, write: TransformWrite): void {
   clip.transform = structuredClone(write.transform);
   if (!("keyframes" in write)) return;
   if (write.keyframes) clip.keyframes = structuredClone(write.keyframes);

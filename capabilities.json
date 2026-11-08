@@ -2,8 +2,8 @@
   "manifestVersion": 1,
   "app": "shorts-editor",
   "appVersion": "1.1.0",
-  "lastBatch": 68,
-  "schemaVersion": 12,
+  "lastBatch": 69,
+  "schemaVersion": 13,
   "project": {
     "file": "project.json",
     "fontsManifest": "fonts/fonts.json",
@@ -58,13 +58,14 @@
     "solid",
     "caption",
     "compound",
-    "shape"
+    "shape",
+    "null"
   ],
   "transform": {
     "rotation3d": false,
-    "parenting": false,
-    "motionPaths": false,
-    "autoOrient": false
+    "parenting": true,
+    "motionPaths": true,
+    "autoOrient": true
   },
   "keyframes": {
     "props": [
@@ -96,7 +97,8 @@
       "style.fontSize",
       "style.letterSpacing",
       "style.fill",
-      "text.counter.value"
+      "text.counter.value",
+      "transform.position"
     ],
     "eases": [
       "linear",

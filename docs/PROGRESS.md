@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 68
+last_completed_batch: 69
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -25,6 +25,7 @@ What release 1.1.0 does not do, or does not do well. Next steps for each are in 
 
 ## Design system gaps
 Items the design system did not define and the functional default that was used instead.
+- The Parent picker, the Motion path and Auto-orient toggles and the path overlay (path line, key squares, round tangent handles) have no DESIGN_SYSTEM.md definition; they reuse Select, IconButton (pressed), Row, and the gizmo tokens (accent, accent dim, handle size, line width). (Batch 69)
 - The Animators section and the Counter rows have no DESIGN_SYSTEM.md definition; they reuse the Shape section's rows, stopwatch and navigator buttons, Select, NumberField and ColorField. (Batch 68)
 - External-change banner reuses the read-only notice look; the stand-in notice and generator-notes block have no DS definition and use tokens. (Batch 56)
 - Spacing scale: DS uses Tailwind steps without tokens. Added `--space-0..6` = 2/4/6/8/12/16/24px. (Batch 01)
@@ -513,6 +514,11 @@ Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also 
 
 ## Follow-ups
 Small things discovered during a batch that belong to a later batch. Format: `- [from Batch NN -> Batch MM] description`.
+- [from Batch 69 -> Batch 70] Parented text rasterizes at its live (world) scale, not at a fixed one: a parent that scales the text up and down re-rasterizes it; a parented text under a scaling null is a candidate for a cached raster.
+- [from Batch 69 -> Batch 70] The path overlay draws live while a key or tangent is dragged, but the clip itself moves on release (one `clip.pathKey` command); a live channel for `transform.position` through the Compositor would show it moving.
+- [from Batch 69 -> Batch 70] Deleting a parent (or a compound edge) leaves the parentId of the children pointing at nothing: the evaluation ignores it and the children jump to their local placement. A delete that keeps the world placement (as Clear parent does) can follow.
+- [from Batch 69 -> Batch 70] Nudge, align and the quick transforms (Fit, Fill, Center) act on a parented clip in its local space; the gizmo is world-space.
+- [from Batch 69 -> Batch 70] Compound fades and transitions still do not reach audio (Batch 63 follow-up, not in this batch scope), nor do the Batch 68 counter and animator fields have a `LiveEdit` channel or a keyed-fill stopwatch.
 - [from Batch 68 -> Batch 69] Counter, animator and kinetic fields commit on release (no `LiveEdit` channel): a label scrub shows on release. A `LiveEdit.animators` channel through the Compositor would show scrubbing live.
 - [from Batch 68 -> Batch 69] No palette commands for Add animator / Counter on-off (panel only). The registry entries and keys can follow with the parenting commands.
 - [from Batch 68 -> Batch 69] A keyed animator `fill` has no stopwatch in the Animators section (the engine reads keys of `animators.<id>.props.fill`; the tint atlas uses the base color or the last key).
@@ -6951,3 +6957,35 @@ Why each dependency exists (Batch rule 8).
   3. Commands are not registered, and the deviation gives no reason. Batch 68's implementation notes and §21.1 require "register every action in the `CommandRegistry`" with palette entries. The batch registers nothing (no Add animator or Counter on/off in `src/app/*Controller.ts` or `commandCatalog.ts`). The deviation (`docs/PROGRESS.md` Batch 68 deviations, "No palette commands or keys ... (panel only)") states the gap but not why. Register at least `text.addAnimator` and `text.counterToggle` (palette entries, for the selected text clips), or write the reason.
 - fix-attempt: done (2026-11-08): Counter Prefix, Suffix, Thousands and Easing now read the document through `useClipsShared` (they show what is typed) and typing coalesces per field (`CounterRows.test.ts`, 2 tests); animator props have stopwatches; `text.addAnimator` and `text.counterToggle` registered in `textController.ts` and the catalog.
 - review: accepted (second independent review, 2026-11-08). `npm run check` green: typecheck, lint with the CSS color and token checks, 3035 unit tests in 298 files (plus the 4 perf tests) and the build. All three earlier problems are fixed. 1. `src/panels/properties/CounterRows.tsx` now reads Prefix, Suffix, Thousands and Easing through `useClipsShared` selectors, so the inputs show the document's value, and typing coalesces per field (`properties.counter.prefix` / `.suffix` passed through to `editTextClips`' `coalesceKey`). `CounterRows.test.ts` mounts the rows on the real `DocumentStore` and proves both (`%` then `%x` shows `%x`; three keystrokes undo as one step). 2. `AnimatorSection.tsx` gives X, Y, Scale, Rotation, Opacity, Blur and Tracking a stopwatch and key toggle. `KEYABLE` (and with it the list's re-render key) includes them, `setAnimatorStopwatch`/`toggleAnimatorKey` accept `props.*` through `ANIMATOR_PROP_PATTERN`, and `resolveAnimator` (`src/text/animators.ts:88-94`) samples those keys even when the prop has no base value. Tint's missing stopwatch is a logged deviation. 3. `text.addAnimator` and `text.counterToggle` are registered in `src/app/textController.ts` with catalog entries in `commandCatalog.ts`. They act on the selected unlocked text clips as one command and decline without one; the deviation now says why they have no default keys. Acceptance items 1-2 stay covered by `src/render/text/kineticLayers.test.ts`, and items 3-4 by the kinetic fixture (`npm run test:render`) plus the pending manual checks. Nothing from "Do not build yet" was built, no untagged TODOs, no color or size literals.
+
+### Batch 69: Parenting, null clips and motion paths
+- status: done
+- date: 2026-11-08
+- notes:
+  - Built in auto mode (lean run, resumed after a context compaction).
+  - Model (§21.14): `ClipBase.parentId`, `ClipBase.autoOrient`, the `null` clip kind (`NullClip`: transform, keyframes, size), the `transform.position` vector keyframe prop (`[x, y]` per key) with spatial tangents `spatialIn` / `spatialOut` (offsets from the key point). Schema 12 -> 13 (identity migration), zod schema, field table (`capabilities.json`: `transform.parenting`, `motionPaths`, `autoOrient` true), validation (no audio or caption child, not itself, parent has a transform, same sequence, no cycle; a null needs a size; position keys are points and tangents are pairs). INTEROP.md section 5.8 with two validated examples.
+  - Evaluation: `core/document/rig.ts` (`RigResolver`: per-frame memo of world affines, parents read at the frame clamped into their own range, cycle and depth guard; `worldToLocal`; `parentOf`, `ancestorsOf`, `descendantsOf`). The space of a child is the world transform of its parent about the parent position (After Effects semantics); the result is decomposed back into x, y, rotation, scale, scaleY. `core/document/positionPath.ts`: arc-length parameterized cubic segments (constant speed with linear eases), heading for auto-orient. `animatedTransform` samples the path and adds the heading when `autoOrient`. The Compositor (preview, export and the CLI share it), the canvas layers and the inline text editor all resolve through the same `RigResolver`; null clips are skipped by the Compositor, so they never reach an export or a render.
+  - Commands (`timeline/edit/rig.ts`): `clip.addNull`, `clip.setParent` / `clip.clearParent` (keep the world placement at the playhead and at every key, converting path points and tangents too), `clip.motionPath` (x and y keys -> one path, or one key at the playhead), `clip.unMotionPath`, `clip.smoothPath` (auto tangents), `clip.autoOrient`, `clip.pathKey` (canvas gestures). Copies follow a parent copied with them; Make compound refuses to split a parent from its children.
+  - Canvas: `render/preview/pathGizmo.ts` + `PreviewOverlayView.drawPath` draw the path of the selected clip, a square per key and a round handle per tangent; a drag writes ephemeral state and commits one `clip.pathKey` on release (Alt on a key pulls out symmetric tangents, Alt on a handle mirrors it). The gizmo works on world layer transforms; `CanvasEditInput.localizeResult` converts each drag result back to the local space of the clip through its parents.
+  - UI: the Transform section gets Parent (a Select of the clips each selected clip may follow), Motion path toggle, Auto-orient toggle and Smooth path; `+ Null` in the Add group of the toolbar (collapses into the overflow by priority); palette commands `add.null`, `clip.clearParent`, `clip.motionPath`, `clip.smoothPath`, `clip.autoOrient`. A selected null shows Transform (no Opacity).
+  - `fixtures/interop/rig`: a null with five children turning a quarter, a text parented to a rotating card, an arrow on a curved path with auto-orient; expected frames 0, 30, 59. The render checks for it: webgpu vs expected SSIM 1.0000, webgl2 vs webgpu SSIM 1.0000 (min).
+  - Numbers: 100 keyed children of five keyed nulls resolve in about 0.12 ms per frame (unit test `cost of the rig`); there is no React in that loop and the Properties panel re-reads only on document changes and the settled playhead, so playback commits nothing. Not measured with the Profiler or a CDP run (pending manual check).
+  - Tests: rig (17), edit commands (11), path gizmo (4), rig fixture (5), a Batch 47 fuzz area `rig` (random nulls, parents, paths, auto-orient mixed with deletes, moves, splits, keys, clipboard and tracks; it found `-0` tangents in `autoSpatialTangents`, fixed), context, migration, capabilities.
+- deviations:
+  - No skew: a non-uniform parent scale with a rotated child is approximated by the decomposed x, y, rotation, scale, scaleY. Flips and opacity are not inherited.
+  - `motionPath.ts` of FlashFX-v2 was not ported: the heading is a finite difference of the arc-length curve (`segmentAngle`).
+  - Reparenting is exact at the playhead and at every key frame of the child; between keys it is approximate when the parent has other key times. Converting a path back to x and y keys drops the tangents (the curve between keys becomes the x and y eases).
+  - The path overlay is live while dragging, the clip moves on release (follow-up).
+  - A parent that no longer exists is ignored by the evaluation and by validation (a delete does not rewrite children; follow-up). A parent in another sequence is still refused.
+  - A null needs a track of its own (one clip at a time per track); `+ Null` places it on a free top video track or a new one.
+  - Frame-rate conversion of position keys uses the mapping of x and y (tangents scaled by the slope).
+  - The canvas outline of a null is its size box (no cross marker).
+- follow-ups:
+  - [from Batch 69 -> Batch 70] See Follow-ups (live path channel, parent deletion, nudge and align in local space, parented text raster scale).
+- design gaps:
+  - Parent picker, Motion path and Auto-orient toggles and the path overlay have no DESIGN_SYSTEM.md definition (see Design system gaps).
+- pending manual checks:
+  - Add a text, a rotating card (keys on rotation) and select the text: pick the card in Parent; play: the text turns with the card. Clear parent at a frame: the text stays where it was.
+  - `+ Null` (toolbar, or the palette), add five shapes, give each the null as Parent, key the rotation of the null 0 to 90: the five turn around the position of the null. Export: no null is visible.
+  - Select a shape with x and y keys, click Motion path, drag a tangent handle on the canvas, set eases linear: it follows the curve at constant speed; turn Auto-orient on: it turns along the tangent. Ctrl+Z undoes each drag in one step.
+  - Profiler: play 100 parented animated layers at 60 fps; no React commits.
