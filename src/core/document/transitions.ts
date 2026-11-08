@@ -22,15 +22,70 @@
 //   (spec §6.10: "shortens the transition if needed and removes it if the handle disappears"). A side
 //   already repeating frames keeps its length.
 import { produce, type Draft } from "immer";
+import { ease, isEaseId } from "./keyframes.js";
 import { framesToSourceUs, usPerFrame } from "./time.js";
-import { isFreeze, isMediaClip, TRANSITION_KINDS, type Clip, type Frame, type MediaClip, type Project, type Rational, type Transition, type TransitionKind } from "./types.js";
+import { isFreeze, isMediaClip, TRANSITION_DIRECTIONS, TRANSITION_KINDS, type Clip, type Frame, type MediaClip, type Project, type Rational, type Transition, type TransitionDirection, type TransitionKind } from "./types.js";
 
 /** Spec §6.15: the default transition is 15 frames; the built-in value of the setting (timeline/edit/editDefaults.ts). */
 export const DEFAULT_TRANSITION_FRAMES = 15;
 /** `Mod+Shift+D`'s kind until the setting changes it (timeline/edit/editDefaults.ts). */
 export const DEFAULT_TRANSITION_KIND: TransitionKind = "crossDissolve";
 
-export const TRANSITION_LABELS: Readonly<Record<TransitionKind, string>> = { crossDissolve: "Cross dissolve", dipToBlack: "Dip to black", dipToWhite: "Dip to white" };
+export const TRANSITION_LABELS: Readonly<Record<TransitionKind, string>> = {
+  crossDissolve: "Cross dissolve", dipToBlack: "Dip to black", dipToWhite: "Dip to white",
+  slide: "Slide", push: "Push", wipe: "Wipe", iris: "Iris", zoomIn: "Zoom in", zoomOut: "Zoom out", whip: "Whip", blurDissolve: "Blur dissolve", glitch: "Glitch", flash: "Flash",
+};
+
+/** The chip groups of the properties panel (spec §21.16). */
+export const TRANSITION_GROUPS: readonly { label: string; kinds: readonly TransitionKind[] }[] = [
+  { label: "Dissolve", kinds: ["crossDissolve", "dipToBlack", "dipToWhite", "blurDissolve"] },
+  { label: "Motion", kinds: ["slide", "push", "whip", "zoomIn", "zoomOut"] },
+  { label: "Wipe", kinds: ["wipe", "iris"] },
+  { label: "Stylized", kinds: ["glitch", "flash"] },
+];
+
+/** The kinds that read a travel direction, an angle, a softness, a center (spec §21.16). */
+export const HAS_DIRECTION: ReadonlySet<TransitionKind> = new Set<TransitionKind>(["slide", "push", "whip"]);
+export const HAS_ANGLE: ReadonlySet<TransitionKind> = new Set<TransitionKind>(["wipe"]);
+export const HAS_SOFTNESS: ReadonlySet<TransitionKind> = new Set<TransitionKind>(["wipe", "iris"]);
+export const HAS_CENTER: ReadonlySet<TransitionKind> = new Set<TransitionKind>(["iris"]);
+/** The motion kinds are created with `easeInOut` (spec §21.16); the dissolves and stylized kinds keep the linear mix. */
+const EASED_KINDS: ReadonlySet<TransitionKind> = new Set<TransitionKind>(["slide", "push", "whip", "zoomIn", "zoomOut", "wipe", "iris"]);
+
+/** What a new transition of `kind` carries besides its id and sides (spec §21.16 defaults). */
+export function transitionDefaults(kind: TransitionKind): Pick<Transition, "direction" | "angle" | "softness" | "center" | "ease"> {
+  return {
+    ...(HAS_DIRECTION.has(kind) && { direction: "left" as const }),
+    ...(HAS_ANGLE.has(kind) && { angle: 0 }),
+    ...(HAS_SOFTNESS.has(kind) && { softness: 0.1 }),
+    ...(HAS_CENTER.has(kind) && { center: { x: 0.5, y: 0.5 } }),
+    ...(EASED_KINDS.has(kind) && { ease: "easeInOut" as const }),
+  };
+}
+
+/** `current` taking another `kind`: the id, sides and curve stay; the parameters the new kind reads take their defaults unless set. */
+export function withKind(current: Transition, kind: TransitionKind): Transition {
+  const defaults = transitionDefaults(kind);
+  const next: Transition = { id: current.id, kind, before: current.before, after: current.after };
+  if (HAS_DIRECTION.has(kind)) next.direction = current.direction ?? (defaults.direction as TransitionDirection);
+  if (HAS_ANGLE.has(kind)) next.angle = current.angle ?? 0;
+  if (HAS_SOFTNESS.has(kind)) next.softness = current.softness ?? (defaults.softness as number);
+  if (HAS_CENTER.has(kind)) next.center = current.center ?? { x: 0.5, y: 0.5 };
+  // The curve stays unless it was the old kind's default: then the new kind's default (or none) applies.
+  const easeId = current.ease === transitionDefaults(current.kind).ease ? defaults.ease : current.ease;
+  if (easeId !== undefined) next.ease = easeId;
+  return next;
+}
+
+/** The direction of travel as a unit vector in frame space (y down); absent = left. */
+export function directionVector(direction: TransitionDirection | undefined): [number, number] {
+  switch (direction) {
+    case "right": return [1, 0];
+    case "up": return [0, -1];
+    case "down": return [0, 1];
+    default: return [-1, 0];
+  }
+}
 
 const KINDS: ReadonlySet<string> = new Set(TRANSITION_KINDS);
 
@@ -91,10 +146,50 @@ export function transitionSpan(transition: Pick<Transition, "before" | "after">,
 }
 
 /** How much of the incoming clip shows at `frame` of the transition at `cut` (spec §9.4 mix): (i + 1) / (d + 1) at its i-th frame. */
-export function transitionMix(transition: Pick<Transition, "before" | "after">, cut: Frame, frame: Frame): number {
+export function transitionMix(transition: Pick<Transition, "before" | "after" | "ease">, cut: Frame, frame: Frame): number {
   const length = transitionLength(transition);
   const i = frame - (cut - transition.before);
-  return Math.min(1, Math.max(0, (i + 1) / (length + 1)));
+  const linear = Math.min(1, Math.max(0, (i + 1) / (length + 1)));
+  // An absent ease is the v1 linear mix (spec §21.16).
+  return transition.ease === undefined ? linear : Math.min(1, Math.max(0, ease(transition.ease, linear)));
+}
+
+/** What the renderers read of a transition besides its progress (spec §21.16): the shader code and its parameters. */
+export interface TransitionFx {
+  code: number;
+  /** Unit direction of travel (slide, push, whip) or of the wipe edge. */
+  dx: number;
+  dy: number;
+  softness: number;
+  cx: number;
+  cy: number;
+}
+
+/** The shader code of each kind (0 = the plain mix). */
+export const TRANSITION_CODE: Readonly<Record<TransitionKind, number>> = {
+  crossDissolve: 0, dipToBlack: 0, dipToWhite: 0, slide: 1, push: 2, wipe: 3, iris: 4, zoomIn: 5, zoomOut: 6, whip: 7, blurDissolve: 8, glitch: 9, flash: 10,
+};
+
+export function transitionFx(transition: Pick<Transition, "kind" | "direction" | "angle" | "softness" | "center">): TransitionFx {
+  const code = TRANSITION_CODE[transition.kind];
+  let dx: number;
+  let dy: number;
+  if (transition.kind === "wipe") {
+    const radians = ((Number.isFinite(transition.angle) ? (transition.angle as number) : 0) * Math.PI) / 180;
+    dx = Math.cos(radians);
+    dy = Math.sin(radians);
+  } else {
+    [dx, dy] = directionVector(transition.direction);
+  }
+  const softness = Number.isFinite(transition.softness) ? Math.min(1, Math.max(0, transition.softness as number)) : 0;
+  return { code, dx, dy, softness, cx: transition.center?.x ?? 0.5, cy: transition.center?.y ?? 0.5 };
+}
+
+/** How far (frame fractions along the direction of travel) the outgoing and the incoming picture sit from rest at progress `t`: push and whip move both, slide only the incoming one. */
+export function travelOffsets(kind: TransitionKind, t: number): { from: number; to: number } {
+  if (kind === "push" || kind === "whip") return { from: t, to: -(1 - t) };
+  if (kind === "slide") return { from: 0, to: -(1 - t) };
+  return { from: 0, to: 0 };
 }
 
 /** The first frame a clip shows (its start, or earlier under a transition in). */
@@ -168,7 +263,8 @@ export function alignedSides(length: Frame, alignment: Exclude<TransitionAlignme
 /** Same id, kind and sides. */
 export function sameTransition(a: Transition | undefined, b: Transition | undefined): boolean {
   if (a === b) return true;
-  return a !== undefined && b !== undefined && a.id === b.id && a.kind === b.kind && a.before === b.before && a.after === b.after;
+  return a !== undefined && b !== undefined && a.id === b.id && a.kind === b.kind && a.before === b.before && a.after === b.after
+    && a.direction === b.direction && a.angle === b.angle && a.softness === b.softness && a.ease === b.ease && a.center?.x === b.center?.x && a.center?.y === b.center?.y;
 }
 
 // --- Keeping transitions valid ------------------------------------------------------------------
@@ -265,7 +361,7 @@ export function reconcileTransitions(base: Project, draft: Draft<Project> | Proj
             delete (clip as Partial<MediaClip>).transitionOut;
             delete (next as Partial<MediaClip>).transitionIn;
           } else {
-            const value: Transition = { id, kind: out.kind, before, after };
+            const value: Transition = { ...out, id, before, after };
             if (!sameTransition(out, value)) clip.transitionOut = value;
             if (!sameTransition(next.transitionIn, value)) next.transitionIn = { ...value };
           }
@@ -292,6 +388,11 @@ export function transitionIssues(project: Project, clips: readonly Clip[], label
     if (typeof transition.id !== "string" || transition.id === "") issues.push(`${name} has no id`);
     if (!isTransitionKind(transition.kind)) issues.push(`${name} kind "${String(transition.kind)}" is not ${TRANSITION_KINDS.join(", ")}`);
     else if (clip.kind === "audio" && transition.kind !== "crossDissolve") issues.push(`${name}: audio transitions are crossfades (crossDissolve)`);
+    if (transition.direction !== undefined && !TRANSITION_DIRECTIONS.includes(transition.direction)) issues.push(`${name} direction "${String(transition.direction)}" is not ${TRANSITION_DIRECTIONS.join(", ")}`);
+    if (transition.angle !== undefined && !Number.isFinite(transition.angle)) issues.push(`${name} angle must be a finite number`);
+    if (transition.softness !== undefined && !(Number.isFinite(transition.softness) && transition.softness >= 0 && transition.softness <= 1)) issues.push(`${name} softness must be 0 to 1`);
+    if (transition.center !== undefined && !(Number.isFinite(transition.center.x) && Number.isFinite(transition.center.y))) issues.push(`${name} center must be finite fractions`);
+    if (transition.ease !== undefined && !isEaseId(transition.ease)) issues.push(`${name} ease "${String(transition.ease)}" is not an ease id`);
     if (!Number.isInteger(transition.before) || transition.before < 0 || !Number.isInteger(transition.after) || transition.after < 0) issues.push(`${name} sides must be integer frames >= 0`);
     else if (transition.before + transition.after < 1) issues.push(`${name} must be at least 1 frame long`);
   };

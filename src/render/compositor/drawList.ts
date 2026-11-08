@@ -5,6 +5,7 @@
 // to pool textures and text rasters, and skips the redraw when the resolved list equals the one it
 // drew last (`DrawListSnapshot`).
 import type { ClipId, Fill, FillRule, GradientFill, MediaId, PathStroke, PathTrim, RGBA, ShadowStyle, StrokeStyle, TextContent, TextStyle, TrackId } from "../../core/document/types.js";
+import type { TransitionFx } from "../../core/document/transitions.js";
 import type { Bounds, PathSource } from "../../core/shapes/geometry.js";
 import type { UnitState } from "../../text/anim.js";
 import type { Homography } from "../projection.js";
@@ -73,6 +74,8 @@ export interface DissolveLayer extends LayerBase {
   from: DissolveSide;
   to: DissolveSide;
   mix: number;
+  /** The transition kind and its parameters (Batch 71, spec §21.16); absent = the plain mix. */
+  fx?: TransitionFx;
 }
 
 /**
@@ -277,6 +280,8 @@ export interface TransitionCompositeLayer {
   from: MediaLayer;
   to: MediaLayer;
   mix: number;
+  /** What the picture shader does with the two (Batch 71): the plain mix for a dissolve. */
+  fx: TransitionFx;
 }
 
 /** The texture slot suffix of a transition's incoming clip (one slot per picture of a track). */

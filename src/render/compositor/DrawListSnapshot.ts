@@ -48,6 +48,12 @@ export class DrawListSnapshot {
           this.side(layer.from);
           this.side(layer.to);
           this.push(layer.mix);
+          this.push(layer.fx?.code ?? 0);
+          this.push(layer.fx?.dx ?? 0);
+          this.push(layer.fx?.dy ?? 0);
+          this.push(layer.fx?.softness ?? 0);
+          this.push(layer.fx?.cx ?? 0.5);
+          this.push(layer.fx?.cy ?? 0.5);
           break;
         case "solid": {
           this.color(layer.color);

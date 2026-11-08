@@ -695,6 +695,22 @@ A `text` clip may count a number and may carry `animators`. Both are optional; a
 
 `fixtures/interop/deck` is a complete project with six cards flying into a grid in perspective, their rotations settling to 0, and expected frames 0, 30 and 59. `fixtures/interop/card` is one checkered card turned 60° on Y with perspective 1600: its expected frame matches the same card drawn by Chrome with CSS (`scripts/css-perspective-reference.mjs`).
 
+### 5.10 Transitions v2 (manifest key `transitions`; schema 15)
+
+A transition sits on the cut between two abutting picture clips: the left clip's `transitionOut` and the right clip's `transitionIn` hold the same values. `kind` is one of `crossDissolve`, `dipToBlack`, `dipToWhite` (schema 14 and before) or the new `slide` (the incoming picture slides over the outgoing one), `push` (both move), `wipe` (a straight edge with a soft width), `iris` (a circle grows from a center), `zoomIn`, `zoomOut` (scale with a dissolve), `whip` (a push with a motion blur along the direction, strongest at the cut), `blurDissolve`, `glitch` and `flash` (to white and back). The manifest key `transitions` lists them. An audio crossfade is always `crossDissolve` and ignores the fields below.
+
+| Field | Read by | Meaning |
+| --- | --- | --- |
+| `direction` | `slide`, `push`, `whip` | `left` (default), `right`, `up`, `down`: the way the pictures travel. |
+| `angle` | `wipe` | Degrees: 0 moves the edge from left to right, 90 from top to bottom. Default 0. |
+| `softness` | `wipe`, `iris` | The soft width of the edge, 0 to 1 of its travel. Default 0 (hard). |
+| `center` | `iris` | `{ "x": 0.5, "y": 0.5 }`, fractions of the frame. Default the middle. |
+| `ease` | every video kind | An ease id from section 5.2. **Absent means the linear mix of schema 14 and before**, so a transition saved earlier plays exactly as it did. The editor creates the motion kinds (`slide`, `push`, `whip`, `zoomIn`, `zoomOut`, `wipe`, `iris`) with `easeInOut`. |
+
+At the i-th of the transition's `before + after` frames the progress is `(i + 1) / (before + after + 1)`, passed through `ease`. A 12-frame `push` with `direction: "left"` and `easeInOut` moves the outgoing picture left by exactly the frame width and brings the incoming one in from the right by the same distance over the transition. Both clips of a cut keep the same values: write them to both. Unknown fields are refused by the strict validator; a missing `direction`, `angle`, `softness` or `center` takes its default. Schema 14 projects open unchanged (migration 14 to 15 changes nothing).
+
+`fixtures/interop/transitions` is a complete project: fourteen stills alternating between two pictures, joined by thirteen 11-frame transitions (6 frames before the cut, 5 after), one of every kind. Its expected frames are each transition's midpoint, the frame before the cut (progress exactly 0.5): 29, 59, 89 and so on. `npm run test:render` renders them on both backends.
+
 ## 6. Captions and word timings
 
 The caption track's `captionTracks[<track id>].style` styles every cue; a cue's `styleOverride` sets only the fields it changes. A cue is a `caption` clip with `text` (`\n` for line breaks) and optional `words`: `start` and `end` are integer frames relative to the cue's start, `end` after `start`. A word may start before the cue or end after it: an in-trim keeps the words it hides (negative frames), so a trim back shows them again. With word timings the active word is highlighted as the style's `highlight` says.
@@ -1004,9 +1020,14 @@ A transition at the cut between two abutting clips: the left clip's `transitionO
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
 | `id` | string (not empty) | yes |  | Shared by the two clips of the cut. |
-| `kind` | `"crossDissolve"` | `"dipToBlack"` | `"dipToWhite"` | yes |  | The look. |
+| `kind` | `"crossDissolve"` | `"dipToBlack"` | `"dipToWhite"` | `"slide"` | `"push"` | `"wipe"` | `"iris"` | `"zoomIn"` | `"zoomOut"` | `"whip"` | `"blurDissolve"` | `"glitch"` | `"flash"` | yes |  | The look. |
 | `before` | integer (>= 0) | yes |  | Frames before the cut. Integer frames at the project frame rate. |
 | `after` | integer (>= 0) | yes |  | Frames after the cut. Integer frames at the project frame rate. |
+| `direction` | `"left"` | `"right"` | `"up"` | `"down"` | no | `"left"` | Slide, push, whip: the way the picture travels. |
+| `angle` | number | no | `0` | Wipe: degrees, 0 = the edge travels left to right, 90 = top to bottom. |
+| `softness` | number | no | `0` | Wipe, iris: the soft width of the edge, 0 to 1. |
+| `center` | [FractionPoint](#fractionpoint) | no | `{"x":0.5,"y":0.5}` | Iris: the circle's center, fractions of the frame. |
+| `ease` | `"linear"` | `"easeIn"` | `"easeOut"` | `"easeInOut"` | `"hold"` | `"smooth"` | `"snap"` | `"overshoot"` | `"sineIn"` | `"sineOut"` | `"sineInOut"` | `"quadIn"` | `"quadOut"` | `"quadInOut"` | `"cubicIn"` | `"cubicOut"` | `"cubicInOut"` | `"quartIn"` | `"quartOut"` | `"quartInOut"` | `"quintIn"` | `"quintOut"` | `"quintInOut"` | `"expoIn"` | `"expoOut"` | `"expoInOut"` | `"circIn"` | `"circOut"` | `"circInOut"` | `"backIn"` | `"backOut"` | `"backInOut"` | `"elasticIn"` | `"elasticOut"` | `"elasticInOut"` | `"bounceIn"` | `"bounceOut"` | `"bounceInOut"` | `"bezier"` | `"spring"` | no |  | The progress curve. Absent = the linear mix of schema 14 and before; the motion kinds are created with easeInOut. |
 
 #### FallbackOf
 
@@ -1435,7 +1456,7 @@ project.json.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `schemaVersion` | integer (>= 1) | yes | `14` | The schema version; this build writes and reads up to the current one. |
+| `schemaVersion` | integer (>= 1) | yes | `15` | The schema version; this build writes and reads up to the current one. |
 | `id` | string (not empty) | yes |  | Unique id, never changes (uuid v4 recommended). |
 | `name` | string | yes |  | Project name. |
 | `settings` | [Settings](#settings) | yes |  | Frame and time base. |

@@ -6,8 +6,8 @@ import type { Mat3, MutableMat3 } from "../mat3.js";
 
 /** Bytes between layers: a multiple of WebGPU's default minUniformBufferOffsetAlignment (256). */
 export const LAYER_STRIDE = 512;
-/** Bytes the shader reads per layer (31 vec4: the Batch 58 style follows the 13 of Batch 48). */
-export const LAYER_SIZE = 496;
+/** Bytes the shader reads per layer (32 vec4: the Batch 58 style follows the 13 of Batch 48, the Batch 71 transition parameters come last). */
+export const LAYER_SIZE = 512;
 export const VIEW_SIZE = 48;
 const STRIDE_FLOATS = LAYER_STRIDE / 4;
 
@@ -107,6 +107,11 @@ export interface LayerUniform {
   mapA: Mat3;
   mapB: Mat3;
   sides: { from: number; to: number };
+  /**
+   * A dissolve's transition (Batch 71, spec §21.16): the kind code (0 = the plain mix), the direction,
+   * the edge softness and the iris center. Absent = the plain mix.
+   */
+  fx?: { code: number; dx: number; dy: number; softness: number; cx: number; cy: number };
 }
 
 /** Writes `m` as three vec4 columns (WGSL mat3x3 padding) at `offset` (in floats), with the bottom row `w` (flat: 0, 0, 1). Allocates nothing. */
@@ -132,7 +137,8 @@ export function packLayer(out: Float32Array, index: number, layer: LayerUniform)
   write4(out, o + 36, a[0], a[1], a[2], a[3]);
   write4(out, o + 40, b[0], b[1], b[2], b[3]);
   write4(out, o + 44, a[4], a[5], b[4], b[5]);
-  write4(out, o + 48, clamp01(layer.sides.from), clamp01(layer.sides.to), 0, 0);
+  const fx = layer.fx;
+  write4(out, o + 48, clamp01(layer.sides.from), clamp01(layer.sides.to), fx?.cx ?? 0, fx?.cy ?? 0);
   const st = layer.style;
   write4(out, o + 52, st.strokeColor.r, st.strokeColor.g, st.strokeColor.b, st.strokeColor.a);
   write4(out, o + 56, st.strokeWidth, st.strokeAlign, st.dashOffset, st.dashScale);
@@ -144,6 +150,7 @@ export function packLayer(out: Float32Array, index: number, layer: LayerUniform)
   write4(out, o + 80, st.fillCx, st.fillCy, st.part, st.perimeter);
   for (let i = 0; i < 32; i++) out[o + 84 + i] = st.stopColor[i] as number;
   for (let i = 0; i < 8; i++) out[o + 116 + i] = st.stopAt[i] as number;
+  write4(out, o + 124, fx?.dx ?? 0, fx?.dy ?? 0, fx?.softness ?? 0, fx?.code ?? 0);
 }
 
 function write4(out: Float32Array, offset: number, x: number, y: number, z: number, w: number): void {

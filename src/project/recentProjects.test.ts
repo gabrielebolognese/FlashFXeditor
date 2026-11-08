@@ -120,7 +120,7 @@ describe("app settings", () => {
 
   it("keeps the default durations and the default transition in range (Batch 42)", async () => {
     const kv = memoryKeyValueStore();
-    kv.data.set("settings.v1", { stillDurationMs: 2500.4, titleDurationMs: 5, solidDurationMs: 10e6, freezeDurationMs: "long", transitionFrames: 0, transitionKind: "wipe", keyframesFollowSource: false });
+    kv.data.set("settings.v1", { stillDurationMs: 2500.4, titleDurationMs: 5, solidDurationMs: 10e6, freezeDurationMs: "long", transitionFrames: 0, transitionKind: "wobble", keyframesFollowSource: false });
     const settings = createAppSettings(kv);
     await settings.load();
     expect(settings.getState()).toMatchObject({ stillDurationMs: 2500, titleDurationMs: 100, solidDurationMs: 60_000, freezeDurationMs: 2000, transitionFrames: 1, transitionKind: "crossDissolve", keyframesFollowSource: false });

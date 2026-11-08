@@ -20,7 +20,9 @@ import type { Row, TimelineGeometry } from "./geometry.js";
 import { drawGlyph, type GlyphName } from "./glyphs.js";
 
 /** The kind glyphs of the blocks. */
-export const TRANSITION_GLYPHS: Readonly<Record<TransitionKind, GlyphName>> = { crossDissolve: "blend", dipToBlack: "moon", dipToWhite: "sun" };
+export const TRANSITION_GLYPHS: Readonly<Record<TransitionKind, GlyphName>> = {
+  crossDissolve: "blend", dipToBlack: "moon", dipToWhite: "sun", slide: "move", push: "arrows", wipe: "columns", iris: "circle", zoomIn: "zoomIn", zoomOut: "zoomOut", whip: "wind", blurDissolve: "blend", glitch: "zap", flash: "sun",
+};
 
 const snap = (value: number, dpr: number) => Math.round(value * dpr) / dpr;
 

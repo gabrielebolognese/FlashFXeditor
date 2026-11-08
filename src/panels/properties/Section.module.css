@@ -171,3 +171,12 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* The transition chips hover preview (Batch 71): two swatches at the cut, always one row tall. */
+.transitionSample {
+  display: block;
+  width: 100%;
+  height: calc(var(--control-default) * 2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+}

@@ -73,7 +73,7 @@ import { RigResolver } from "../../core/document/rig.js";
 import { painterOrder, type DepthSortItem } from "../../core/space/camera3d.js";
 import { facesAway, isDepthTransform, newHomography, projectedCorners, viewingDistance, writeProjection, type Homography } from "../projection.js";
 import { framesToSourceUs, secondsToFrames } from "../../core/document/time.js";
-import { handleTimeUs, transitionMix } from "../../core/document/transitions.js";
+import { handleTimeUs, TRANSITION_CODE, transitionFx, transitionMix } from "../../core/document/transitions.js";
 import type { CaptionClip, CaptionStyle, CaptionWord, Clip, ClipId, CompoundClip, Crop, Frame, MediaClip, MediaId, Project, RGBA, ShadowStyle, ShapeClip, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
 import { pathFramesAt, type PathFrameScratch } from "./shapeFrames.js";
 import { activeWordIndex, captionPlace, defaultCaptionStyle, effectiveCaptionStyle } from "../../text/captions.js";
@@ -376,8 +376,10 @@ export class Compositor {
         const { left, right } = pair;
         const transition = right.transitionIn as NonNullable<MediaClip["transitionIn"]>;
         const mix = transitionMix(transition, right.start, frame);
-        if (transition.kind === "crossDissolve") {
+        // The picture shader draws the dissolve and every Batch 71 kind (spec §21.16); a dip is a solid over one clip.
+        if (TRANSITION_CODE[transition.kind] !== 0 || transition.kind === "crossDissolve") {
           const layer = (this.transitionPool[transitions] ??= newTransitionLayer());
+          layer.fx = transitionFx(transition);
           const from = this.writeMediaAt(layer.from, doc, left, frame, track.id, transforms, opacities, crops);
           const fromDepth = this.mediaAtDepth;
           const to = this.writeMediaAt(layer.to, doc, right, frame, track.id + TRANSITION_SLOT, transforms, opacities, crops);
@@ -1428,7 +1430,7 @@ function newSolidLayer(): WritableSolidLayer {
 }
 
 function newTransitionLayer(): WritableTransitionLayer {
-  return { kind: "dissolve", trackId: "", from: newMediaLayer(), to: newMediaLayer(), mix: 0 };
+  return { kind: "dissolve", trackId: "", from: newMediaLayer(), to: newMediaLayer(), mix: 0, fx: transitionFx({ kind: "crossDissolve" }) };
 }
 
 const BLACK: RGBA = { r: 0, g: 0, b: 0, a: 1 };

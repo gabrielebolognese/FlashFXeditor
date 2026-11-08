@@ -57,6 +57,7 @@ import { mediaTimePosition } from "../../media/demux/sampleIndex.js";
 import { isAbortError, isWorkerCrash, type FramePriority } from "../../media/workers/protocol.js";
 import { newUnitState, type UnitState } from "../../text/anim.js";
 import type { NeighborFrame, UpcomingText } from "../compositor/Compositor.js";
+import { transitionFx, type TransitionFx } from "../../core/document/transitions.js";
 import { type CaptionHighlightFrame, type Composite, type CompoundCompositeLayer, type DissolveLayer, type DrawList, type Layer, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextGlyphDraw, type TextCompositeLayer, type TextureLayer, type TransitionCompositeLayer, type UvRect } from "../compositor/drawList.js";
 import type { TextureHandle } from "../gpu/renderer.js";
 import { multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
@@ -693,7 +694,7 @@ export class LayerTextures {
       const mix = layer.mix;
       const from = await this.exactMedia(layer.from, maxLongEdge, unpins);
       const to = await this.exactMedia(layer.to, maxLongEdge, unpins);
-      if (from && to) pushDissolve(layers, newDissolveLayer(), from, to, { mix, from: { persp: sides.from }, to: { persp: sides.to } }, composite);
+      if (from && to) pushDissolve(layers, newDissolveLayer(), from, to, { mix, fx: layer.fx, from: { persp: sides.from }, to: { persp: sides.to } }, composite);
       else if (from || to) {
         layers.push((from ?? to) as TextureLayer);
         project(layers, layers.length - 1, from ? sides.from : sides.to);
@@ -1227,11 +1228,12 @@ type WritableSolidLayer = Omit<SolidLayer, "transform" | "shape"> & { transform:
 type WritableDissolveLayer = Omit<DissolveLayer, "transform"> & { transform: MutableMat3 };
 
 function newDissolveLayer(): WritableDissolveLayer {
-  return { kind: "dissolve", transform: mutableIdentity(), opacity: 1, from: newTextureLayer(), to: newTextureLayer(), mix: 0 };
+  return { kind: "dissolve", transform: mutableIdentity(), opacity: 1, from: newTextureLayer(), to: newTextureLayer(), mix: 0, fx: transitionFx({ kind: "crossDissolve" }) };
 }
 
 /** `out` mixing `from` and `to` (as each would draw alone) by `mix`, over the `width` x `height` frame. */
-function writeDissolve(out: WritableDissolveLayer, from: TextureLayer, to: TextureLayer, mix: number, width: number, height: number): DissolveLayer {
+function writeDissolve(out: WritableDissolveLayer, from: TextureLayer, to: TextureLayer, mix: number, width: number, height: number, fx: TransitionFx): DissolveLayer {
+  out.fx = fx;
   setMat(out.transform, width, 0, 0, height, 0, 0);
   out.opacity = 1;
   out.from = from;
@@ -1256,9 +1258,9 @@ const samePersp = (a: Homography | null | undefined, b: Homography | null | unde
  * A cross dissolve: one dissolve layer when both sides share their 2.5D projection (flat, or one clip cut in
  * two); otherwise each side drawn alone in its own projection, faded by the mix (spec §21.15, Batch 70 deviation).
  */
-function pushDissolve(layers: Layer[], out: WritableDissolveLayer, from: TextureLayer, to: TextureLayer, layer: { mix: number; from: { persp?: Homography | null }; to: { persp?: Homography | null } }, composite: Composite): void {
+function pushDissolve(layers: Layer[], out: WritableDissolveLayer, from: TextureLayer, to: TextureLayer, layer: { mix: number; fx: TransitionFx; from: { persp?: Homography | null }; to: { persp?: Homography | null } }, composite: Composite): void {
   if (samePersp(layer.from.persp, layer.to.persp)) {
-    layers.push(writeDissolve(out, from, to, layer.mix, composite.width, composite.height));
+    layers.push(writeDissolve(out, from, to, layer.mix, composite.width, composite.height, layer.fx));
     project(layers, layers.length - 1, layer.from.persp);
     return;
   }

@@ -150,7 +150,7 @@ function fadeEntries(project: Project, clipId: ClipId): ContextMenuEntry[] {
   ];
 }
 
-const SHORT_KIND = { crossDissolve: "Dissolve", dipToBlack: "Black", dipToWhite: "White" } as const;
+const SHORT_KIND = { crossDissolve: "Dissolve", dipToBlack: "Black", dipToWhite: "White", slide: "Slide", push: "Push", wipe: "Wipe", iris: "Iris", zoomIn: "Zoom in", zoomOut: "Zoom out", whip: "Whip", blurDissolve: "Blur", glitch: "Glitch", flash: "Flash" } as const;
 
 /** A cue's own rows (spec §10.5, §20.3): merge it into the cue before it, its style. */
 function cueEntries(project: Project, clipId: ClipId): ContextMenuEntry[] {

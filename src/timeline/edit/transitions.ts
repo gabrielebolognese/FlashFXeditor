@@ -16,8 +16,8 @@
 // Each edit is one command (one undo step).
 import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
-import { canTransition, fitTransition, handleOf, sameTransition, TRANSITION_LABELS, transitionRoom } from "../../core/document/transitions.js";
-import { isMediaClip, type ClipId, type Frame, type MediaClip, type Project, type Track, type TrackId, type Transition, type TransitionKind } from "../../core/document/types.js";
+import { canTransition, fitTransition, handleOf, sameTransition, TRANSITION_LABELS, transitionDefaults, transitionRoom, withKind } from "../../core/document/transitions.js";
+import { isMediaClip, type ClipId, type EaseId, type Frame, type MediaClip, type Project, type Track, type TrackId, type Transition, type TransitionKind } from "../../core/document/types.js";
 import { isClipLocked, linkedPartners, neighbors, trackIndex } from "../model/queries.js";
 import { editDefaults } from "./editDefaults.js";
 
@@ -81,7 +81,15 @@ export function linkedCuts(project: Project, cut: Cut, linked: boolean): ValidCu
   return cuts;
 }
 
-const kindFor = (cut: ValidCut, kind: TransitionKind): TransitionKind => (cut.left.kind === "audio" ? "crossDissolve" : kind);
+
+/** `base` as the kind of `cut` (pictures: the kind's own parameters; audio: a plain crossfade). */
+function asKind(cut: ValidCut, base: Transition, kind: TransitionKind): Transition {
+  if (cut.left.kind === "audio") return { id: base.id, kind: "crossDissolve", before: base.before, after: base.after };
+  return withKind(base, kind);
+}
+
+/** The parameters a transition edit can change besides its kind and sides (spec §21.16). */
+export type TransitionParams = Partial<Pick<Transition, "direction" | "angle" | "softness" | "center">> & { /** null = back to the linear mix. */ ease?: EaseId | null };
 
 /** One command writing `values` (by cut) on both halves of each cut; null when nothing changes. */
 function writeCommand(id: string, label: string, writes: readonly { cut: ValidCut; value: Transition | null }[], coalesceKey?: string): Command | null {
@@ -134,13 +142,14 @@ export function addTransition(project: Project, cut: Cut, kind: TransitionKind, 
   for (const target of cuts) {
     const existing = target.left.transitionOut?.id !== undefined && target.left.transitionOut.id === target.right.transitionIn?.id ? target.left.transitionOut : null;
     if (existing) {
-      writes.push({ cut: target, value: { ...existing, kind: kindFor(target, kind) } });
+      writes.push({ cut: target, value: asKind(target, existing, kind) });
       continue;
     }
     const fit = fitTransition(project, target.left, target.right, length);
     if (!fit) continue;
     if (target === first) repeated = fit.repeated;
-    writes.push({ cut: target, value: { id: options.newId(), kind: kindFor(target, kind), before: fit.before, after: fit.after } });
+    const base: Transition = { id: options.newId(), kind: "crossDissolve", before: fit.before, after: fit.after };
+    writes.push({ cut: target, value: target.left.kind === "audio" ? base : { ...base, kind, ...transitionDefaults(kind) } });
   }
   const own = writes.find((write) => write.cut === first);
   if (!own) return null;
@@ -153,7 +162,7 @@ export function addTransition(project: Project, cut: Cut, kind: TransitionKind, 
  * Changes the transition at `cut` (and, with `linked`, its linked cuts'): its kind (pictures only) and
  * its sides (each kept within the clip it covers). Null when nothing changes or there is none.
  */
-export function updateTransition(project: Project, cut: Cut, patch: { kind?: TransitionKind; before?: Frame; after?: Frame }, options: { linked?: boolean; label?: string; coalesceKey?: string } = {}): Command | null {
+export function updateTransition(project: Project, cut: Cut, patch: { kind?: TransitionKind; before?: Frame; after?: Frame } & TransitionParams, options: { linked?: boolean; label?: string; coalesceKey?: string } = {}): Command | null {
   const writes: { cut: ValidCut; value: Transition }[] = [];
   for (const target of linkedCuts(project, cut, options.linked === true)) {
     const current = target.left.transitionOut;
@@ -166,9 +175,20 @@ export function updateTransition(project: Project, cut: Cut, patch: { kind?: Tra
       if (room.after > 0) after = 1;
       else before = 1;
     }
-    writes.push({ cut: target, value: { ...current, kind: patch.kind ? kindFor(target, patch.kind) : current.kind, before, after } });
+    let value: Transition = { ...(patch.kind ? asKind(target, current, patch.kind) : current), before, after };
+    if (target.left.kind !== "audio") {
+      if (patch.direction !== undefined) value.direction = patch.direction;
+      if (patch.angle !== undefined) value.angle = patch.angle;
+      if (patch.softness !== undefined) value.softness = Math.min(1, Math.max(0, patch.softness));
+      if (patch.center !== undefined) value.center = { x: patch.center.x, y: patch.center.y };
+      if (patch.ease === null) delete value.ease;
+      else if (patch.ease !== undefined) value.ease = patch.ease;
+    }
+    value = { ...value };
+    writes.push({ cut: target, value });
   }
-  const label = options.label ?? (patch.kind !== undefined ? "Change transition" : "Change transition duration");
+  const params = patch.direction !== undefined || patch.angle !== undefined || patch.softness !== undefined || patch.center !== undefined || patch.ease !== undefined;
+  const label = options.label ?? (patch.kind !== undefined ? "Change transition" : params ? "Change transition settings" : "Change transition duration");
   return writeCommand("transition.update", label, writes, options.coalesceKey);
 }
 

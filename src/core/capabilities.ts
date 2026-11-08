@@ -11,7 +11,7 @@ import { CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, SCHEMA_VERSIO
 /** The `manifestVersion`: changes only when a key changes meaning (new keys do not change it). */
 export const MANIFEST_VERSION = 1;
 /** The last batch that touched the manifest (spec §21.1: each batch sets it to its own number). */
-export const LAST_BATCH = 70;
+export const LAST_BATCH = 71;
 
 /** The flags of the manifest: a batch that adds a capability flips its key here (spec §21.2 table). */
 export const FEATURES = {

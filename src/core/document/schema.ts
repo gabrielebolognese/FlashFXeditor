@@ -6,7 +6,7 @@
 import { MAX_GAIN_DB, MAX_SPEED, MIN_GAIN_DB } from "./limits.js";
 import { ANIMATOR_PROP_PATTERN, KEYFRAME_PROPS, SHAPE_PROP_PATTERN } from "./keyframes.js";
 import { PRIMITIVE_LIMITS } from "../shapes/primitives.js";
-import { CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, LABEL_COLORS, PRESET_SET_IDS, SCHEMA_VERSION, FILL_RULES, LINE_CAPS, LINE_JOINS, SOLID_SHAPE_IDS, STROKE_ALIGNS, COUNTER_SEPARATORS, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_KINDS, type JsonValue } from "./types.js";
+import { CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, LABEL_COLORS, PRESET_SET_IDS, SCHEMA_VERSION, FILL_RULES, LINE_CAPS, LINE_JOINS, SOLID_SHAPE_IDS, STROKE_ALIGNS, COUNTER_SEPARATORS, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_DIRECTIONS, TRANSITION_KINDS, type JsonValue } from "./types.js";
 
 export type FieldType =
   | { t: "string"; nonEmpty?: boolean }
@@ -227,6 +227,11 @@ const SCHEMAS: ObjectSchema[] = [
       kind: req(oneOf(TRANSITION_KINDS), "The look."),
       before: req(int(0), `Frames before the cut. ${FRAMES}`),
       after: req(int(0), `Frames after the cut. ${FRAMES}`),
+      direction: opt(oneOf(TRANSITION_DIRECTIONS), "Slide, push, whip: the way the picture travels.", "left"),
+      angle: opt(num, "Wipe: degrees, 0 = the edge travels left to right, 90 = top to bottom.", 0),
+      softness: opt(num, "Wipe, iris: the soft width of the edge, 0 to 1.", 0),
+      center: opt(obj("FractionPoint"), "Iris: the circle's center, fractions of the frame.", { x: 0.5, y: 0.5 }),
+      ease: opt(oneOf(EASE_IDS), "The progress curve. Absent = the linear mix of schema 14 and before; the motion kinds are created with easeInOut."),
     },
   },
   {

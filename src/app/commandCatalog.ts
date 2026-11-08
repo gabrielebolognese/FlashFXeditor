@@ -90,7 +90,6 @@ import {
   Maximize2,
   Merge,
   Mic,
-  Moon,
   MousePointer2,
   MoveHorizontal,
   Paintbrush,
@@ -122,7 +121,6 @@ import {
   StepForward,
   Star,
   Subtitles,
-  Sun,
   Tag,
   Timer,
   Trash2,
@@ -142,6 +140,7 @@ import {
 } from "lucide-react";
 import { EASE_LABELS, KEYFRAME_SECTIONS, SECTION_LABELS, type KeyframeSection } from "../core/document/keyframes.js";
 import { TRANSITION_LABELS } from "../core/document/transitions.js";
+import { TRANSITION_ICONS } from "../panels/properties/transitionIcons.js";
 import { EASE_IDS, LABEL_COLORS, TRANSITION_KINDS } from "../core/document/types.js";
 import type { FocusScope } from "../core/keyboard/focusScope.js";
 import { FADE_PRESET_SECONDS } from "../timeline/edit/fades.js";
@@ -371,7 +370,7 @@ export const COMMANDS: readonly CommandInfo[] = [
   fades("clip.fadeIn", "Fade in 0.5 s", { icon: TrendingUp }),
   fades("clip.fadeOut", "Fade out 0.5 s", { icon: TrendingDown }),
   ...FADE_PRESET_SECONDS.flatMap((seconds) => [fades(fadePresetId("in", seconds), `Fade in ${seconds} s`, { icon: TrendingUp }), fades(fadePresetId("out", seconds), `Fade out ${seconds} s`, { icon: TrendingDown })]),
-  ...TRANSITION_KINDS.map((kind) => fades(`transition.add.${kind}`, `Add ${TRANSITION_LABELS[kind].toLowerCase()}`, { icon: kind === "crossDissolve" ? Blend : kind === "dipToBlack" ? Moon : Sun, keywords: "transition" })),
+  ...TRANSITION_KINDS.map((kind) => fades(`transition.add.${kind}`, `Add ${TRANSITION_LABELS[kind].toLowerCase()}`, { icon: TRANSITION_ICONS[kind], keywords: "transition" })),
   fades("transition.delete", "Delete transition", { icon: Trash2 }),
 
   // Keyframes (spec §6.15, §11, Batch 35)

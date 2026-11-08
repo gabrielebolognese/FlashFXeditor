@@ -331,6 +331,38 @@ describe("Compositor.evaluate", () => {
     expect((compositor.evaluate(doc, 32).layers[0] as MediaLayer).clipId).toBe("b");
   });
 
+  it("draws every Batch 71 kind as a dissolve layer carrying its shader code and parameters, eased as asked", () => {
+    const fps = makeProject().settings.fps;
+    for (const [kind, code] of [["slide", 1], ["push", 2], ["wipe", 3], ["iris", 4], ["zoomIn", 5], ["zoomOut", 6], ["whip", 7], ["blurDissolve", 8], ["glitch", 9], ["flash", 10]] as const) {
+      let doc = project(["v1"], [video("m1", 1920, 1080), video("m2", 1080, 1920)]);
+      const t = { id: "t", kind, before: 2, after: 2, direction: "up" as const, softness: 0.3, center: { x: 0.2, y: 0.8 }, ease: "easeInOut" as const };
+      doc = withClips(doc, [
+        clip(doc, { id: "a", trackId: "v1", start: 0, duration: 30, in: frameToUs(30, fps), out: frameToUs(60, fps), transitionOut: t }),
+        clip(doc, { id: "b", trackId: "v1", start: 30, duration: 30, mediaId: "m2", in: frameToUs(90, fps), out: frameToUs(120, fps), transitionIn: t }),
+      ]);
+      const layer = new Compositor().evaluate(doc, 28).layers[0] as unknown as { kind: string; mix: number; fx: { code: number; dx: number; dy: number; softness: number; cx: number; cy: number } };
+      expect(layer.kind, kind).toBe("dissolve");
+      expect(layer.fx.code, kind).toBe(code);
+      expect(layer.fx).toMatchObject({ softness: 0.3, cx: 0.2, cy: 0.8 });
+      // easeInOut at the first of 4 frames (linear 0.2) is below the linear mix.
+      expect(layer.mix, kind).toBeLessThan(0.2);
+      expect(layer.mix, kind).toBeGreaterThan(0);
+    }
+  });
+
+  it("keeps the cross dissolve a plain mix (code 0, linear) when the transition has no ease", () => {
+    let doc = project(["v1"], [video("m1", 1920, 1080), video("m2", 1080, 1920)]);
+    const t = { id: "t", kind: "crossDissolve" as const, before: 2, after: 2 };
+    const fps = doc.settings.fps;
+    doc = withClips(doc, [
+      clip(doc, { id: "a", trackId: "v1", start: 0, duration: 30, in: frameToUs(30, fps), out: frameToUs(60, fps), transitionOut: t }),
+      clip(doc, { id: "b", trackId: "v1", start: 30, duration: 30, mediaId: "m2", in: frameToUs(90, fps), out: frameToUs(120, fps), transitionIn: t }),
+    ]);
+    const layer = new Compositor().evaluate(doc, 28).layers[0] as unknown as { mix: number; fx: { code: number } };
+    expect(layer.fx.code).toBe(0);
+    expect(layer.mix).toBeCloseTo(0.2, 12);
+  });
+
   it("dips to a color in the clip's own quad: out of the first clip, into the second (Batch 36)", () => {
     let doc = project(["v1"]);
     const t = { id: "t", kind: "dipToWhite" as const, before: 2, after: 2 };

@@ -75,6 +75,7 @@ export function newRecordUniform(): RecordUniform {
     mapA: mutableIdentity(),
     mapB: mutableIdentity(),
     sides: { from: 1, to: 1 },
+    fx: { code: 0, dx: 0, dy: 0, softness: 0, cx: 0.5, cy: 0.5 },
   };
 }
 
@@ -164,6 +165,7 @@ export class DrawRecords<T extends TextureHandle> {
     setColor(u.color, TRANSPARENT);
     setColor(u.to, TRANSPARENT);
     u.shape.code = SHAPE_CODE.quad;
+    (u.fx as { code: number }).code = 0;
     u.radii.fill(0);
     resetStyleUniform(u.style);
     return record;
@@ -222,6 +224,17 @@ export class DrawRecords<T extends TextureHandle> {
         u.sides.from = from.opacity;
         u.sides.to = to.opacity;
         u.mix = layer.mix;
+        // Transitions v2 (Batch 71): the kind and its parameters; the frame size gives the shader its aspect.
+        const fx = u.fx as { code: number; dx: number; dy: number; softness: number; cx: number; cy: number };
+        const source = layer.fx;
+        fx.code = source?.code ?? 0;
+        fx.dx = source?.dx ?? 0;
+        fx.dy = source?.dy ?? 0;
+        fx.softness = source?.softness ?? 0;
+        fx.cx = source?.cx ?? 0.5;
+        fx.cy = source?.cy ?? 0.5;
+        u.shape.width = layer.transform[0];
+        u.shape.height = layer.transform[3];
         return;
       }
       case "path": {

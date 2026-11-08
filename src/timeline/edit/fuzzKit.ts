@@ -37,6 +37,7 @@ import {
   SELECTOR_SHAPES,
   TEXT_ANIM_IDS,
   TEXT_ANIM_UNITS,
+  TRANSITION_DIRECTIONS,
   TRANSITION_KINDS,
   type CaptionClip,
   type CaptionStyle,
@@ -127,7 +128,7 @@ import { addTextClip, addTitle, applyPreset, linkPreset, newTextClip, setTexts, 
 import { setTextAnims } from "./textAnim.js";
 import { addTrackNear, deleteEmptyTracks, deleteTracks, lockAll, muteOthers, reorderTrack, setTrackFlag, type TrackFlag } from "./tracks.js";
 import { isLayerClip, nudgeLayers, quickTransforms, setTransforms, type QuickTransform } from "./transform.js";
-import { addTransition, cutsOf, dragTransitionEdge, removeTransitions, transitionAt, updateTransition, type Cut } from "./transitions.js";
+import { addTransition, cutsOf, dragTransitionEdge, removeTransitions, transitionAt, updateTransition, type Cut, type TransitionParams } from "./transitions.js";
 import { extendToPlayhead, MAX_SPEED, MIN_SPEED, rateStretch, rollEdit, slide, slip, trimEdge, trimToPlayhead, type TrimEdge } from "./trim.js";
 import { audioTargets, autoDuck, bandEdit, detachAudio, normalizeClips, setGains, setMuted, toggleMuted, volumeKeys } from "./volume.js";
 
@@ -1261,8 +1262,18 @@ const TRANSITION_OPS: FuzzOp[] = [
     const p = store.getState();
     const cut = some(rng, cuts(p).withTransition);
     if (!cut) return false;
-    const patch: { kind?: (typeof TRANSITION_KINDS)[number]; before?: Frame; after?: Frame } = {};
+    const patch: { kind?: (typeof TRANSITION_KINDS)[number]; before?: Frame; after?: Frame } & TransitionParams = {};
     if (rng.chance(0.4)) patch.kind = rng.pick(TRANSITION_KINDS);
+    // Batch 71 (spec §21.16): the direction, angle, softness, center and ease, some out of range. They come from
+    // their own counter, not from `rng`, so the random streams (and the seeds of the other properties) stay as they were.
+    const roll = ++transitionParamRolls;
+    const unit = (salt: number) => (Math.sin(roll * 12.9898 + salt * 78.233) * 43758.5453) % 1;
+    const pickOf = <T,>(list: readonly T[], salt: number): T => list[Math.floor(Math.abs(unit(salt)) * list.length)] as T;
+    if (Math.abs(unit(1)) < 0.3) patch.direction = pickOf(TRANSITION_DIRECTIONS, 2);
+    if (Math.abs(unit(3)) < 0.2) patch.angle = Math.round(unit(4) * 720);
+    if (Math.abs(unit(5)) < 0.2) patch.softness = Math.round(unit(6) * 120) / 100;
+    if (Math.abs(unit(7)) < 0.2) patch.center = { x: Math.round(unit(8) * 150) / 100, y: Math.round(unit(9) * 150) / 100 };
+    if (Math.abs(unit(10)) < 0.3) patch.ease = Math.abs(unit(11)) < 0.3 ? null : pickOf(EASE_IDS, 12);
     if (rng.chance(0.6)) patch.before = rng.int(-5, 60);
     if (rng.chance(0.6)) patch.after = rng.int(-5, 60);
     return exec(store, updateTransition(p, cut, patch, { linked: rng.chance(0.7) }));
@@ -1280,6 +1291,8 @@ const TRANSITION_OPS: FuzzOp[] = [
     return cut && drag ? exec(store, updateTransition(p, cut, { before: drag.before, after: drag.after }, { linked: rng.chance(0.7) })) : false;
   }),
 ];
+
+let transitionParamRolls = 0;
 
 const randomEdge = (rng: Rng): FadeEdge => (rng.chance(0.5) ? "in" : "out");
 

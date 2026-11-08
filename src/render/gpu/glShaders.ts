@@ -11,7 +11,7 @@
 
 /** `u_layer` entries (see layerUniforms.ts). */
 const LAYER = /* glsl */ `
-uniform vec4 u_layer[31];
+uniform vec4 u_layer[32];
 #define L_C0 u_layer[0]
 #define L_C1 u_layer[1]
 #define L_C2 u_layer[2]
@@ -33,6 +33,7 @@ uniform vec4 u_layer[31];
 #define L_RADII u_layer[18]
 #define L_FILLP u_layer[19]
 #define L_FILLC u_layer[20]
+#define L_TFX u_layer[31]
 // stop colors u_layer[21..28], stop positions u_layer[29..30]
 `;
 
@@ -293,9 +294,11 @@ void main() {
 export const DISSOLVE_VERTEX = /* glsl */ `${HEADER}${LAYER}${QUAD}
 out vec2 v_a;
 out vec2 v_b;
+out vec2 v_c;
 
 void main() {
   vec2 c = quadCorner();
+  v_c = c;
   v_a = vec2(L_MAPA.x * c.x + L_MAPA.z * c.y + L_MAPT.x, L_MAPA.y * c.x + L_MAPA.w * c.y + L_MAPT.y);
   v_b = vec2(L_MAPB.x * c.x + L_MAPB.z * c.y + L_MAPT.z, L_MAPB.y * c.x + L_MAPB.w * c.y + L_MAPT.w);
   gl_Position = quadPosition(c);
@@ -307,16 +310,120 @@ uniform sampler2D u_from;
 uniform sampler2D u_to;
 in vec2 v_a;
 in vec2 v_b;
+in vec2 v_c;
 out vec4 outColor;
 
 float inside(vec2 t) {
   return all(greaterThanEqual(t, vec2(0.0))) && all(lessThanEqual(t, vec2(1.0))) ? 1.0 : 0.0;
 }
 
+vec2 pa(vec2 c) {
+  return vec2(L_MAPA.x * c.x + L_MAPA.z * c.y + L_MAPT.x, L_MAPA.y * c.x + L_MAPA.w * c.y + L_MAPT.y);
+}
+
+vec2 pb(vec2 c) {
+  return vec2(L_MAPB.x * c.x + L_MAPB.z * c.y + L_MAPT.z, L_MAPB.y * c.x + L_MAPB.w * c.y + L_MAPT.w);
+}
+
+vec4 fromAt(vec2 p) {
+  return texture(u_from, mix(L_UV.xy, L_UV.zw, p)) * (L_SIDES.x * inside(p));
+}
+
+vec4 toAt(vec2 p) {
+  return texture(u_to, mix(L_UV2.xy, L_UV2.zw, p)) * (L_SIDES.y * inside(p));
+}
+
+vec4 overPix(vec4 top, vec4 under) {
+  return top + under * (1.0 - top.a);
+}
+
+vec2 zoomAbout(vec2 c, float s) {
+  return (c - vec2(0.5)) / s + vec2(0.5);
+}
+
+float hash21(vec2 p) {
+  return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+// See DISSOLVE_WGSL in shaders.ts (Batch 71: the transition kinds, selected by L_TFX.w).
 void main() {
-  vec4 a = texture(u_from, mix(L_UV.xy, L_UV.zw, v_a)) * (L_SIDES.x * inside(v_a));
-  vec4 b = texture(u_to, mix(L_UV2.xy, L_UV2.zw, v_b)) * (L_SIDES.y * inside(v_b));
-  outColor = mix(a, b, L_PARAMS.w) * L_PARAMS.x;
+  int code = int(L_TFX.w + 0.5);
+  float t = L_PARAMS.w;
+  if (code == 0) {
+    outColor = mix(fromAt(v_a), toAt(v_b), t) * L_PARAMS.x;
+    return;
+  }
+  vec2 c = v_c;
+  vec2 size = max(L_SHAPE.xy, vec2(1.0));
+  vec2 dir = L_TFX.xy;
+  float soft = L_TFX.z;
+  vec4 from = fromAt(pa(c));
+  vec4 to = toAt(pb(c));
+  vec4 res = vec4(0.0);
+  if (code == 1) {
+    res = overPix(toAt(pb(c + dir * (1.0 - t))), from);
+  } else if (code == 2) {
+    res = overPix(toAt(pb(c + dir * (1.0 - t))), fromAt(pa(c - dir * t)));
+  } else if (code == 3) {
+    vec2 q = (c - vec2(0.5)) * size;
+    float ext = max(0.5 * (abs(dir.x) * size.x + abs(dir.y) * size.y), 1e-4);
+    float s = dot(q, dir) / ext;
+    float h = soft * 0.5;
+    float e = mix(-1.0 - h, 1.0 + h, t);
+    float w = clamp((e - s) / (2.0 * h + 1e-4) + 0.5, 0.0, 1.0);
+    res = mix(from, to, w);
+  } else if (code == 4) {
+    vec2 center = vec2(L_SIDES.z, L_SIDES.w);
+    float d = length((c - center) * size);
+    float far = length(max(center, vec2(1.0) - center) * size);
+    float h = soft * far * 0.5;
+    float radius = mix(-h, far + h, t);
+    float w = clamp((radius - d) / (2.0 * h + 1e-3) + 0.5, 0.0, 1.0);
+    res = mix(from, to, w);
+  } else if (code == 5) {
+    res = mix(fromAt(pa(zoomAbout(c, 1.0 + t))), toAt(pb(zoomAbout(c, 0.5 + 0.5 * t))), t);
+  } else if (code == 6) {
+    res = mix(fromAt(pa(zoomAbout(c, 1.0 - 0.5 * t))), toAt(pb(zoomAbout(c, 2.0 - t))), t);
+  } else if (code == 7) {
+    float spread = sin(3.14159265 * t) * 0.08;
+    vec4 sum = vec4(0.0);
+    for (int k = -4; k <= 4; k++) {
+      vec2 shift = dir * (float(k) * spread * 0.25);
+      sum += overPix(toAt(pb(c + dir * (1.0 - t) + shift)), fromAt(pa(c - dir * t + shift)));
+    }
+    res = sum / 9.0;
+  } else if (code == 8) {
+    float r = sin(3.14159265 * t) * 0.04;
+    vec2 scale = vec2(size.y / size.x, 1.0) * r;
+    vec4 sum = mix(from, to, t);
+    for (int k = 0; k < 8; k++) {
+      float angle = float(k) * 0.78539816;
+      vec2 o = vec2(cos(angle), sin(angle)) * scale;
+      sum += mix(fromAt(pa(c + o)), toAt(pb(c + o)), t);
+    }
+    res = sum / 9.0;
+  } else if (code == 9) {
+    float band = floor(c.y * 24.0);
+    float step = floor(t * 12.0);
+    float h1 = hash21(vec2(band, step));
+    float h2 = hash21(vec2(band + 7.0, step));
+    float amount = sin(3.14159265 * t);
+    float live = h1 > 0.7 ? 1.0 : 0.0;
+    float off = (h2 - 0.5) * 0.25 * amount * live;
+    float split = 0.012 * amount * live;
+    float pick = t + (h1 - 0.5) * 0.3 * amount > 0.5 ? 1.0 : 0.0;
+    vec4 ar = fromAt(pa(c + vec2(off + split, 0.0)));
+    vec4 ag = fromAt(pa(c + vec2(off, 0.0)));
+    vec4 ab = fromAt(pa(c + vec2(off - split, 0.0)));
+    vec4 br = toAt(pb(c + vec2(off + split, 0.0)));
+    vec4 bg = toAt(pb(c + vec2(off, 0.0)));
+    vec4 bb = toAt(pb(c + vec2(off - split, 0.0)));
+    res = mix(vec4(ar.r, ag.g, ab.b, ag.a), vec4(br.r, bg.g, bb.b, bg.a), pick);
+  } else {
+    vec4 base = mix(from, to, t >= 0.5 ? 1.0 : 0.0);
+    res = mix(base, vec4(1.0), 1.0 - abs(2.0 * t - 1.0));
+  }
+  outColor = res * L_PARAMS.x;
 }
 `;
 

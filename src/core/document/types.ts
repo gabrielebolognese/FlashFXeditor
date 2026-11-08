@@ -1,7 +1,7 @@
 // The persistent document (spec §5.2). Plain JSON only: no classes, Maps, Sets or undefined-valued
 // keys, so a Project can be serialized as-is and diffed by Immer patches.
 
-export const SCHEMA_VERSION = 14;
+export const SCHEMA_VERSION = 15;
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: JsonValue };
@@ -189,7 +189,9 @@ export interface KeyData {
 }
 
 /** The transitions (spec §6.15, Batch 36), in the order of the properties panel's chips. Audio crossfades are `crossDissolve`. */
-export const TRANSITION_KINDS = ["crossDissolve", "dipToBlack", "dipToWhite"] as const;
+export const TRANSITION_KINDS = ["crossDissolve", "dipToBlack", "dipToWhite",
+  // Batch 71 (spec §21.16): the motion, wipe and stylized kinds.
+  "slide", "push", "wipe", "iris", "zoomIn", "zoomOut", "whip", "blurDissolve", "glitch", "flash"] as const;
 export type TransitionKind = (typeof TRANSITION_KINDS)[number];
 
 /**
@@ -205,7 +207,20 @@ export interface Transition {
   kind: TransitionKind;
   before: Frame;
   after: Frame;
+  /** Slide, push, whip (Batch 71): the way the picture travels. Absent = left. */
+  direction?: TransitionDirection;
+  /** Wipe: degrees, 0 = the edge travels left to right, 90 = top to bottom. Absent = 0. */
+  angle?: number;
+  /** Wipe, iris: the soft width of the edge, 0..1 of its travel. Absent = 0. */
+  softness?: number;
+  /** Iris: the circle's center, fractions of the frame. Absent = the middle. */
+  center?: { x: number; y: number };
+  /** The progress curve. Absent = the v1 linear mix. */
+  ease?: EaseId;
 }
+
+export const TRANSITION_DIRECTIONS = ["left", "right", "up", "down"] as const;
+export type TransitionDirection = (typeof TRANSITION_DIRECTIONS)[number];
 
 /** The text animations (spec §10.4), in the order of the properties panel's chips. */
 export const TEXT_ANIM_IDS = ["fade", "slideUp", "slideDown", "slideLeft", "slideRight", "pop", "typewriter", "wordPop", "wordFade", "lineReveal", "blurIn", "scaleBounce",

@@ -2,8 +2,8 @@
   "manifestVersion": 1,
   "app": "shorts-editor",
   "appVersion": "1.1.0",
-  "lastBatch": 70,
-  "schemaVersion": 14,
+  "lastBatch": 71,
+  "schemaVersion": 15,
   "project": {
     "file": "project.json",
     "fontsManifest": "fonts/fonts.json",
@@ -262,7 +262,17 @@
   "transitions": [
     "crossDissolve",
     "dipToBlack",
-    "dipToWhite"
+    "dipToWhite",
+    "slide",
+    "push",
+    "wipe",
+    "iris",
+    "zoomIn",
+    "zoomOut",
+    "whip",
+    "blurDissolve",
+    "glitch",
+    "flash"
   ],
   "compositing": {
     "compound": true,

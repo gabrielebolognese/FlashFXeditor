@@ -43,6 +43,25 @@ describe("layer uniforms", () => {
     expect([...out.slice(0, 128)].every((v) => v === 0)).toBe(true);
   });
 
+  it("packs a dissolve's transition (Batch 71): center in sides, direction, softness and kind code in the last vec4", () => {
+    const out = new Float32Array(layerFloats(1));
+    packLayer(out, 0, {
+      transform: rectTransform(0, 0, 1, 1), wRow: [0, 0, 1], uv: FULL_UV, color: { r: 1, g: 1, b: 1, a: 1 }, to: { r: 0, g: 0, b: 0, a: 1 }, shape: { width: 10, height: 10, radius: 0, code: SHAPE_CODE.quad },
+      opacity: 1, flipX: false, flipY: false, mix: 0.5, uv2: FULL_UV, mapA: [0, 0, 0, 0, 0, 0], mapB: [0, 0, 0, 0, 0, 0], sides: { from: 1, to: 1 },
+      radii: new Float32Array(4), style: newStyleUniform(), fx: { code: 4, dx: 0, dy: -1, softness: 0.25, cx: 0.3, cy: 0.6 },
+    });
+    const at = (index: number) => [...out.slice(index * 4, index * 4 + 4)].map((v) => Math.round(v * 1000) / 1000);
+    expect(at(12)).toEqual([1, 1, 0.3, 0.6]);
+    expect(at(31)).toEqual([0, -1, 0.25, 4]);
+    // Without fx the plain mix: code 0.
+    const plain = new Float32Array(layerFloats(1));
+    packLayer(plain, 0, {
+      transform: rectTransform(0, 0, 1, 1), wRow: [0, 0, 1], uv: FULL_UV, color: { r: 1, g: 1, b: 1, a: 1 }, to: { r: 0, g: 0, b: 0, a: 1 }, shape: { width: 10, height: 10, radius: 0, code: SHAPE_CODE.quad },
+      opacity: 1, flipX: false, flipY: false, mix: 0, uv2: FULL_UV, mapA: [0, 0, 0, 0, 0, 0], mapB: [0, 0, 0, 0, 0, 0], sides: { from: 1, to: 1 }, radii: new Float32Array(4), style: newStyleUniform(),
+    });
+    expect([...plain.slice(124, 128)]).toEqual([0, 0, 0, 0]);
+  });
+
   it("packs the style block (Batch 58): stroke, dash, shadow, radii, fill and stops after the v1 floats", () => {
     const out = new Float32Array(layerFloats(1));
     const style = newStyleUniform();
@@ -83,7 +102,7 @@ describe("layer uniforms", () => {
     expect(at(21)).toEqual([1, 0, 0, 1]);
     expect(at(24)).toEqual([1, 1, 1, 1]);
     expect(at(29)).toEqual([0, 0.25, 0.5, 1]);
-    expect(LAYER_SIZE).toBe(31 * 16);
+    expect(LAYER_SIZE).toBe(32 * 16);
   });
 
   it("clamps opacity and mix to 0..1", () => {

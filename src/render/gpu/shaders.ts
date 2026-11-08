@@ -31,7 +31,7 @@ struct Layer {
   mapA: vec4f,
   mapB: vec4f,
   mapT: vec4f,
-  // dissolves: each picture's own opacity
+  // dissolves: each picture's own opacity, then the transition center (cx, cy; Batch 71)
   sides: vec4f,
   // solids (Batch 58): stroke color (straight alpha), then width, align (-1 inside, 0 center, 1 outside), dash offset, dash scale
   strokeColor: vec4f,
@@ -49,6 +49,8 @@ struct Layer {
   fillCenter: vec4f,
   stopColor: array<vec4f, 8>,
   stopAt: array<vec4f, 2>,
+  // dissolves (Batch 71): the transition's direction x, y, softness and kind code (0 = the plain mix)
+  tfx: vec4f,
 };
 
 @group(0) @binding(0) var<uniform> view: View;
@@ -223,6 +225,10 @@ fn fs(in: VertexOut) -> @location(0) vec4f {
  * The cross dissolve (spec §9.4, Batch 36): one quad over the frame; each picture is sampled where its
  * own quad covers the point (its map takes the point onto its unit quad, then its crop) and counts
  * nothing outside it, so the two mix as each would draw alone: from x (1 - mix) + to x mix.
+ * Transitions v2 (spec §21.16, Batch 71): `tfx.w` picks a kind; every kind samples the two pictures
+ * at the frame point `c` (0..1 over the frame) moved as the kind asks, so each picture keeps its own
+ * geometry. Kind 0 is the plain mix on the interpolated picture coordinates (as before Batch 71).
+ * Codes: 1 slide, 2 push, 3 wipe, 4 iris, 5 zoom in, 6 zoom out, 7 whip, 8 blur dissolve, 9 glitch, 10 flash.
  */
 export const DISSOLVE_WGSL = /* wgsl */ `${DECLARATIONS}
 @group(1) @binding(0) var fromSampler: sampler;
@@ -234,6 +240,7 @@ struct DissolveOut {
   @builtin(position) position: vec4f,
   @location(0) a: vec2f,
   @location(1) b: vec2f,
+  @location(2) c: vec2f,
 };
 
 @vertex
@@ -247,6 +254,7 @@ fn vs(@builtin(vertex_index) index: u32) -> DissolveOut {
   out.position = vec4f(position.xy, 0.0, position.z);
   out.a = vec2f(layer.mapA.x * corner.x + layer.mapA.z * corner.y + layer.mapT.x, layer.mapA.y * corner.x + layer.mapA.w * corner.y + layer.mapT.y);
   out.b = vec2f(layer.mapB.x * corner.x + layer.mapB.z * corner.y + layer.mapT.z, layer.mapB.y * corner.x + layer.mapB.w * corner.y + layer.mapT.w);
+  out.c = corner;
   return out;
 }
 
@@ -254,11 +262,112 @@ fn inside(t: vec2f) -> f32 {
   return select(0.0, 1.0, all(t >= vec2f(0.0)) && all(t <= vec2f(1.0)));
 }
 
+fn pa(c: vec2f) -> vec2f {
+  return vec2f(layer.mapA.x * c.x + layer.mapA.z * c.y + layer.mapT.x, layer.mapA.y * c.x + layer.mapA.w * c.y + layer.mapT.y);
+}
+
+fn pb(c: vec2f) -> vec2f {
+  return vec2f(layer.mapB.x * c.x + layer.mapB.z * c.y + layer.mapT.z, layer.mapB.y * c.x + layer.mapB.w * c.y + layer.mapT.w);
+}
+
+fn fromAt(p: vec2f) -> vec4f {
+  return textureSample(fromTexture, fromSampler, mix(layer.uv.xy, layer.uv.zw, p)) * (layer.sides.x * inside(p));
+}
+
+fn toAt(p: vec2f) -> vec4f {
+  return textureSample(toTexture, toSampler, mix(layer.uv2.xy, layer.uv2.zw, p)) * (layer.sides.y * inside(p));
+}
+
+fn overPix(top: vec4f, under: vec4f) -> vec4f {
+  return top + under * (1.0 - top.a);
+}
+
+fn zoomAbout(c: vec2f, s: f32) -> vec2f {
+  return (c - vec2f(0.5)) / s + vec2f(0.5);
+}
+
+fn hash21(p: vec2f) -> f32 {
+  return fract(sin(dot(p, vec2f(12.9898, 78.233))) * 43758.5453);
+}
+
 @fragment
 fn fs(in: DissolveOut) -> @location(0) vec4f {
-  let a = textureSample(fromTexture, fromSampler, mix(layer.uv.xy, layer.uv.zw, in.a)) * (layer.sides.x * inside(in.a));
-  let b = textureSample(toTexture, toSampler, mix(layer.uv2.xy, layer.uv2.zw, in.b)) * (layer.sides.y * inside(in.b));
-  return mix(a, b, layer.params.w) * layer.params.x;
+  let code = i32(layer.tfx.w + 0.5);
+  let t = layer.params.w;
+  if (code == 0) {
+    return mix(fromAt(in.a), toAt(in.b), t) * layer.params.x;
+  }
+  let c = in.c;
+  let size = max(layer.shape.xy, vec2f(1.0));
+  let dir = layer.tfx.xy;
+  let soft = layer.tfx.z;
+  let picA = fromAt(pa(c));
+  let picB = toAt(pb(c));
+  var res = vec4f(0.0);
+  if (code == 1) {
+    res = overPix(toAt(pb(c + dir * (1.0 - t))), picA);
+  } else if (code == 2) {
+    res = overPix(toAt(pb(c + dir * (1.0 - t))), fromAt(pa(c - dir * t)));
+  } else if (code == 3) {
+    let q = (c - vec2f(0.5)) * size;
+    let ext = max(0.5 * (abs(dir.x) * size.x + abs(dir.y) * size.y), 1e-4);
+    let s = dot(q, dir) / ext;
+    let h = soft * 0.5;
+    let e = mix(-1.0 - h, 1.0 + h, t);
+    let w = clamp((e - s) / (2.0 * h + 1e-4) + 0.5, 0.0, 1.0);
+    res = mix(picA, picB, w);
+  } else if (code == 4) {
+    let center = vec2f(layer.sides.z, layer.sides.w);
+    let d = length((c - center) * size);
+    let far = length(max(center, vec2f(1.0) - center) * size);
+    let h = soft * far * 0.5;
+    let radius = mix(-h, far + h, t);
+    let w = clamp((radius - d) / (2.0 * h + 1e-3) + 0.5, 0.0, 1.0);
+    res = mix(picA, picB, w);
+  } else if (code == 5) {
+    res = mix(fromAt(pa(zoomAbout(c, 1.0 + t))), toAt(pb(zoomAbout(c, 0.5 + 0.5 * t))), t);
+  } else if (code == 6) {
+    res = mix(fromAt(pa(zoomAbout(c, 1.0 - 0.5 * t))), toAt(pb(zoomAbout(c, 2.0 - t))), t);
+  } else if (code == 7) {
+    let spread = sin(3.14159265 * t) * 0.08;
+    var sum = vec4f(0.0);
+    for (var k = -4; k <= 4; k++) {
+      let shift = dir * (f32(k) * spread * 0.25);
+      sum += overPix(toAt(pb(c + dir * (1.0 - t) + shift)), fromAt(pa(c - dir * t + shift)));
+    }
+    res = sum / 9.0;
+  } else if (code == 8) {
+    let r = sin(3.14159265 * t) * 0.04;
+    let scale = vec2f(size.y / size.x, 1.0) * r;
+    var sum = mix(picA, picB, t);
+    for (var k = 0; k < 8; k++) {
+      let angle = f32(k) * 0.78539816;
+      let o = vec2f(cos(angle), sin(angle)) * scale;
+      sum += mix(fromAt(pa(c + o)), toAt(pb(c + o)), t);
+    }
+    res = sum / 9.0;
+  } else if (code == 9) {
+    let band = floor(c.y * 24.0);
+    let step = floor(t * 12.0);
+    let h1 = hash21(vec2f(band, step));
+    let h2 = hash21(vec2f(band + 7.0, step));
+    let amount = sin(3.14159265 * t);
+    let live = select(0.0, 1.0, h1 > 0.7);
+    let off = (h2 - 0.5) * 0.25 * amount * live;
+    let split = 0.012 * amount * live;
+    let pick = select(0.0, 1.0, t + (h1 - 0.5) * 0.3 * amount > 0.5);
+    let ar = fromAt(pa(c + vec2f(off + split, 0.0)));
+    let ag = fromAt(pa(c + vec2f(off, 0.0)));
+    let ab = fromAt(pa(c + vec2f(off - split, 0.0)));
+    let br = toAt(pb(c + vec2f(off + split, 0.0)));
+    let bg = toAt(pb(c + vec2f(off, 0.0)));
+    let bb = toAt(pb(c + vec2f(off - split, 0.0)));
+    res = mix(vec4f(ar.r, ag.g, ab.b, ag.a), vec4f(br.r, bg.g, bb.b, bg.a), pick);
+  } else {
+    let base = mix(picA, picB, select(0.0, 1.0, t >= 0.5));
+    res = mix(base, vec4f(1.0), 1.0 - abs(2.0 * t - 1.0));
+  }
+  return res * layer.params.x;
 }
 `;
 
