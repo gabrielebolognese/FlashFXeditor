@@ -2,6 +2,14 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+## Batch 66: Create and edit vector shapes, import SVG as shapes
+Click **Add shape** in the timeline toolbar and choose a **Rectangle**, **Ellipse**, **Polygon**, **Star**, **Arrow**, **Arc** or **Line** to add it at the playhead. The **Shape** section of **Edit Properties** changes its numbers, fill, stroke and trim, with a live preview while you scrub, and keyframes make a line draw itself. Right-click an SVG in the **Media** panel and choose **Import as shapes** to get editable paths, or press **Make shapes** after you drop an SVG. See [Add a vector shape](shapes-and-images.md#add-a-vector-shape), [Edit a shape](shapes-and-images.md#edit-a-shape) and [Import an SVG as shapes](shapes-and-images.md#import-an-svg-as-shapes).
+
+> **Video placeholder: What's new in Batch 66**
+> - File: `videos/whats-new/batch-66.mp4` (not recorded yet)
+> - Length: about 40 seconds
+> - Shows: click **Add shape** and choose **Star**; scrub **Points** and **Inner radius** in the **Shape** section; right-click an SVG in the **Media** panel and choose **Import as shapes**; press <kbd>Space</kbd>.
+
 ## Batch 65: Vector shapes (engine only)
 The editor can now draw vector shapes: paths, rectangles, ellipses, polygons, stars, arrows, arcs and lines, with fills, strokes, round or square ends, dashes and a trim that makes a line draw itself. A shape clip appears on the timeline with a shapes icon, and you move, scale and rotate it in the preview like any other layer. Preview and export look the same. There is no way yet to create or edit a shape inside the editor: the **+ Shape** menu, the shape properties and SVG import come in a later version. See [Shape clips](shapes-and-images.md#shape-clips).
 

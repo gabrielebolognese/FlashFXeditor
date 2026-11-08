@@ -28,6 +28,9 @@ Solids are shapes you add with one click: a rectangle, a rounded rectangle, an e
 - [Keep SVG images sharp](#keep-svg-images-sharp)
 - [Shapes and images on the timeline](#shapes-and-images-on-the-timeline)
 - [Shape clips](#shape-clips)
+- [Add a vector shape](#add-a-vector-shape)
+- [Edit a shape](#edit-a-shape)
+- [Import an SVG as shapes](#import-an-svg-as-shapes)
 - [Undo shape and image changes](#undo-shape-and-image-changes)
 - [Related pages](#related-pages)
 
@@ -251,7 +254,44 @@ An SVG image is a drawing, not a grid of pixels. The editor draws it again at th
 - A solid clip narrower than 24 pixels on screen shows no swatch, and an image clip narrower than 48 pixels shows no pictures. Zoom in to see them. See [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md).
 
 ## Shape clips
-Vector shape clips (paths, stars, arrows, arcs and lines with strokes, dashes and a trim that draws a line on over time) are shown on the timeline with a shapes icon. They play in the preview and export exactly alike, and you move, scale, rotate and fade them with the handles in the preview and the **Transform** section. You cannot create or edit them in the editor yet: this is available in a later version.
+Vector shape clips (rectangles, ellipses, polygons, stars, arrows, arcs, lines and imported SVG icons, with fills, strokes, dashes and a trim that draws a line on over time) are shown on the timeline with a shapes icon. They play in the preview and export exactly alike, and you move, scale, rotate and fade them with the handles in the preview and the **Transform** section. The next sections show how to create and edit them.
+
+> **Video placeholder: Vector shapes**
+> - File: `videos/shapes-and-images/vector-shapes.mp4` (not recorded yet)
+> - Length: about 50 seconds
+> - Shows: move the playhead; click **Add shape** in the timeline toolbar and choose **Star**; in the **Shape** section of **Edit Properties** scrub **Points** and **Inner radius**; change the fill color; turn on the **Trim end** stopwatch at 0%, move the playhead and set it to 100%; press <kbd>Space</kbd> and watch the shape draw on; right-click an SVG in the **Media** panel and choose **Import as shapes**.
+
+## Add a vector shape
+1. Move the playhead to where the shape should start.
+2. In the timeline toolbar, click **Add shape** and choose **Rectangle**, **Ellipse**, **Polygon**, **Star**, **Arrow**, **Arc** or **Line**.
+
+The shape is added at the playhead as a new clip. You can also run **Add rectangle shape**, **Add ellipse shape**, **Add polygon shape**, **Add star shape**, **Add arrow shape** or **Add arc shape** from the command palette. See [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md).
+
+## Edit a shape
+Select a shape clip. The **Shape** section of **Edit Properties** lists each path of the shape, with these controls.
+
+| Group | Controls |
+|---|---|
+| Shape | The numbers of its kind: **Width**, **Height**, **Radius**, **Sides**, **Points**, **Inner radius**, **Outer radius**, **Roundness**, **Length**, **Shaft**, **Head**, **Head length**, **Start** and more, as the kind needs |
+| **Fill** | **None**, **Solid**, **Linear** or **Radial**, the colors (**Color**, or **From** and **To**), and the **Rule** (**Nonzero** or **Even-odd**) |
+| **Stroke** | **Off** or **On**, **Width**, color, **Align** (**Center**, **Inside**, **Outside**), **Caps**, **Joins**, **Miter limit**, **Dashes** and **Dash offset** |
+| **Trim** | **Trim start**, **Trim end** and **Trim offset**: show only part of the line |
+
+Drag a number's label to scrub it: the preview follows live, and one undo step is made when you let go. Press <kbd>Esc</kbd> during the drag to drop it. Color pickers also preview while you drag. When you select several shapes, edits apply to paths by position, using the path list of the first shape.
+
+Each group has a stopwatch to add a keyframe at the playhead. Turn on **Trim end** at 0% and set it to 100% later to make a line draw itself. Keyframes of shapes are edited here only: they have no lane on the timeline yet. See [Keyframes](keyframes.md).
+
+## Import an SVG as shapes
+1. In the **Media** panel, right-click an SVG file.
+2. Choose **Import as shapes**.
+
+The SVG becomes a shape clip at the playhead, with editable paths. Simple icons work: paths, rectangles, circles, ellipses, lines, polylines, polygons and groups, with colors and linear and radial gradients. When an SVG uses something else (a filter, mask, clip path, text, an embedded image, a pattern, a reused element, a style sheet or a gradient on a stroke), it stays an image clip and a warning names the feature.
+
+When you drop an SVG on the timeline or the preview, it is added as an image, and a message offers **Make shapes**. Press it to replace the image with shapes (one undo undoes the whole drop).
+
+> **Note:** Files dropped from your computer, and **Add image**, do not offer **Make shapes**. Import the file first, then use **Import as shapes** in the **Media** panel.
+
+> **Note:** Opacity of a group is folded into the fill and stroke of its paths, and a gradient is laid out over the path's own box. A few details of the SVG can look slightly different from the original.
 
 ## Undo shape and image changes
 
@@ -279,4 +319,4 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 - [Titles and text](titles-and-text.md)
 - [Troubleshooting](troubleshooting.md#shapes-and-images)
 
-<sub>Last updated: Batch 65, 2026-11-08</sub>
+<sub>Last updated: Batch 66, 2026-11-08
