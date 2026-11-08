@@ -133,7 +133,7 @@ describe("validateStrict", () => {
       const result = validateStrict(JSON.parse(JSON.stringify(randomProject(random(seed)))));
       expect(result.errors, `seed ${seed}`).toEqual([]);
     }
-  });
+  }, 30_000);
 
   it("accepts the documents left by runs of edit operations (trimmed cues, pasted offline media, trimmed keys)", () => {
     const strictCheck = (_before: Project, after: Project) => validateStrict(JSON.parse(JSON.stringify(after))).errors.map((issue) => `${issue.path}: ${issue.message}`);

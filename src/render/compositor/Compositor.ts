@@ -296,6 +296,8 @@ export class Compositor {
   private perspCount = 0;
   private readonly corners: number[] = [0, 0, 0, 0, 0, 0, 0, 0];
   private readonly depths: number[] = [];
+  /** The depth (z) of the transform the last `writeMediaAt` resolved (keys, live gesture values, parent chain). */
+  private mediaAtDepth = 0;
   private readonly sortItems: DepthSortItem[] = [];
   private readonly sorted: CompositeLayer[] = [];
   /** Draws the layers farthest first (a sequence with `depthSort`, set by the compound layer that owns this compositor). */
@@ -377,19 +379,21 @@ export class Compositor {
         if (transition.kind === "crossDissolve") {
           const layer = (this.transitionPool[transitions] ??= newTransitionLayer());
           const from = this.writeMediaAt(layer.from, doc, left, frame, track.id, transforms, opacities, crops);
+          const fromDepth = this.mediaAtDepth;
           const to = this.writeMediaAt(layer.to, doc, right, frame, track.id + TRANSITION_SLOT, transforms, opacities, crops);
+          const toDepth = this.mediaAtDepth;
           if (from && to) {
             layer.trackId = track.id;
             layer.mix = mix;
             out.layers.push(layer);
-            this.depths.push(right.transform.z ?? 0);
+            this.depths.push(toDepth);
             transitions += 1;
           } else if (from || to) {
             // A side with no picture (its media has no size yet, or it is not drawn in 2.5D): the other one alone.
             const single = (this.mediaPool[media] ??= newMediaLayer());
             copyMediaLayer(single, from ? layer.from : layer.to);
             out.layers.push(single);
-            this.depths.push((from ? left : right).transform.z ?? 0);
+            this.depths.push(from ? fromDepth : toDepth);
             media += 1;
           }
         } else {
@@ -398,13 +402,14 @@ export class Compositor {
           const amount = mix < 0.5 ? 2 * mix : 2 * (1 - mix);
           const layer = (this.mediaPool[media] ??= newMediaLayer());
           if (this.writeMediaAt(layer, doc, shown, frame, track.id, transforms, opacities, crops)) {
+            const depth = this.mediaAtDepth;
             out.layers.push(layer);
-            this.depths.push(shown.transform.z ?? 0);
+            this.depths.push(depth);
             media += 1;
             const dip = (this.solidPool[solidLayers] ??= newSolidLayer());
             for (let i = 0; i < 6; i++) dip.transform[i] = layer.transform[i] as number;
             dip.persp = layer.persp ?? null;
-            this.depths.push(shown.transform.z ?? 0);
+            this.depths.push(depth);
             copyColor(dip.color, transition.kind === "dipToWhite" ? WHITE : BLACK);
             dip.to = null;
             dip.shape = null;
@@ -754,6 +759,8 @@ export class Compositor {
   ): boolean {
     const rel = Math.min(clip.duration - 1, Math.max(0, frame - clip.start));
     const transform = this.rig.resolve(clip, transforms?.get(clip.id) ?? animatedTransform(clip, rel, this.animated), this.world);
+    // Read now: `animated` and `world` are reused by the next resolve.
+    this.mediaAtDepth = transform.z ?? 0;
     const opacity = opacities?.get(clip.id) ?? animatedOpacity(clip, rel);
     if (!this.writeMedia(layer, doc, clip, frame, transform, opacity, crops?.get(clip.id) ?? animatedCrop(clip.keyframes, clip.crop, rel, this.cropScratch), true)) return false;
     const persp = this.projection(doc, clip, transform, layer.transform, 1, 1);

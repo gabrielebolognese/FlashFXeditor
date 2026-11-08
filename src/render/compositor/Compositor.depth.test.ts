@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { makeCompoundClip, makeProject, makeSolidClip, makeTrack, withClips } from "../../core/document/fixtures.js";
-import type { Clip, Project, Sequence, Transform } from "../../core/document/types.js";
+import { makeCompoundClip, makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTrack, withClips } from "../../core/document/fixtures.js";
+import { frameToUs } from "../../core/document/time.js";
+import type { Clip, MediaClip, Project, Sequence, Transform } from "../../core/document/types.js";
 import { IDENTITY_TRANSFORM } from "../../timeline/edit/transform.js";
 import { projectPoint } from "../projection.js";
 import { applyToPoint } from "../mat3.js";
 import { Compositor } from "./Compositor.js";
-import type { CompoundCompositeLayer, DrawList, SolidLayer } from "./drawList.js";
+import type { CompositeLayer, CompoundCompositeLayer, DrawList, SolidLayer } from "./drawList.js";
 import { DrawListSnapshot } from "./DrawListSnapshot.js";
 
 // The compositor's 2.5D layers (spec §21.15, Batch 70): a projection per turned layer, culling, and
@@ -106,5 +107,42 @@ describe("Compositor: 2.5D layers (spec §21.15)", () => {
     const shown = layer?.persp && flat ? projectPoint(layer.persp, flat.x, flat.y) : null;
     // Parallel inside (none), whatever the project's distance.
     expect(shown?.x).toBeCloseTo(640, 6);
+  });
+  it("sorts a clip inside a transition by its keyed or live depth, not its stored one (Batch 70 review)", () => {
+    // V1: a then b with a transition at 30; V2 (above): a red solid at z 0 (the dip is black). b is stored far (900) but keyed near (-500).
+    const build = (kind: "crossDissolve" | "dipToBlack", keyed: boolean) => {
+      const p = makeProject();
+      p.tracks = [makeTrack("v1"), makeTrack("v2")];
+      p.media.m1 = { ...makeMedia("m1"), width: 1920, height: 1080 };
+      const fps = p.settings.fps;
+      const transition = { id: "t", kind, before: 2, after: 2 };
+      const a: MediaClip = { ...makeMediaClip(p, { id: "a", trackId: "v1", start: 0, duration: 30, mediaId: "m1" }), out: frameToUs(30, fps), transitionOut: transition };
+      const b: MediaClip = {
+        ...makeMediaClip(p, { id: "b", trackId: "v1", start: 30, duration: 30, mediaId: "m1" }),
+        in: frameToUs(60, fps),
+        out: frameToUs(90, fps),
+        transitionIn: transition,
+        transform: t({ z: 900 }),
+        ...(keyed && { keyframes: { "transform.z": [{ frame: 0, value: -500, ease: "linear" as const }] } }),
+      };
+      return withClips(p, [a, b, { ...makeSolidClip({ id: "s", trackId: "v2", start: 0, duration: 60 }), fill: { r: 1, g: 0, b: 0, a: 1 } }]);
+    };
+    const name = (layer: CompositeLayer) => (layer.kind === "dissolve" ? "dissolve" : layer.kind === "media" ? layer.clipId : (layer as SolidLayer).color.r === 1 ? "solid" : "dip");
+    const order = (doc: Project, frame: number, live: ReadonlyMap<string, Transform> | null = null) => {
+      const compositor = new Compositor();
+      compositor.depthSort = true;
+      return compositor.evaluate(doc, frame, live).layers.map(name);
+    };
+    const dip = build("dipToBlack", true);
+    // Outside the transition b is near: drawn over the solid.
+    expect(order(dip, 40)).toEqual(["solid", "b"]);
+    // Inside the dip (b shown) it stays near, and so does its dip layer.
+    expect(order(dip, 31)).toEqual(["solid", "b", "dip"]);
+    // Inside a cross dissolve too (b's depth at its first frame).
+    expect(order(build("crossDissolve", true), 29)).toEqual(["solid", "dissolve"]);
+    // A gesture's live transform wins over the stored depth.
+    const live = new Map([["b", t({ z: -500 })]]);
+    expect(order(build("dipToBlack", false), 31)).toEqual(["b", "dip", "solid"]);
+    expect(order(build("dipToBlack", false), 31, live)).toEqual(["solid", "b", "dip"]);
   });
 });
