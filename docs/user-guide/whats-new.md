@@ -2,6 +2,14 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+## Batch 70: 3D layers
+Layers can now turn in 3D. **3D rotation** (**X** and **Y**) and **Depth** in the **Transform** section tilt and push back a layer with perspective, and two round handles in the preview do the same by dragging. **Hide back side** hides a layer while its back faces you, **Reset 3D rotation** makes it flat, and **Depth sort** draws a compound's layers by depth. **Perspective** in the **Project** section sets the viewing distance. See [3D layers](3d-layers.md).
+
+> **Video placeholder: What's new in Batch 70**
+> - File: `videos/whats-new/batch-70.mp4` (not recorded yet)
+> - Length: about 35 seconds
+> - Shows: add a **Rectangle**; type `60` in **3D rotation** **Y**; drag the round handle below the box; type `300` in **Depth**; change **Perspective** in the **Project** section to `600`.
+
 ## Batch 69: Parenting, nulls and motion paths
 Pick a clip in the **Parent** menu of **Transform** and it follows that clip: when the parent moves, turns or scales, the child goes with it. **Add null** in the timeline toolbar adds an invisible layer made to be a parent, and it never shows in an export. **Move along a path** bends a layer's position keys into a curve you drag in the preview, **Smooth path** rounds it, and **Auto-orient** turns the layer along the curve. See [Parenting, nulls and motion paths](parenting-and-motion-paths.md).
 
