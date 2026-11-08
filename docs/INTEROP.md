@@ -507,7 +507,9 @@ A pentagram with a hole (`nonzero` fills the middle as well):
 }
 ```
 
-Edges are anti-aliased with 4 samples per pixel. Curves are flattened finely enough for the size they are shown at, so a shape scaled up stays smooth. `fixtures/interop/shapes` is a complete project with all of the above, every primitive, an inside and an outside stroke, a gradient fill and expected frames 0, 5, 10 and 30. SVG import, point editing and boolean operations are not part of this version (`vector.svgImport` is false).
+Edges are anti-aliased with 4 samples per pixel. Curves are flattened finely enough for the size they are shown at, so a shape scaled up stays smooth. `fixtures/interop/shapes` is a complete project with all of the above, every primitive, an inside and an outside stroke, a gradient fill and expected frames 0, 5, 10 and 30. Point editing and boolean operations are not part of this version.
+
+**SVG import (manifest key `vector.svgImport`, true).** The app's Import as shapes turns an SVG file into one shape clip: the `viewBox` (else `width` and `height`) becomes `size` and every drawable element one path. A generator that writes projects does the same by writing the `shape` clip itself; the app's import reads this subset: `path`, `rect` (with `rx` and `ry`), `circle`, `ellipse`, `line`, `polyline`, `polygon` and `g`, with `transform` (baked into the path data), `fill`, `stroke`, `stroke-width`, `stroke-linecap`, `stroke-linejoin`, `stroke-miterlimit`, `stroke-dasharray`, `stroke-dashoffset`, `fill-rule`, `fill-opacity`, `stroke-opacity` and `opacity` as attributes or `style` declarations, `currentColor`, and `linearGradient` and `radialGradient` fills (as gradient fills laid out in the path's box). Anything else (filters, masks, clip paths, text, images, patterns, `use`, style sheets, gradient strokes) keeps the SVG as an image clip, and a toast names what was not supported. `fixtures/interop/svg` holds icon SVGs and one with a filter, with the shape clips the import makes.
 
 ## 6. Captions and word timings
 

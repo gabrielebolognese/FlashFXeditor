@@ -1,6 +1,7 @@
-import { Ellipsis } from "lucide-react";
+import { Ellipsis, Shapes } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
+import { SHAPE_MENU } from "../../app/shapeController.js";
 import { actions, documentStore, sessionStore } from "../../app/services.js";
 import { bindTimecode, bindZoomSlider, timelineDev } from "../../app/timelineController.js";
 import type { ClipId, Project } from "../../core/document/types.js";
@@ -9,6 +10,7 @@ import type { Selection } from "../../core/store/selection.js";
 import type { SessionState } from "../../core/store/sessionStore.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import { IconButton } from "../../ui/IconButton.js";
+import { MenuButton } from "../../ui/MenuButton.js";
 import { useDismiss } from "../../ui/useDismiss.js";
 import styles from "./TimelineToolbar.module.css";
 import { TOOLBAR_GROUPS, type ToolbarGroup, type ToolbarItem } from "./toolbarGroups.js";
@@ -106,8 +108,16 @@ function CompoundButton({ item }: { item: Extract<ToolbarItem, { kind: "button" 
   return <IconButton label={problem === null ? base : `${base}: ${problem}`} commandId={item.id} disabled={problem !== null} />;
 }
 
+const SHAPE_ENTRIES = SHAPE_MENU.map(({ id, label }) => ({ kind: "item", id, label, commandId: id }) as const);
+
+/** `+ Shape` (spec §21.12): a dropdown of the seven shapes; a pick adds it at the playhead. */
+function ShapeMenu() {
+  return <MenuButton label="Add shape" icon={Shapes} entries={() => SHAPE_ENTRIES} onSelect={(id) => actions.run(id)} />;
+}
+
 function renderItem(item: ToolbarItem) {
   if (item.kind === "zoomSlider") return <ZoomSlider key="zoom-slider" />;
+  if (item.kind === "shapeMenu") return <ShapeMenu key="shape-menu" />;
   if (item.id === "clip.makeCompound" || item.id === "clip.breakApart") return <CompoundButton key={item.id} item={item} />;
   if (item.id === "add.captionTrack") return <CaptionTrackButton key={item.id} item={item} />;
   const pressedIn = TOGGLE_STATE[item.id];

@@ -41,6 +41,7 @@ describe("properties context (spec §11)", () => {
       speedIds: ["a", "v"],
       textIds: [],
       solidIds: [],
+      shapeIds: [],
       audioIds: ["a"],
       detachIds: ["v"],
       captionTrackId: null,

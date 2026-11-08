@@ -21,7 +21,7 @@ import { isLayerClip } from "../../timeline/edit/transform.js";
 import { audioTargets, canDetach } from "../../timeline/edit/volume.js";
 
 /** The registered sections, top to bottom in their order of appearance. */
-export type SectionId = "clip" | "text" | "animation" | "solid" | "captionStyle" | "transform" | "crop" | "frame" | "opacity" | "speed" | "audio" | "transition" | "track" | "marker" | "project";
+export type SectionId = "clip" | "text" | "animation" | "solid" | "shape" | "captionStyle" | "transform" | "crop" | "frame" | "opacity" | "speed" | "audio" | "transition" | "track" | "marker" | "project";
 
 export type PropertiesContext =
   | { kind: "none" }
@@ -53,6 +53,8 @@ export type PropertiesContext =
       textIds: readonly ClipId[];
       /** The solids: what Solid edits. */
       solidIds: readonly ClipId[];
+      /** The shapes: what Shape edits (Batch 66). */
+      shapeIds: readonly ClipId[];
       /** The audio clips among them and those linked to the video clips among them: what Audio edits (Batch 37). */
       audioIds: readonly ClipId[];
       /** The video clips whose sound Detach audio can detach. */
@@ -106,11 +108,12 @@ export function propertiesContext(selection: Selection, markerId: string | null,
       });
       const textIds = clipIds.filter((id) => project.clips[id]?.kind === "text");
       const solidIds = clipIds.filter((id) => project.clips[id]?.kind === "solid");
+      const shapeIds = clipIds.filter((id) => project.clips[id]?.kind === "shape");
       const cueIds = clipIds.filter((id) => project.clips[id]?.kind === "caption");
       const cue = cueIds.length > 0 ? project.clips[cueIds[0] as ClipId] : undefined;
       const audioIds = audioTargets(project, clipIds);
       const detachIds = clipIds.filter((id) => canDetach(project, id));
-      return { kind: "clips", clipIds, primary, layerIds, layerPrimary, mediaIds, speedIds, textIds, solidIds, audioIds, detachIds, captionTrackId: cue?.trackId ?? null, cueIds };
+      return { kind: "clips", clipIds, primary, layerIds, layerPrimary, mediaIds, speedIds, textIds, solidIds, shapeIds, audioIds, detachIds, captionTrackId: cue?.trackId ?? null, cueIds };
     }
   }
 }
@@ -143,6 +146,7 @@ export function sectionIds(context: PropertiesContext): SectionId[] {
       const ids: SectionId[] = ["clip"];
       if (context.textIds.length > 0) ids.push("text", "animation");
       if (context.solidIds.length > 0) ids.push("solid");
+      if (context.shapeIds.length > 0) ids.push("shape");
       if (context.captionTrackId) ids.push("captionStyle");
       if (context.layerIds.length > 0) ids.push("transform");
       if (context.mediaIds.length > 0) ids.push("crop");

@@ -3,7 +3,9 @@
 // differently.
 
 // The favorite preset chips (spec §6.1) moved to the preset bar above the preview (§20.2, Batch 52).
-export type ToolbarItem = { kind: "button"; id: string; label?: string; text?: string; toggle?: true } | { kind: "zoomSlider" };
+export type ToolbarItem = { kind: "button"; id: string; label?: string; text?: string; toggle?: true } | { kind: "zoomSlider" }
+  /** The `+ Shape` dropdown (Batch 66): Rectangle, Ellipse, Polygon, Star, Arrow, Arc, Line. */
+  | { kind: "shapeMenu" };
 
 export interface ToolbarGroup {
   id: string;
@@ -65,6 +67,7 @@ export const TOOLBAR_GROUPS: readonly ToolbarGroup[] = [
       { kind: "button", id: "add.subtitle", text: "Subtitle" },
       { kind: "button", id: "add.captionTrack" },
       { kind: "button", id: "add.solid" },
+      { kind: "shapeMenu" },
       { kind: "button", id: "add.image" },
     ],
   },

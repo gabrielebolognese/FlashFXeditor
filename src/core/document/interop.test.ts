@@ -382,3 +382,19 @@ describe("fixtures/interop/shapes (Batch 65)", () => {
     expect(validateStrict(trim).ok).toBe(false);
   });
 });
+
+describe("fixtures/interop/svg (Batch 66)", () => {
+  const SVG = "fixtures/interop/svg";
+
+  it("is valid: four imported icons, a tick drawing on, a gradient, dashes and an evenodd fill", async () => {
+    const report = await validateProjectFolder(rel(SVG));
+    expect(report.errors).toEqual([]);
+    expect(report.ok).toBe(true);
+    const project = readProject(`${SVG}/project.json`);
+    expect(Object.keys(project.clips).sort()).toEqual(["arrow", "badge", "check", "gauge"]);
+    expect(Object.keys(project.clips.check.keyframes)).toEqual(["paths.check-2.trim.end"]);
+    expect(project.clips.gauge.paths[0].fill.type).toBe("linear");
+    expect(project.clips.arrow.paths[0].stroke.dash).toEqual([6, 5]);
+    expect(project.clips.badge.paths.some((path: { fillRule: string }) => path.fillRule === "evenodd")).toBe(true);
+  });
+});

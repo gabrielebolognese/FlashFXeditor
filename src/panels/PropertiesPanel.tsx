@@ -21,6 +21,7 @@ import { ProjectSection } from "./properties/ProjectSection.js";
 import { QuickActions } from "./properties/QuickActions.js";
 import { Section } from "./properties/Section.js";
 import { FrameSection } from "./properties/FrameSection.js";
+import { ShapeSection } from "./properties/ShapeSection.js";
 import { SolidSection } from "./properties/SolidSection.js";
 import { SpeedSection } from "./properties/SpeedSection.js";
 import { TextSection } from "./properties/TextSection.js";
@@ -48,6 +49,7 @@ const SECTION_TITLES: Record<SectionId, string> = {
   text: "Text",
   animation: "Animation",
   solid: "Solid",
+  shape: "Shape",
   captionStyle: "Caption style",
   transform: "Transform",
   crop: "Crop",
@@ -71,7 +73,8 @@ function sectionBody(id: SectionId, context: PropertiesContext): ReactNode {
       return context.kind === "clips" ? <AnimationSection ids={context.textIds} primary={context.primary} /> : null;
     case "solid":
       return context.kind === "clips" ? <SolidSection ids={context.solidIds} /> : null;
-    // TODO(batch 66): the Shape section (paths, fill, stroke, trim, primitive params) for shape clips; Transform already lists them.
+    case "shape":
+      return context.kind === "clips" ? <ShapeSection ids={context.shapeIds} /> : null;
     case "captionStyle":
       return (context.kind === "clips" || context.kind === "track") && context.captionTrackId ? <CaptionStyleSection trackId={context.captionTrackId} cueIds={context.kind === "clips" ? context.cueIds : NO_CUES} /> : null;
     case "transform":

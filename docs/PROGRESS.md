@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 65
+last_completed_batch: 66
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -225,6 +225,7 @@ Items the design system did not define and the functional default that was used 
 - Preset card menu (Batch 52): a "Preset bar sets" heading over Favorites, Titles, Subtitles and Captions (toggle rows with checks, the menu stays open) and Tags…; the Presets tab's card shows a tags field (comma-separated) in place of its name, like Rename.
 - Caption styles per cue (Batch 53; the DS has no override marker): in the Selected scope every Caption style row has a `--space-5` (16px) slot at the label column's right edge; a row a selected cue overrides shows an `--accent` dot (`--space-2`, 6px, the save dot's size) there. The dot is the row's reset button: under the pointer or the focus it turns into the reset arrow (`--icon-size-sm`, primary text) on the `--hover-wash`, radius-sm, the DS focus ring. The scope switch is a row of `Choice` text chips (**Edit**: All cues | Selected (n)); Reset to track style is a compact secondary Button with the reset icon. A cue with its own style has the same 6px `--accent` dot in the cue list row's right padding, and a lucide `paintbrush` icon badge on its timeline clip (the icon badge style of the link and keyframe badges).
 - Shape clips on the timeline (Batch 65; the DS has no color for them): `--clip-shape` = `--surface-4`, `--clip-shape-label` = `--surface-5` (drawn like solids), glyph lucide `shapes`.
+- Shape section path heading (Batch 66): a muted caption with a hairline between paths; the DS has no multi-item group heading.
 
 ## Global deviations
 Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also appears under its batch.
@@ -839,6 +840,8 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 64 -> Batch 81] The sequence frames are decoded at full size and uploaded as RGBA (no LOD ladder); a 300-frame 4K sequence costs about 33 MB per cached frame. Measure it against the section 4 texture budget in the performance pass.
 - [from Batch 65 -> Batch 66] The Shape section in Properties (paths, fill, stroke, trim, primitive params; `TODO(batch 66)` in PropertiesPanel.tsx), `+ Shape` with `defaultPrimitive` (primitives.ts), SVG import into shape clips, and writing a primitive's `d` back on edit.
 - [from Batch 65 -> Batch 66] A path marked slow (one build over 2 ms) stays on the worker for the session, so its trim animation shows each new stroke one frame late; seen on WebGL2 (301 offloaded builds in 5 s, still 60 fps). Consider unmarking it after fast worker builds when the tools make editing interactive.
+- [from Batch 66 -> Batch 67] Shape fields commit on release (no live scrub preview): a `LiveEdit.shapes` channel plus Compositor plumbing would show scrubbing live.
+- [from Batch 66 -> Batch 80] Shape keys have no timeline lane; keys are edited from the Shape section's per-group stopwatch rows only.
 
 ## Dependencies
 Why each dependency exists (Batch rule 8).
@@ -6815,3 +6818,33 @@ Why each dependency exists (Batch rule 8).
 - review request: capabilities.json docs/INTEROP.md docs/PROGRESS.md fixtures/interop/shapes/expected/Interop shapes-frame-0.png fixtures/interop/shapes/expected/Interop shapes-frame-10.png fixtures/interop/shapes/expected/Interop shapes-frame-30.png fixtures/interop/shapes/expected/Interop shapes-frame-5.png fixtures/interop/shapes/project.json fixtures/interop/sparse/expected/project.json src/core/capabilities.test.ts src/core/capabilities.ts src/core/document/fixtures.ts src/core/document/interop.test.ts src/core/document/interopDoc.ts src/core/document/jsonSchema.ts src/core/document/keyProps.ts src/core/document/keyframes.ts src/core/document/makeEditable.fuzz.test.ts src/core/document/normalize.ts src/core/document/normalizeCli.test.ts src/core/document/schema.test.ts src/core/document/schema.ts src/core/document/strict.ts src/core/document/types.ts src/core/document/validate.ts src/core/shapes/flatten.ts src/core/shapes/geometry.ts src/core/shapes/pathData.ts src/core/shapes/primitives.ts src/core/shapes/shapes.test.ts src/core/shapes/stroke.ts src/core/theme/theme.ts src/panels/PropertiesPanel.tsx src/project/projectFile.test.ts src/project/projectFile.ts src/render/compositor/Compositor.shapes.test.ts src/render/compositor/Compositor.ts src/render/compositor/DrawListSnapshot.ts src/render/compositor/drawList.ts src/render/compositor/shapeFrames.ts src/render/gpu/WebGl2Renderer.ts src/render/gpu/WebGpuRenderer.ts src/render/gpu/drawRecords.ts src/render/gpu/glShaders.ts src/render/gpu/pathRecords.test.ts src/render/gpu/shaders.ts src/render/preview/CanvasEditInput.ts src/render/preview/LayerTextures.ts src/render/preview/PreviewView.ts src/render/preview/canvasLayers.ts src/render/preview/drawnBounds.test.ts src/render/preview/drawnBounds.ts src/render/shapes/ShapeGeometryCache.test.ts src/render/shapes/ShapeGeometryCache.ts src/render/shapes/geometry.worker.ts src/styles/tokens.css src/timeline/edit/compound.test.ts src/timeline/edit/compound.ts src/timeline/edit/fuzz.test.ts src/timeline/edit/fuzzKit.ts src/timeline/edit/transform.ts src/timeline/view/drawContent.ts src/timeline/view/glyphs.ts 
 - docs: whats-new.md, shapes-and-images.md in docs/user-guide/ (2026-11-08)
 - review: accepted (2026-11-08; `npm run check` green: 286 + 4 test files, 2904 + 4 tests, build ok). Acceptance 1-2 are covered by the shapes fixture (checkmark trim end 0 -> 1 over frames 0-10 with round caps, gauge value arc end 0 -> 270 with round caps, arrow dash offset 0 -> 76, nonzero and evenodd pentagrams) and its expected frames. I looked at frames 0 and 5: nothing drawn at trim 0 (no cap dot), half checkmark, gauge at 45 degrees, dash pattern moved, evenodd hole. Also covered by the builder's `test:render` run on both backends, by unit tests (ShapeGeometryCache, Compositor.shapes, pathRecords, core/shapes) and by pending manual check 1 for preview vs export. Acceptance 3 is covered by the ShapeGeometryCache counter tests, the builder's CDP measurement and pending manual check 2. Nothing from Do not build yet was built (only a `TODO(batch 66)` hook and `defaultPrimitive`, which the fuzz uses). The only new tokens are `--clip-shape*`, in tokens.css (aliases). Geometry is cached by path and style with offload to a worker, both backends have stencil-then-cover, export goes through the same LayerTextures, and there are no React changes on the render path. Every new TODO is tagged. The FlashFX-v2 verify-tessellation checks are ported as Vitest tests (square, holes of either winding, two counters). The MSAA-instead-of-analytic-AA deviation is logged with a reason. Non-blocking notes: `workerBuilder` has no `onerror`, so a crashed geometry worker leaves its slow paths on their last geometry; the WebGPU shape vertex buffer is not freed in `releaseCaches`.
+
+### Batch 66: Vector shapes II: SVG import and the shape tools
+- status: done
+- date: 2026-11-08
+- notes:
+  - Built in auto mode (lean run, resumed after a context compaction).
+  - `core/shapes/svgImport.ts`: the §21.12 subset (path, rect, circle, ellipse, line, polyline, polygon, g; transforms baked into the path data with stroke and dash scaled; attributes and `style`; inheritance; `currentColor`; linear and radial gradients with href chains, objectBoundingBox or userSpaceOnUse, remapped to the renderer's gradient line). Filter, mask, clip-path, text, image, pattern, use, style sheets, gradient strokes and similar return `{ok:false, unsupported}`: the media stays an image clip and a warning toast names the feature (`shapeController.importAsShapes`).
+  - `timeline/edit/shape.ts`: `+ Shape` kinds (rectangle, ellipse, polygon, star, arrow, arc, line) created at the playhead (`clip.addShape`), `clip.shape` edits (undo-coalesced, primitive `d` regenerated), per-path stopwatches for trim, stroke, fill and primitive params.
+  - UI: `+ Shape` dropdown in the timeline toolbar, `Import as shapes` in the media menu (`media.importAsShapes`), Shape section in Properties (primitive params, fill, stroke, trim, with stopwatch rows). Every action is in the CommandRegistry (`add.shape.<kind>`).
+  - Manifest key `vector.svgImport`; capabilities.json regenerated; INTEROP.md documents the subset and the fallback.
+  - `fixtures/interop/svg`: check, badge, gauge, arrow icons and a filter SVG, `project.json`, `reference.html` (the browser's own drawing) and `expected/` frames 0, 5, 30 (the check's trim.end is keyed 0 -> 1 over frames 0-10).
+  - Measured: WebGPU frame 30 against Chrome's drawing of the SVGs, SSIM 0.9971 (PSNR 40.66 dB); WebGL2 against WebGPU SSIM 1.0000. `npm run test:render` passes including svg. Frame PNG sizes grow from frame 0 to 5 to 30, so the keyed trim draws on.
+  - Tests: svgImport (19), shape edits (14), interop svg block, context test updated. `npm run check` green.
+- deviations:
+  - Shape number fields commit on release (undo step each); there is no live scrub preview. Reason: it needs a new live-edit channel through the Compositor.
+  - The SVG "drop choice" is the media-menu row plus `media.importAsShapes`; there is no prompt at drop time.
+  - Per-path key buttons are panel-only (they are parameterized by path id, so not registry commands).
+  - SVG approximations: group and element opacity are folded into fill and stroke alpha; gradient strokes and focal radial points are unsupported (fallback to image); a non-square radial radius uses the mean; a gradient is laid out in the path's control box.
+  - Multi-select edits shape paths by index, with the path list taken from the first shape.
+  - The SVG importer and its tests carry a file-level `no-restricted-syntax` disable (SVG color data, not UI colors).
+- follow-ups:
+  - [from Batch 66 -> Batch 67] Shape fields commit on release (no live scrub preview): a `LiveEdit.shapes` channel plus Compositor plumbing would show scrubbing live.
+  - [from Batch 66 -> Batch 80] Shape keys have no timeline lane; keys are edited from the Shape section's per-group stopwatch rows only.
+  - [from Batch 65 -> Batch 80] Still open: unmark a slow path after fast worker builds.
+- design gaps:
+  - Shape section path heading (Batch 66): a muted caption with a hairline between paths; the DS has no multi-item group heading.
+- pending manual checks:
+  1. In the running app: `+ Shape` > Star at the playhead; change Points and Inner radius in the Shape section: each is one undo step and the preview updates on release.
+  2. Import `fixtures/interop/svg/icons/check.svg` and `filter.svg` into the Media bin; `Import as shapes` makes a shape clip for the first and shows the filter toast for the second.
+  3. Turn the Trim stopwatch on with the end keyed 0 -> 1 and play and export: the shape draws on.

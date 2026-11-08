@@ -1,0 +1,463 @@
+{
+  "schemaVersion": 10,
+  "id": "3c5e7a91-2d4f-4b86-8a1c-9e0f6d2b4a38",
+  "name": "Interop svg",
+  "settings": {
+    "width": 800,
+    "height": 800,
+    "fps": {
+      "num": 30,
+      "den": 1
+    },
+    "background": {
+      "r": 0.1,
+      "g": 0.1,
+      "b": 0.12,
+      "a": 1
+    },
+    "sampleRate": 48000
+  },
+  "media": {},
+  "bins": [],
+  "tracks": [
+    {
+      "id": "v1",
+      "kind": "video",
+      "name": "V1",
+      "clipIds": [],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v2",
+      "kind": "video",
+      "name": "V2",
+      "clipIds": [
+        "check"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v3",
+      "kind": "video",
+      "name": "V3",
+      "clipIds": [
+        "badge"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v4",
+      "kind": "video",
+      "name": "V4",
+      "clipIds": [
+        "gauge"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v5",
+      "kind": "video",
+      "name": "V5",
+      "clipIds": [
+        "arrow"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    }
+  ],
+  "clips": {
+    "check": {
+      "id": "check",
+      "trackId": "v2",
+      "kind": "shape",
+      "name": "Check",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "size": {
+        "w": 24,
+        "h": 24
+      },
+      "paths": [
+        {
+          "id": "check-1",
+          "d": "M2 12C2 17.523 6.477 22 12 22C17.523 22 22 17.523 22 12C22 6.477 17.523 2 12 2C6.477 2 2 6.477 2 12Z",
+          "fill": {
+            "r": 0.0784313725490196,
+            "g": 0.3254901960784314,
+            "b": 0.17647058823529413,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        },
+        {
+          "id": "check-2",
+          "d": "M6.5 12.5L10.5 16.5L17.5 8",
+          "fill": null,
+          "fillRule": "nonzero",
+          "stroke": {
+            "width": 2.5,
+            "color": {
+              "r": 0.2901960784313726,
+              "g": 0.8705882352941177,
+              "b": 0.5019607843137255,
+              "a": 1
+            },
+            "align": "center",
+            "cap": "round",
+            "join": "round",
+            "miterLimit": 4
+          },
+          "trim": {
+            "start": 0,
+            "end": 1,
+            "offset": 0
+          }
+        }
+      ],
+      "transform": {
+        "x": -200,
+        "y": -200,
+        "scale": 13.333,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "keyframes": {
+        "paths.check-2.trim.end": [
+          {
+            "frame": 0,
+            "value": 0,
+            "ease": "linear"
+          },
+          {
+            "frame": 10,
+            "value": 1,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    "badge": {
+      "id": "badge",
+      "trackId": "v3",
+      "kind": "shape",
+      "name": "Badge",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "size": {
+        "w": 24,
+        "h": 24
+      },
+      "paths": [
+        {
+          "id": "badge-1",
+          "d": "M10.386 4.114L17.341 5.977C19.261 6.492 20.401 8.466 19.886 10.386L18.023 17.341C17.508 19.261 15.534 20.401 13.614 19.886L6.659 18.023C4.739 17.508 3.599 15.534 4.114 13.614L5.977 6.659C6.492 4.739 8.466 3.599 10.386 4.114Z",
+          "fill": {
+            "r": 0.23137254901960785,
+            "g": 0.5098039215686274,
+            "b": 0.9647058823529412,
+            "a": 0.9
+          },
+          "fillRule": "nonzero",
+          "stroke": {
+            "width": 0.9,
+            "color": {
+              "r": 0.7490196078431373,
+              "g": 0.8588235294117647,
+              "b": 0.996078431372549,
+              "a": 0.9
+            },
+            "align": "center",
+            "cap": "butt",
+            "join": "miter",
+            "miterLimit": 4
+          }
+        },
+        {
+          "id": "badge-2",
+          "d": "M9.392 11.301C9.006 12.742 9.861 14.222 11.301 14.608C12.742 14.994 14.222 14.139 14.608 12.699C14.994 11.258 14.139 9.778 12.699 9.392C11.258 9.006 9.778 9.861 9.392 11.301Z",
+          "fill": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.7200000000000001
+          },
+          "fillRule": "nonzero"
+        },
+        {
+          "id": "badge-3",
+          "d": "M13.398 6.784L13.653 11.045L17.216 13.398L12.955 13.653L10.602 17.216L10.347 12.955L6.784 10.602L11.045 10.347Z",
+          "fill": {
+            "r": 0.11764705882352941,
+            "g": 0.22745098039215686,
+            "b": 0.5411764705882353,
+            "a": 0.9
+          },
+          "fillRule": "evenodd"
+        }
+      ],
+      "transform": {
+        "x": 200,
+        "y": -200,
+        "scale": 13.333,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1
+    },
+    "gauge": {
+      "id": "gauge",
+      "trackId": "v4",
+      "kind": "shape",
+      "name": "Gauge",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "size": {
+        "w": 32,
+        "h": 32
+      },
+      "paths": [
+        {
+          "id": "gauge-1",
+          "d": "M4 28C4 21.373 9.373 16 16 16C22.627 16 28 21.373 28 28L24 24C24 19.582 20.418 16 16 16C11.582 16 8 19.582 8 24Z",
+          "fill": {
+            "type": "linear",
+            "angle": -63.43494882292201,
+            "center": {
+              "x": 0.5,
+              "y": 0.5
+            },
+            "radius": 1,
+            "stops": [
+              {
+                "at": 0,
+                "color": {
+                  "r": 0.9764705882352941,
+                  "g": 0.45098039215686275,
+                  "b": 0.08627450980392157,
+                  "a": 1
+                }
+              },
+              {
+                "at": 0.5,
+                "color": {
+                  "r": 0.9254901960784314,
+                  "g": 0.2823529411764706,
+                  "b": 0.6,
+                  "a": 1
+                }
+              },
+              {
+                "at": 1,
+                "color": {
+                  "r": 0.38823529411764707,
+                  "g": 0.4,
+                  "b": 0.9450980392156862,
+                  "a": 1
+                }
+              }
+            ]
+          },
+          "fillRule": "nonzero",
+          "stroke": {
+            "width": 0.8,
+            "color": {
+              "r": 0.06666666666666667,
+              "g": 0.09411764705882353,
+              "b": 0.15294117647058825,
+              "a": 1
+            },
+            "align": "center",
+            "cap": "butt",
+            "join": "round",
+            "miterLimit": 4
+          }
+        },
+        {
+          "id": "gauge-2",
+          "d": "M12.5 19C12.5 20.933 14.067 22.5 16 22.5C17.933 22.5 19.5 20.933 19.5 19C19.5 17.067 17.933 15.5 16 15.5C14.067 15.5 12.5 17.067 12.5 19Z",
+          "fill": {
+            "type": "radial",
+            "angle": 0,
+            "center": {
+              "x": 0.5,
+              "y": 0.5
+            },
+            "radius": 0.7071067811865476,
+            "stops": [
+              {
+                "at": 0,
+                "color": {
+                  "r": 0.9921568627450981,
+                  "g": 0.9019607843137255,
+                  "b": 0.5411764705882353,
+                  "a": 1
+                }
+              },
+              {
+                "at": 1,
+                "color": {
+                  "r": 0.7058823529411765,
+                  "g": 0.3254901960784314,
+                  "b": 0.03529411764705882,
+                  "a": 1
+                }
+              }
+            ]
+          },
+          "fillRule": "nonzero"
+        }
+      ],
+      "transform": {
+        "x": -200,
+        "y": 200,
+        "scale": 10,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1
+    },
+    "arrow": {
+      "id": "arrow",
+      "trackId": "v5",
+      "kind": "shape",
+      "name": "Arrow",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "size": {
+        "w": 48,
+        "h": 24
+      },
+      "paths": [
+        {
+          "id": "arrow-1",
+          "d": "M3 12L35 12",
+          "fill": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          },
+          "fillRule": "nonzero",
+          "stroke": {
+            "width": 3,
+            "color": {
+              "r": 0.9803921568627451,
+              "g": 0.8,
+              "b": 0.08235294117647059,
+              "a": 1
+            },
+            "align": "center",
+            "cap": "round",
+            "join": "miter",
+            "miterLimit": 4,
+            "dash": [
+              6,
+              5
+            ]
+          }
+        },
+        {
+          "id": "arrow-2",
+          "d": "M33 5L43 12L33 19",
+          "fill": null,
+          "fillRule": "nonzero",
+          "stroke": {
+            "width": 3,
+            "color": {
+              "r": 0.9803921568627451,
+              "g": 0.8,
+              "b": 0.08235294117647059,
+              "a": 1
+            },
+            "align": "center",
+            "cap": "square",
+            "join": "miter",
+            "miterLimit": 4
+          }
+        },
+        {
+          "id": "arrow-3",
+          "d": "M3 20C3 20.828 4.343 21.5 6 21.5C7.657 21.5 9 20.828 9 20C9 19.172 7.657 18.5 6 18.5C4.343 18.5 3 19.172 3 20Z",
+          "fill": {
+            "r": 0.984313725490196,
+            "g": 0.44313725490196076,
+            "b": 0.5215686274509804,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        }
+      ],
+      "transform": {
+        "x": 200,
+        "y": 200,
+        "scale": 6.667,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1
+    }
+  },
+  "markers": [],
+  "captionTracks": {},
+  "textPresetsLocal": [],
+  "sequences": {},
+  "meta": {
+    "createdAt": "2026-11-08T08:00:00.000Z",
+    "modifiedAt": "2026-11-08T08:00:00.000Z",
+    "appVersion": "1.1.0",
+    "generator": {
+      "name": "interop-fixture",
+      "version": "1",
+      "source": "fixtures/interop/svg (Batch 66)"
+    }
+  }
+}

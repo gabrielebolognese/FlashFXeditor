@@ -24,6 +24,7 @@ const BIN_CHIP = "media.moveToBin:";
 
 function entries(media: Record<MediaId, MediaItem>, ids: ReadonlySet<MediaId>, bins: readonly Bin[], status: ReadonlyMap<MediaId, MediaStatus>): ContextMenuEntry[] {
   const videos = [...ids].map((id) => media[id]).filter((item): item is MediaItem => item?.kind === "video");
+  const svgs = [...ids].some((id) => media[id]?.kind === "image" && media[id]?.codec === "svg");
   const canGenerate = videos.some((item) => item.proxy?.status !== "pending" && item.proxy?.status !== "ready");
   const canRemove = videos.some((item) => item.proxy !== undefined && item.proxy.status !== "none");
   const offline = [...ids].map((id) => status.get(id)).filter((value): value is MediaStatus => value !== undefined);
@@ -60,6 +61,7 @@ function entries(media: Record<MediaId, MediaItem>, ids: ReadonlySet<MediaId>, b
     { kind: "item", id: "media.insertAtPlayhead", label: "Insert at playhead", commandId: "media.insertAtPlayhead" },
     { kind: "item", id: "media.overwriteAtPlayhead", label: "Overwrite at playhead", commandId: "media.overwriteAtPlayhead" },
     { kind: "item", id: "media.addToCanvas", label: "Add to canvas" },
+    ...(svgs ? ([{ kind: "item", id: "media.importAsShapes", label: "Import as shapes" }] as const) : []),
     { kind: "separator" },
     { kind: "item", id: "media.generateProxy", label: "Generate proxy", disabled: !canGenerate },
     { kind: "item", id: "media.removeProxy", label: "Remove proxy", disabled: !canRemove },

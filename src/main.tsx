@@ -16,6 +16,7 @@ import { installWordsImportController } from "./app/wordsImportController.js";
 import { installCutController } from "./app/cutController.js";
 import { installDropController } from "./app/dropController.js";
 import { installGraphicsController } from "./app/graphicsController.js";
+import { installShapeController } from "./app/shapeController.js";
 import { installKeyframeController } from "./app/keyframeController.js";
 import { installMarkerController } from "./app/markerController.js";
 import { installMediaController } from "./app/mediaController.js";
@@ -91,6 +92,7 @@ async function start(): Promise<void> {
   installTransitionController();
   installTextController();
   installGraphicsController();
+  installShapeController();
   installPresetController();
   installFontController();
   installCaptionController();

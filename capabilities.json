@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "app": "shorts-editor",
   "appVersion": "1.1.0",
-  "lastBatch": 65,
+  "lastBatch": 66,
   "schemaVersion": 10,
   "project": {
     "file": "project.json",
@@ -248,7 +248,7 @@
   "vector": {
     "shapes": true,
     "trimPaths": true,
-    "svgImport": false,
+    "svgImport": true,
     "primitives": [
       "rect",
       "ellipse",

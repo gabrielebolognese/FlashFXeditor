@@ -62,7 +62,7 @@ export function makeSolidClip(fields: { id: string; trackId: string; start: numb
 }
 
 /** A shape clip (Batch 65): a 100 x 100 view box with one filled square path `p` unless `paths` are given. */
-export function makeShapeClip(fields: { id: string; trackId: string; start: number; duration: number; paths?: ShapePath[] }): ShapeClip {
+export function makeShapeClip(fields: { id: string; trackId: string; start: number; duration: number; paths?: ShapePath[]; size?: { w: number; h: number } }): ShapeClip {
   return {
     kind: "shape",
     name: fields.id,
