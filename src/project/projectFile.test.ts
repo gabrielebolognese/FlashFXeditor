@@ -80,7 +80,7 @@ describe("migration hook", () => {
   it("leaves a current file alone", () => {
     const raw = v1();
     expect(migrateProject(raw)).toEqual(raw);
-    expect(SCHEMA_VERSION).toBe(15);
+    expect(SCHEMA_VERSION).toBe(16);
   });
 
   it("opens a schema 1 project (Batch 41): no bins yet, media without sizes", () => {
@@ -115,7 +115,7 @@ describe("migration hook", () => {
     const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
     raw.schemaVersion = 3;
     const parsed = parseProjectFile(JSON.stringify(raw));
-    expect(parsed.schemaVersion).toBe(15);
+    expect(parsed.schemaVersion).toBe(16);
     expect(parsed.meta).not.toHaveProperty("generator");
     expect(parsed.clips).toEqual(project.clips);
     expect(parsed.media).toEqual(project.media);
@@ -126,7 +126,7 @@ describe("migration hook", () => {
     const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
     raw.schemaVersion = 13;
     const parsed = parseProjectFile(JSON.stringify(raw));
-    expect(parsed.schemaVersion).toBe(15);
+    expect(parsed.schemaVersion).toBe(16);
     expect(parsed.settings).not.toHaveProperty("perspective");
     expect(parsed.clips).toEqual(project.clips);
     const clip = Object.values(project.clips).find((c) => "transform" in c) as Project["clips"][string] & { transform: Record<string, unknown> };
@@ -137,6 +137,25 @@ describe("migration hook", () => {
     const bad = JSON.parse(serializeProject(turned, STAMP)) as { settings: Record<string, unknown> };
     bad.settings.perspective = -5;
     expect(() => parseProjectFile(JSON.stringify(bad))).toThrow(/perspective/);
+  });
+
+  it("opens a schema 15 project (before Batch 72) unchanged: no blend or matte; keeps them through save and open", () => {
+    const project = richProject();
+    const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
+    raw.schemaVersion = 15;
+    const parsed = parseProjectFile(JSON.stringify(raw));
+    expect(parsed.schemaVersion).toBe(16);
+    expect(parsed.clips).toEqual(project.clips);
+    const visual = Object.values(project.clips).filter((c) => c.kind === "video" || c.kind === "text" || c.kind === "solid" || c.kind === "image");
+    const [a, b] = visual as [Project["clips"][string], Project["clips"][string]];
+    expect(b).toBeDefined();
+    const matted = { ...project, clips: { ...project.clips, [a.id]: { ...a, blend: "softLight", matte: { clipId: b.id, mode: "luma" } }, [b.id]: { ...b, matteOnly: true } } } as Project;
+    const back = parseProjectFile(serializeProject(matted, STAMP));
+    expect(back.clips[a.id]).toMatchObject({ blend: "softLight", matte: { clipId: b.id, mode: "luma" } });
+    expect(back.clips[b.id]).toMatchObject({ matteOnly: true });
+    const bad = JSON.parse(serializeProject(matted, STAMP)) as { clips: Record<string, Record<string, unknown>> };
+    (bad.clips[a.id] as Record<string, unknown>).blend = "glow";
+    expect(() => parseProjectFile(JSON.stringify(bad))).toThrow(/blend/);
   });
 
   it("keeps meta.generator and a clip's fallbackOf through save and open, and refuses malformed ones", () => {

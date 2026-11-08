@@ -335,3 +335,43 @@ describe("2.5D fields (spec §21.15, Batch 70)", () => {
     expect(sequenceIssues).toMatch(/depthSort/);
   });
 });
+
+describe("validateProject compositing (spec §21.17, Batch 72)", () => {
+  function compositing(): Project {
+    const project = base();
+    project.tracks.splice(1, 0, makeTrack("v2", "video"));
+    return withClips(project, [
+      makeMediaClip(project, { id: "c1", trackId: "v1", start: 0, duration: 30, mediaId: "m1" }),
+      makeTextClip({ id: "t1", trackId: "v2", start: 0, duration: 30, value: "Matte" }),
+      makeMediaClip(project, { id: "c3", trackId: "a1", start: 0, duration: 30, mediaId: "m1", kind: "audio" }),
+    ]);
+  }
+  const issues = (edit: (p: Project) => void) => {
+    const p = compositing();
+    edit(p);
+    return validateProject(p);
+  };
+  const clip = (p: Project, id: string) => p.clips[id] as unknown as Record<string, unknown>;
+
+  it("accepts blend, matte and matteOnly on visual clips", () => {
+    expect(
+      issues((p) => {
+        Object.assign(clip(p, "c1"), { blend: "colorDodge", matte: { clipId: "t1", mode: "lumaInverted" } });
+        Object.assign(clip(p, "t1"), { matteOnly: true });
+      }),
+    ).toEqual([]);
+  });
+
+  it("refuses unknown modes, malformed mattes and compositing fields on audio clips", () => {
+    expect(issues((p) => Object.assign(clip(p, "c1"), { blend: "burn" })).join()).toMatch(/not a blend mode/);
+    expect(issues((p) => Object.assign(clip(p, "c1"), { matte: { clipId: "t1", mode: "red" } })).join()).toMatch(/matte must be/);
+    expect(issues((p) => Object.assign(clip(p, "c1"), { matteOnly: "yes" })).join()).toMatch(/matteOnly must be/);
+    expect(issues((p) => Object.assign(clip(p, "c3"), { blend: "screen" })).join()).toMatch(/takes no blend mode/);
+  });
+
+  it("refuses a clip as its own matte and an audio clip as a matte; ignores a matte clip that is gone", () => {
+    expect(issues((p) => Object.assign(clip(p, "c1"), { matte: { clipId: "c1", mode: "alpha" } })).join()).toMatch(/its own matte/);
+    expect(issues((p) => Object.assign(clip(p, "c1"), { matte: { clipId: "c3", mode: "alpha" } })).join()).toMatch(/draws no picture/);
+    expect(issues((p) => Object.assign(clip(p, "c1"), { matte: { clipId: "gone", mode: "alpha" } }))).toEqual([]);
+  });
+});

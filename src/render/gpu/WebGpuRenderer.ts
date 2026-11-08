@@ -19,7 +19,7 @@ import type { RGBA } from "../../core/document/types.js";
 import type { DrawList } from "../compositor/drawList.js";
 import { IDENTITY, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import type { BackendRenderer } from "./backend.js";
-import { blurRegionInto, DrawRecords, newRecordUniform, pathRegionInto, premultipliedInto, setRect, showBlurred, showPath, writePathUniform, type BlurRegion, type QuadKind, type Rect } from "./drawRecords.js";
+import { blurRegionInto, DrawRecords, newRecordUniform, pathRegionInto, premultipliedInto, ROLE, setRect, showBlurred, showPath, writePathUniform, type BlurRegion, type DrawRecord, type QuadKind, type Rect } from "./drawRecords.js";
 import { fitWithin, hasAlphaFormat } from "./fitWithin.js";
 import type { GpuDevice } from "./GpuDevice.js";
 import { isHdrColorSpace, toneMapToCanvas } from "./hdr.js";
@@ -27,7 +27,7 @@ import { layerFloats, LAYER_SIZE, LAYER_STRIDE, packLayer, packMat3, pixelsToCli
 import { generateMipmaps, mipLevelCount, textureBytes, type MipGenerator } from "./mipmaps.js";
 import { paddedBytesPerRow, unpadAndUnpremultiply } from "./readback.js";
 import type { AlphaPlane, CanvasTarget, DeviceEvent, OffscreenTarget, Pane, RenderTarget, TextureHandle, TextureOptions, Viewport } from "./renderer.js";
-import { BLUR_WGSL, DISSOLVE_WGSL, MIPMAP_WGSL, PATH_RESOLVE_WGSL, PATH_WGSL, SCALE_ALPHA_WGSL, SCALE_WGSL, SOLID_WGSL, TEXTURED_WGSL } from "./shaders.js";
+import { BLUR_WGSL, COMPOSITE_WGSL, DISSOLVE_WGSL, MIPMAP_WGSL, PATH_RESOLVE_WGSL, PATH_WGSL, SCALE_ALPHA_WGSL, SCALE_WGSL, SOLID_WGSL, TEXTURED_WGSL } from "./shaders.js";
 
 /** Textures, offscreen targets and mip levels are rgba8 (spec §9.3); canvases use the preferred format. */
 const TEXTURE_FORMAT: GPUTextureFormat = "rgba8unorm";
@@ -71,6 +71,51 @@ interface Pipelines {
   solid: GPURenderPipeline;
 }
 
+/** A group's pictures (spec §21.17), the target's size: its layers and its matte (made on the first matte). */
+interface GroupTarget {
+  width: number;
+  height: number;
+  picture: GpuTexture;
+  matte: GpuTexture | null;
+  /** The bind group of the composite and the matte and backdrop views it was made with. */
+  bindGroup: GPUBindGroup | null;
+  boundMatte: GPUTextureView | null;
+  boundBackdrop: GPUTextureView | null;
+  /** The draw that last used it. */
+  used: number;
+}
+
+/** The copy of a target the non-hardware blend modes read (its format and size). */
+interface BackdropTarget {
+  format: GPUTextureFormat;
+  width: number;
+  height: number;
+  texture: GPUTexture;
+  view: GPUTextureView;
+  used: number;
+}
+
+interface CompositePipelines {
+  normal: GPURenderPipeline;
+  screen: GPURenderPipeline;
+  add: GPURenderPipeline;
+  /** The non-hardware modes: the W3C composite with the backdrop, no blending. */
+  backdrop: GPURenderPipeline;
+}
+
+/** Blend modes and track mattes (Batch 72), built on the first group: the composite pipelines and the pooled pictures. */
+interface CompositeResources {
+  layout: GPUBindGroupLayout;
+  pipelineLayout: GPUPipelineLayout;
+  module: GPUShaderModule;
+  pipelines: Map<GPUTextureFormat, CompositePipelines>;
+  /** Bound for a missing matte or backdrop. */
+  dummy: GPUTexture;
+  dummyView: GPUTextureView;
+  groups: GroupTarget[];
+  backdrops: BackdropTarget[];
+}
+
 /** Everything that belongs to one GPUDevice. */
 interface DeviceResources {
   device: GPUDevice;
@@ -88,6 +133,8 @@ interface DeviceResources {
   scalerAlpha?: { pipeline: GPURenderPipeline; layout: GPUBindGroupLayout };
   /** Shapes (Batch 65); null until the first one is drawn. */
   path: PathResources | null;
+  /** Blend modes and track mattes (Batch 72); null until the first group is drawn. */
+  composite: CompositeResources | null;
   /** The blur passes: pipeline, uniforms (one 256-byte slot per pass), pooled textures. */
   blur: { pipeline: GPURenderPipeline; layout: GPUBindGroupLayout; buffer: GPUBuffer; capacity: number; group: GPUBindGroup; pool: { texture: GpuTexture; used: number }[] };
   viewBuffer: GPUBuffer;
@@ -233,6 +280,15 @@ export class WebGpuRenderer implements BackendRenderer {
   private draws = 0;
   /** The pass descriptor, created on the first draw; each draw only swaps the attachment's view. */
   private pass: { attachment: GPURenderPassColorAttachment; descriptor: GPURenderPassDescriptor } | null = null;
+  /** The pass that goes on drawing into the target after a backdrop copy (loads what is there). */
+  private loadPass: { attachment: GPURenderPassColorAttachment; descriptor: GPURenderPassDescriptor } | null = null;
+  /** This draw's group pictures: group g is `groupTargets[g - 1]`. */
+  private readonly groupTargets: GroupTarget[] = [];
+  /**
+   * Copies of the target made for a non-hardware blend mode (spec §21.17, Batch 72): a frame whose
+   * groups all use normal, screen or add makes none (the acceptance counter, `__editor` dev stats).
+   */
+  backdropCopies = 0;
 
   constructor(private readonly gpu: GpuDevice) {
     this.canvasFormat = typeof navigator !== "undefined" && navigator.gpu ? navigator.gpu.getPreferredCanvasFormat() : "bgra8unorm";
@@ -357,6 +413,15 @@ export class WebGpuRenderer implements BackendRenderer {
     }
     const pool = this.resources?.blur.pool;
     if (pool) for (const entry of pool.splice(0)) entry.texture.destroy();
+    const composite = this.resources?.composite;
+    if (composite) {
+      for (const entry of composite.groups.splice(0)) {
+        entry.picture.destroy();
+        entry.matte?.destroy();
+      }
+      for (const entry of composite.backdrops.splice(0)) entry.texture.destroy();
+    }
+    this.groupTargets.length = 0;
     const path = this.resources?.path;
     if (path?.scratch) {
       path.scratch.color.destroy();
@@ -400,13 +465,16 @@ export class WebGpuRenderer implements BackendRenderer {
 
     let attachment: GPUTextureView;
     let format: GPUTextureFormat;
+    let targetTexture: GPUTexture;
     if (target instanceof GpuCanvasTarget) {
       if (target.configured !== res.generation) this.configure(target);
-      attachment = target.context.getCurrentTexture().createView();
+      targetTexture = target.context.getCurrentTexture();
+      attachment = targetTexture.createView();
       format = target.format;
     } else if (target instanceof GpuOffscreenTarget) {
       if (!target.texture.valid) this.resize(target, target.width, target.height);
-      attachment = target.texture.texture.createView({ baseMipLevel: 0, mipLevelCount: 1 });
+      targetTexture = target.texture.texture;
+      attachment = targetTexture.createView({ baseMipLevel: 0, mipLevelCount: 1 });
       format = TEXTURE_FORMAT;
     } else {
       return false;
@@ -419,6 +487,9 @@ export class WebGpuRenderer implements BackendRenderer {
     this.blurRecords(res, encoder, count);
     this.writeUniforms(res, count, pixelsToClipInto(this.toClip, target.width, target.height, IDENTITY));
 
+    // Blend modes and track mattes (spec §21.17): each group's layers and matte into their pictures first.
+    const composite = this.records.groupCount > 0 ? this.groupPasses(res, encoder, count, target.width, target.height) : null;
+
     const pipelines = this.pipelines(res, format);
     premultipliedInto(this.clearValue, first.viewport.outside);
     if (this.pass) {
@@ -427,28 +498,210 @@ export class WebGpuRenderer implements BackendRenderer {
       const created: GPURenderPassColorAttachment = { view: attachment, loadOp: "clear", storeOp: "store", clearValue: this.clearValue };
       this.pass = { attachment: created, descriptor: { colorAttachments: [created] } };
     }
-    const pass = encoder.beginRenderPass(this.pass.descriptor);
-    const offset = this.dynamicOffset;
+    let pass = encoder.beginRenderPass(this.pass.descriptor);
     // The pass starts with the whole target as its scissor.
     const last = setRect(this.lastScissor, 0, 0, target.width, target.height);
     for (let index = 0; index < count; index++) {
       const record = this.records.at(index);
-      const { scissor } = record;
-      if (scissor.x !== last.x || scissor.y !== last.y || scissor.width !== last.width || scissor.height !== last.height) {
-        pass.setScissorRect(scissor.x, scissor.y, scissor.width, scissor.height);
-        setRect(last, scissor.x, scissor.y, scissor.width, scissor.height);
+      if (record.role !== ROLE.target) continue;
+      if (record.kind !== "composite") {
+        this.quad(pass, pipelines, res, index, record, last);
+        continue;
       }
-      if (record.kind === "path" || (record.kind === "textured" && !record.texture0)) continue;
-      pass.setPipeline(pipelines[record.kind]);
-      offset[0] = index * LAYER_STRIDE;
-      pass.setBindGroup(0, res.group, offset, 0, 1);
-      if (record.texture0) pass.setBindGroup(1, record.texture0.bindGroup);
-      if (record.texture1) pass.setBindGroup(2, record.texture1.bindGroup);
+      const group = this.groupTargets[record.group - 1];
+      if (!composite || !group) continue;
+      let backdrop: BackdropTarget | null = null;
+      if (this.records.groups[record.group - 1]?.backdrop) {
+        // A non-hardware mode reads what is below: end the pass, copy the target, go on loading it.
+        pass.end();
+        backdrop = this.backdropTarget(res, composite, format, target.width, target.height);
+        encoder.copyTextureToTexture({ texture: targetTexture }, { texture: backdrop.texture }, [target.width, target.height]);
+        this.backdropCopies += 1;
+        pass = encoder.beginRenderPass(this.loadDescriptor(attachment));
+        setRect(last, 0, 0, target.width, target.height);
+      }
+      this.scissor(pass, record, last);
+      const modes = this.compositePipelines(res, composite, format);
+      const code = record.uniform.fx?.code ?? 0;
+      pass.setPipeline(backdrop ? modes.backdrop : code === SCREEN_CODE ? modes.screen : code === ADD_CODE ? modes.add : modes.normal);
+      this.dynamicOffset[0] = index * LAYER_STRIDE;
+      pass.setBindGroup(0, res.group, this.dynamicOffset, 0, 1);
+      pass.setBindGroup(1, this.compositeBindGroup(res, composite, group, backdrop));
       pass.draw(4);
     }
     pass.end();
     res.device.queue.submit([encoder.finish()]);
     return true;
+  }
+
+  /** Sets the record's scissor when it differs from the last one set (`last`). */
+  private scissor(pass: GPURenderPassEncoder, record: DrawRecord<GpuTexture>, last: Rect): void {
+    const { scissor } = record;
+    if (scissor.x !== last.x || scissor.y !== last.y || scissor.width !== last.width || scissor.height !== last.height) {
+      pass.setScissorRect(scissor.x, scissor.y, scissor.width, scissor.height);
+      setRect(last, scissor.x, scissor.y, scissor.width, scissor.height);
+    }
+  }
+
+  /** Draws a quad record (textured, dissolve or solid; a shape is a textured record by now). */
+  private quad(pass: GPURenderPassEncoder, pipelines: Pipelines, res: DeviceResources, index: number, record: DrawRecord<GpuTexture>, last: Rect): void {
+    this.scissor(pass, record, last);
+    if (record.kind === "path" || record.kind === "composite" || (record.kind === "textured" && !record.texture0)) return;
+    pass.setPipeline(pipelines[record.kind]);
+    this.dynamicOffset[0] = index * LAYER_STRIDE;
+    pass.setBindGroup(0, res.group, this.dynamicOffset, 0, 1);
+    if (record.texture0) pass.setBindGroup(1, record.texture0.bindGroup);
+    if (record.texture1) pass.setBindGroup(2, record.texture1.bindGroup);
+    pass.draw(4);
+  }
+
+  /** The descriptor of a pass that keeps the target's contents (after a backdrop copy). */
+  private loadDescriptor(attachment: GPUTextureView): GPURenderPassDescriptor {
+    if (this.loadPass) this.loadPass.attachment.view = attachment;
+    else {
+      const created: GPURenderPassColorAttachment = { view: attachment, loadOp: "load", storeOp: "store" };
+      this.loadPass = { attachment: created, descriptor: { colorAttachments: [created] } };
+    }
+    return this.loadPass.descriptor;
+  }
+
+  /**
+   * Blend modes and track mattes (spec §21.17, Batch 72): draws each group's layer records into its
+   * picture and its matte records into its matte picture (pooled target-size textures, cleared
+   * transparent; the records' matrices already map to target px). Frees pictures unused for a while.
+   */
+  private groupPasses(res: DeviceResources, encoder: GPUCommandEncoder, count: number, width: number, height: number): CompositeResources {
+    const composite = (res.composite ??= this.buildComposite(res));
+    const pipelines = this.pipelines(res, TEXTURE_FORMAT);
+    const pool = composite.groups;
+    this.groupTargets.length = 0;
+    for (let g = 1; g <= this.records.groupCount; g++) {
+      let group: GroupTarget | null = null;
+      for (const entry of pool) {
+        if (entry.width === width && entry.height === height && entry.used !== this.draws) {
+          group = entry;
+          break;
+        }
+      }
+      if (!group) {
+        group = { width, height, picture: this.newTexture(res, width, height, { label: "group picture" }), matte: null, bindGroup: null, boundMatte: null, boundBackdrop: null, used: this.draws };
+        pool.push(group);
+      }
+      group.used = this.draws;
+      this.groupTargets.push(group);
+      this.groupPass(res, encoder, pipelines, count, g, ROLE.layers, group.picture, width, height);
+      if (this.records.groups[g - 1]?.matte) {
+        group.matte ??= this.newTexture(res, width, height, { label: "group matte" });
+        this.groupPass(res, encoder, pipelines, count, g, ROLE.matte, group.matte, width, height);
+      }
+    }
+    for (let i = pool.length - 1; i >= 0; i--) {
+      const entry = pool[i] as GroupTarget;
+      if (this.draws - entry.used <= BLUR_KEEP_DRAWS) continue;
+      entry.picture.destroy();
+      entry.matte?.destroy();
+      pool.splice(i, 1);
+    }
+    for (let i = composite.backdrops.length - 1; i >= 0; i--) {
+      const entry = composite.backdrops[i] as BackdropTarget;
+      if (this.draws - entry.used <= BLUR_KEEP_DRAWS) continue;
+      entry.texture.destroy();
+      composite.backdrops.splice(i, 1);
+    }
+    return composite;
+  }
+
+  private groupPass(res: DeviceResources, encoder: GPUCommandEncoder, pipelines: Pipelines, count: number, group: number, role: number, into: GpuTexture, width: number, height: number): void {
+    const pass = encoder.beginRenderPass({ label: role === ROLE.matte ? "group matte" : "group", colorAttachments: [{ view: into.view, loadOp: "clear", storeOp: "store", clearValue: [0, 0, 0, 0] }] });
+    const last = setRect(this.lastScissor, 0, 0, width, height);
+    for (let index = 0; index < count; index++) {
+      const record = this.records.at(index);
+      if (record.group === group && record.role === role) this.quad(pass, pipelines, res, index, record, last);
+    }
+    pass.end();
+  }
+
+  /** The pooled copy of a `format` target of this size (one is enough: copies are drawn from one after another). */
+  private backdropTarget(res: DeviceResources, composite: CompositeResources, format: GPUTextureFormat, width: number, height: number): BackdropTarget {
+    let found: BackdropTarget | null = null;
+    for (const entry of composite.backdrops) {
+      if (entry.format === format && entry.width === width && entry.height === height) {
+        found = entry;
+        break;
+      }
+    }
+    if (!found) {
+      const texture = res.device.createTexture({ label: "backdrop", size: [width, height], format, usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST });
+      found = { format, width, height, texture, view: texture.createView(), used: this.draws };
+      composite.backdrops.push(found);
+    }
+    found.used = this.draws;
+    return found;
+  }
+
+  /** The composite's bind group of a group (kept while its matte and backdrop stay the same). */
+  private compositeBindGroup(res: DeviceResources, composite: CompositeResources, group: GroupTarget, backdrop: BackdropTarget | null): GPUBindGroup {
+    const matte = group.matte?.view ?? null;
+    const behind = backdrop?.view ?? null;
+    if (!group.bindGroup || group.boundMatte !== matte || group.boundBackdrop !== behind) {
+      group.bindGroup = res.device.createBindGroup({
+        label: "composite",
+        layout: composite.layout,
+        entries: [
+          { binding: 0, resource: group.picture.view },
+          { binding: 1, resource: matte ?? composite.dummyView },
+          { binding: 2, resource: behind ?? composite.dummyView },
+        ],
+      });
+      group.boundMatte = matte;
+      group.boundBackdrop = behind;
+    }
+    return group.bindGroup;
+  }
+
+  private compositePipelines(res: DeviceResources, composite: CompositeResources, format: GPUTextureFormat): CompositePipelines {
+    let modes = composite.pipelines.get(format);
+    if (!modes) {
+      const make = (label: string, entryPoint: string, blend: GPUBlendState | null) =>
+        res.device.createRenderPipeline({
+          label: `composite ${label} ${format}`,
+          layout: composite.pipelineLayout,
+          vertex: { module: composite.module, entryPoint: "vs" },
+          fragment: { module: composite.module, entryPoint, targets: [blend ? { format, blend } : { format }] },
+          primitive: { topology: "triangle-strip" },
+        });
+      modes = { normal: make("normal", "fs", PREMULTIPLIED_BLEND), screen: make("screen", "fs", SCREEN_BLEND), add: make("add", "fs", ADD_BLEND), backdrop: make("backdrop", "fsBackdrop", null) };
+      composite.pipelines.set(format, modes);
+    }
+    return modes;
+  }
+
+  private buildComposite(res: DeviceResources): CompositeResources {
+    const { device } = res;
+    const texture: GPUTextureBindingLayout = { sampleType: "unfilterable-float" };
+    const layout = device.createBindGroupLayout({
+      label: "composite",
+      entries: [
+        { binding: 0, visibility: GPUShaderStage.FRAGMENT, texture },
+        { binding: 1, visibility: GPUShaderStage.FRAGMENT, texture },
+        { binding: 2, visibility: GPUShaderStage.FRAGMENT, texture },
+      ],
+    });
+    const module = device.createShaderModule({ label: "composite", code: COMPOSITE_WGSL });
+    void module.getCompilationInfo().then((info) => {
+      for (const message of info.messages) if (message.type === "error") console.error(`[gpu] composite shader: ${message.message} (line ${message.lineNum})`);
+    });
+    const dummy = device.createTexture({ label: "composite dummy", size: [1, 1], format: TEXTURE_FORMAT, usage: GPUTextureUsage.TEXTURE_BINDING });
+    return {
+      layout,
+      pipelineLayout: device.createPipelineLayout({ label: "composite", bindGroupLayouts: [res.groupLayout, layout] }),
+      module,
+      pipelines: new Map(),
+      dummy,
+      dummyView: dummy.createView(),
+      groups: [],
+      backdrops: [],
+    };
   }
 
   /**
@@ -776,7 +1029,8 @@ export class WebGpuRenderer implements BackendRenderer {
   private configure(target: GpuCanvasTarget): void {
     const res = this.resources;
     if (!res) return;
-    target.context.configure({ device: res.device, format: target.format, alphaMode: "opaque" });
+    // COPY_SRC: a non-hardware blend mode copies the canvas into its backdrop (spec §21.17).
+    target.context.configure({ device: res.device, format: target.format, alphaMode: "opaque", usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC });
     target.configured = res.generation;
   }
 
@@ -1040,6 +1294,7 @@ export class WebGpuRenderer implements BackendRenderer {
       modules: { textured: module("textured", TEXTURED_WGSL), dissolve: module("dissolve", DISSOLVE_WGSL), solid: module("solid", SOLID_WGSL) },
       pipelines: new Map<GPUTextureFormat, Pipelines>(),
       path: null,
+      composite: null,
       mips,
       scaler,
       blur,
@@ -1057,6 +1312,22 @@ export class WebGpuRenderer implements BackendRenderer {
 
 const PREMULTIPLIED_BLEND: GPUBlendState = {
   color: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
+  alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
+};
+
+/** Blend codes (`BLEND_MODES` indices) of the hardware modes besides normal. */
+const SCREEN_CODE = 5;
+const ADD_CODE = 7;
+
+/** Screen (spec §21.17): color Cs + Cb(1 - Cs) on premultiplied values; alpha source-over. */
+const SCREEN_BLEND: GPUBlendState = {
+  color: { srcFactor: "one", dstFactor: "one-minus-src", operation: "add" },
+  alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
+};
+
+/** Add (linear dodge): color Cs + Cb, clamped by the unorm target; alpha source-over. */
+const ADD_BLEND: GPUBlendState = {
+  color: { srcFactor: "one", dstFactor: "one", operation: "add" },
   alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
 };
 

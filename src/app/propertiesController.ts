@@ -7,8 +7,9 @@
 import { updateClip } from "../core/commands/basicCommands.js";
 import { setBackground, setPerspective } from "../core/commands/projectCommands.js";
 import { backfaceHiddenAll, depthSortOf, resetDepth, setBackfaceHidden, setDepthSort } from "../timeline/edit/depth.js";
+import { matteOnlyOf, setBlend, setMatte, setMatteOnly } from "../timeline/edit/compositing.js";
 import { formatHexColor } from "../core/document/color.js";
-import type { ClipId, RGBA } from "../core/document/types.js";
+import { BLEND_MODES, type BlendMode, type ClipId, type RGBA } from "../core/document/types.js";
 import { pushRecentColor } from "../project/appSettings.js";
 import { retimeClips, setEnabled, type ClipTimeField } from "../timeline/edit/clipProps.js";
 import { isCropClip, quickCrops, type QuickCrop } from "../timeline/edit/crop.js";
@@ -77,6 +78,26 @@ export function toggleBackface(): void {
 /** Reset 3D (spec §21.15): the selected layers' X and Y rotations and depth back to 0. */
 export function resetDepthRotation(): void {
   const command = resetDepth(documentStore.getState(), selectedClips().ids, sessionStore.state.getState().playhead);
+  if (command) documentStore.dispatch(command);
+}
+
+/** The blend mode of the selected visual clips (spec §21.17). */
+export function blendSelected(mode: BlendMode): void {
+  const command = setBlend(documentStore.getState(), selectedClips().ids, mode);
+  if (command) documentStore.dispatch(command);
+}
+
+/** Removes the track matte of the selected clips (spec §21.17). */
+export function clearMatte(): void {
+  const command = setMatte(documentStore.getState(), selectedClips().ids, null);
+  if (command) documentStore.dispatch(command);
+}
+
+/** Matte only on or off for the selected clips (on unless all already are; spec §21.17). */
+export function toggleMatteOnly(): void {
+  const project = documentStore.getState();
+  const ids = selectedClips().ids;
+  const command = setMatteOnly(project, ids, matteOnlyOf(project, ids) !== true);
   if (command) documentStore.dispatch(command);
 }
 
@@ -202,6 +223,9 @@ export function installPropertiesController(): () => void {
     actions.register("clip.backface", toggleBackface),
     actions.register("transform.reset3d", resetDepthRotation),
     actions.register("compound.depthSort", toggleDepthSort),
+    ...BLEND_MODES.map((mode) => actions.register(`clip.blend.${mode}`, () => blendSelected(mode))),
+    actions.register("clip.matte.clear", clearMatte),
+    actions.register("clip.matteOnly", toggleMatteOnly),
     actions.register("clip.toggleEnabled", toggleEnabled),
     actions.register("crop.toFrame", () => quickCrop("frame")),
     actions.register("crop.reset", () => quickCrop("reset")),

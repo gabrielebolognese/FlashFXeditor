@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 71
+last_completed_batch: 72
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -25,6 +25,7 @@ What release 1.1.0 does not do, or does not do well. Next steps for each are in 
 
 ## Design system gaps
 Items the design system did not define and the functional default that was used instead.
+- The Compositing section (Blend, Matte, Mode, Matte only) has no DESIGN_SYSTEM.md definition: it reuses Row, Select and Toggle with no new CSS; the Mode select is disabled with the tooltip "Pick a matte first" until a matte is picked.
 - The transition Preview row, Direction arrows, Angle, Softness, Center and Easing rows have no DESIGN_SYSTEM.md definition: they reuse Row, IconButton chips, NumberField and Select; the preview canvas uses `--hairline`, `--radius-sm`, `--control-default`. (Batch 71)
 - The X and Y tilt handles of a 2.5D layer have no DESIGN_SYSTEM.md definition: they reuse the round tangent handle look of the path overlay, and their offset past the box is `gizmo.rotateZone` (no dedicated token). (Batch 70)
 - The Parent picker, the Motion path and Auto-orient toggles and the path overlay (path line, key squares, round tangent handles) have no DESIGN_SYSTEM.md definition; they reuse Select, IconButton (pressed), Row, and the gizmo tokens (accent, accent dim, handle size, line width). (Batch 69)
@@ -517,7 +518,7 @@ Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also 
 ## Follow-ups
 Small things discovered during a batch that belong to a later batch. Format: `- [from Batch NN -> Batch MM] description`.
 - [from Batch 71 -> Batch 82] Investigate the interleaved undo/redo property of `fuzz.test.ts` (seed 9001 with a shifted random stream): after undo-all and redo-all the document lacks later caption clips.
-- [from Batch 71 -> Batch 72] A track matte or blend mode on a clip inside a transition: check that it follows the picture for every Batch 71 kind.
+- [from Batch 71 -> Batch 72] A track matte or blend mode on a clip inside a transition: check that it follows the picture for every Batch 71 kind. (done in Batch 72: a clip in a transition groups the whole transition picture, every kind, with the dominant side's blend and matte; test `takes blend and matte of the dominant side of a transition`)
 - [from Batch 69 -> Batch 70] Parented text rasterizes at its live (world) scale, not at a fixed one: a parent that scales the text up and down re-rasterizes it; a parented text under a scaling null is a candidate for a cached raster.
 - [from Batch 69 -> Batch 70] The path overlay draws live while a key or tangent is dragged, but the clip itself moves on release (one `clip.pathKey` command); a live channel for `transform.position` through the Compositor would show it moving.
 - [from Batch 69 -> Batch 70] Deleting a parent (or a compound edge) leaves the parentId of the children pointing at nothing: the evaluation ignores it and the children jump to their local placement. A delete that keeps the world placement (as Clear parent does) can follow.
@@ -861,7 +862,11 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 70 -> Batch 82] (from Batch 69) Profile 105 animated shape layers (about 30 fps in a dev build) and the one React commit per 10 s of playback.
 - [from Batch 70 -> Batch 77] (from Batch 69) Compound fades and transitions do not reach audio.
 - [from Batch 70 -> Batch 80] (from Batch 69) Counter and animator fields have no `LiveEdit` channel.
-- [from Batch 70 -> Batch 72] Track mattes and blend modes on a 2.5D layer: check that a matte follows the projected picture.
+- [from Batch 70 -> Batch 72] Track mattes and blend modes on a 2.5D layer: check that a matte follows the projected picture. (done in Batch 72: the group keeps each layer's projection, so the matte follows the projected picture; test `keeps a 2.5D clip's projection`)
+- [from Batch 72 -> Batch 73] Masks and track mattes on one clip: apply the mask to the group's picture before the matte (`GroupLayer` is the hook), and let a masked clip be a matte source.
+- [from Batch 72 -> Batch 82] Measure playback of two screen layers over video at 60 fps on an unloaded machine: on 2026-11-09 headless Chrome reached only 15-35 rAF frames per second for HEAD (Batch 71) and Batch 72 alike.
+- [from Batch 72 -> Batch 82] Groups do not nest: a clip with a blend mode or matte inside a compound that has one itself draws plainly inside the outer group.
+- [from Batch 72 -> Batch 82] A compound cannot be made from a clip without its track matte (refused); offer to take the matte along, and paste blend and matte with the other attributes.
 
 ## Dependencies
 Why each dependency exists (Batch rule 8).
@@ -7122,3 +7127,40 @@ Why each dependency exists (Batch rule 8).
   - Earlier rejection: 1 fixed (`transitionBinding.ts`: a scrub writes `transitionLive`, the preview override applies it, the release commits one `transition.update`; `transitionBinding.test.ts` checks the draw list before the commit and one undo step). 2 fixed (`kindHover` store, `TransitionSamplePainter` on the FrameScheduler, no `useState` or private rAF). 3 fixed (`glitchGpu.ts` matches FlashFX-v2 @ a91c675 byte for byte below the header, WGSL/GLSL twins, Vitest twin of verify-glitch-gpu; `directionalBlur.ts` with its header, which gives the reason for 4 taps instead of 15). 4 fixed (measured and recorded: 0 React commits, render 0.9 ms average; the headless rAF ceiling is the same with plain dissolves, and 60 fps on a real display stays a pending manual check). 5 fixed (`sideRng`, `fuzzSideRng.test.ts`).
   - No untagged TODOs and no color or size literals in the fix; nothing from Do not build yet was built.
 - docs: fades-and-transitions.md, whats-new.md, README.md in docs/user-guide/ (2026-11-08)
+
+### Batch 72: Blend modes and track mattes
+- status: done
+- date: 2026-11-09
+- notes:
+  - Built in auto mode (lean run). `npm run check` green: typecheck, lint, 3213 unit tests (7 skipped writers), 4 perf, build. `npm run test:render`: 15 / 15 fixtures on both backends, `compositing` included.
+  - Ported from FlashFX-v2 @ a91c675 with headers: `core/effects/blendModes.ts` (the 13 separable W3C modes plus add, `compositeBlend`, `BLEND_MODE_META`, `blendCode`), `core/effects/trackMatte.ts` (`matteCoverage`, `matteCode`), the matte rule of `engine/renderer.ts` MATTE_SHADER (in the composite shaders), and `scripts/verify-blend-modes.mjs` as `blendModes.test.ts`.
+  - Model, schema 16 (no-op migration 15 -> 16): `blend`, `matte { clipId, mode }` and `matteOnly` on visual clips; validation (unknown mode, missing, self, non-visual or cross-sequence matte), field table and manifest keys `compositing.blendModes`, `compositing.trackMatte`; INTEROP §5.11 and the field reference; capabilities.json regenerated.
+  - Evaluation: a clip with a non-normal blend or a usable matte becomes a `group` layer (its layers, the matte clip's layers evaluated by a plain child Compositor on the `#matte` texture slot, blend and matte mode). Matte-only clips are skipped in the stack but drawn as mattes. A matte clip off the frame gives an empty matte; a matte that is gone, is the clip itself, is not visual or is in another sequence is ignored. A clip in a transition groups the whole transition picture with the dominant side's blend and matte (every Batch 71 kind); 2.5D layers keep their projection inside the group.
+  - Renderer, both backends: draw records carry a group index and role; each group's layers and matte draw into pooled target-size textures, then one composite quad over the frame. normal, screen and add use blend states (no copy); the 10 other modes end the pass, copy the target into a backdrop texture (`backdropCopies` counter on both renderers, `SwitchRenderer` and `BackendRenderer`) and draw `fsBackdrop` without blending. WebGPU reads the group textures with `textureLoad`; WebGL2 uses FBOs, `blitFramebuffer` for the backdrop, and a texel-row flip uniform.
+  - Edits (`timeline/edit/compositing.ts`): `clip.blend`, `clip.matte` (also turns on Matte only on the matte clip), `clip.matteMode`, `clip.matteOnly`, each one undo step, locked clips skipped. Duplicate remaps a matte copied along; compound refuses to split a clip from its matte. Fuzz area `compositing` (4 ops) with seeds 721-723.
+  - UI: the Compositing section after Opacity (Blend list of 13, Matte picker of the same sequence's visual clips, Mode, Matte only), narrow selectors only. Commands `clip.blend.<mode>`, `clip.matte.clear`, `clip.matteOnly` in the CommandRegistry. Smart guides skip matte-only clips.
+  - Fixture `fixtures/interop/compositing` (`core/document/compositingFixture.ts`, pictures by `scripts/fixtures/make-compositing-images.mjs`, clip.mp4 from basic): 17 expected frames: a test chart per mode (a gray ramp with a color band, opaque top half and alpha 128 bottom half, over color bars; frames 5 ... 125), multiply texture over paper (135), two screen light leaks over video (145), video inside a matte-only text matte (155), video through an inverted luma matte (165). WebGL2 frames are bit-identical to WebGPU on this machine.
+  - Acceptance 1: `blendChart.test.ts` decodes each chart frame and the chart's own pictures and compares every sampled pixel (over 2000 per mode, away from edges) with `compositeBlend`: within 3/255 (6/255 for color burn and dodge).
+  - Acceptance 3 measured (CDP, own Vite dev server on 5367, headless Chrome, 1080x1920 at 60 fps, 10 s of video under two full-frame screen leaks, `out/b72/`): `backdropCopies` stays 0 while still and through two playback passes; switching one leak to multiply makes exactly 1 copy per render; back to screen, 0. 0 React commits while playing. Render call 0.6-0.8 ms average, 2.1 ms max. Preview 10.7-13.5 renders per second at 15-20 rAF frames per second: the page itself ran slow. The same run with both leaks normal (no groups) gave 10.3-14.8 renders per second, and the Batch 71 transitions check run against a HEAD copy (5369) gave rAF 35 and 1 render per second. The limit is the machine (as in the Batch 71 review), not the groups.
+  - Acceptance 4: preview, export and the CLI use the same renderers; `npm run test:render` holds both backends to the compositing frames.
+- deviations:
+  - darken, lighten and multiply go through the backdrop copy (FlashFX draws them with blend states): only the backdrop path gives the exact W3C composite for half transparent layers, so 10 modes share one path and normal, screen and add stay hardware.
+  - Add is premultiplied plus (co = min(1, cs + cb)), what its one/one blend state draws at any alpha, as Add does in compositing apps; the CPU reference `compositeBlend` was aligned with it (the separable W3C form clamps differently on half transparent pixels).
+  - Every clip with a blend mode or matte draws through a group texture, hardware modes included (one extra target-size pass per group); measured with no frame rate difference from the same frame without groups.
+  - A luma matte keys on the luma of the premultiplied matte pixel (FlashFX unpremultiplies first), so a half transparent bright matte keys half.
+  - Picking a matte turns on Matte only on the matte clip (as compositing apps do), unless it is locked or selected itself; matte-only clips stay selectable on the canvas but are left out of smart guides.
+  - Mattes are limited to the clip's own sequence: the picker offers only those, validation refuses others, and evaluation ignores a matte outside the evaluated view. Groups do not nest (an inner group draws plainly; follow-up).
+  - Color burn and dodge test the backdrop edge first (W3C order); the chart test allows 6/255 for them (division near the pole amplifies 8-bit rounding).
+  - "Holds 60 fps" could not be shown on this machine on 2026-11-09 (numbers above, A/B against HEAD); kept as a pending manual check and a follow-up.
+- follow-ups:
+  - [from Batch 72 -> Batch 73] Masks and track mattes on one clip: apply the mask to the group's picture before the matte (`GroupLayer` is the hook), and let a masked clip be a matte source.
+  - [from Batch 72 -> Batch 82] Measure playback of two screen layers over video at 60 fps on an unloaded machine: on 2026-11-09 headless Chrome reached only 15-35 rAF frames per second for HEAD (Batch 71) and Batch 72 alike.
+  - [from Batch 72 -> Batch 82] Groups do not nest: a clip with a blend mode or matte inside a compound that has one itself draws plainly inside the outer group.
+  - [from Batch 72 -> Batch 82] A compound cannot be made from a clip without its track matte (refused); offer to take the matte along, and paste blend and matte with the other attributes.
+  - Done here: [from Batch 70 -> Batch 72] blend and matte on a 2.5D layer; [from Batch 71 -> Batch 72] blend and matte on a clip in a transition, every kind.
+- design gaps:
+  - The Compositing section rows have no DESIGN_SYSTEM.md definition: they reuse Row, Select and Toggle with no new CSS (see Design system gaps).
+- pending manual checks:
+  - Playback at 60 fps (acceptance 3): on a 1080x1920 60 fps project, put a video on V1 and two full-frame images on V2 and V3 with Blend set to Screen; open the Profiler and play 10 s from the start. Expect 60 fps, no dropped frames and no React commits while playing; in the dev server console, `(await import("/src/app/previewController.ts")).renderer.backdropCopies` stays the same.
+  - Compositing section: select the video, pick the text clip in Matte: the video shows only inside the letters and the text clip's Matte only switch turns on (the text itself is not drawn). Mode Luma inverted on a radial image matte shows the video at the edges. One Ctrl+Z undoes each change.
+  - Export the `fixtures/interop/compositing` project (open its folder) and compare frames 135-165 with the preview on both backends (`?renderer=webgl2`).

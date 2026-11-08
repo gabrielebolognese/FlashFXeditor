@@ -573,3 +573,88 @@ void main() {
   outColor = gradientColor(t, int(L_FILLP.w));
 }
 `;
+
+/** See BLEND_FUNCTIONS in shaders.ts. */
+const BLEND_FUNCTIONS = /* glsl */ `
+float hardLight(float cb, float cs) {
+  return cs <= 0.5 ? 2.0 * cb * cs : 1.0 - 2.0 * (1.0 - cb) * (1.0 - cs);
+}
+
+float softLight(float cb, float cs) {
+  if (cs <= 0.5) { return cb - (1.0 - 2.0 * cs) * cb * (1.0 - cb); }
+  float d = cb <= 0.25 ? ((16.0 * cb - 12.0) * cb + 4.0) * cb : sqrt(cb);
+  return cb + (2.0 * cs - 1.0) * (d - cb);
+}
+
+float blendChannel(float cbIn, float csIn, int mode) {
+  float b = clamp(cbIn, 0.0, 1.0);
+  float s = clamp(csIn, 0.0, 1.0);
+  if (mode == 1) { return min(b, s); }
+  if (mode == 2) { return b * s; }
+  if (mode == 3) {
+    if (b >= 1.0) { return 1.0; }
+    if (s <= 0.0) { return 0.0; }
+    return 1.0 - min(1.0, (1.0 - b) / s);
+  }
+  if (mode == 4) { return max(b, s); }
+  if (mode == 5) { return b + s - b * s; }
+  if (mode == 6) {
+    if (b <= 0.0) { return 0.0; }
+    if (s >= 1.0) { return 1.0; }
+    return min(1.0, b / (1.0 - s));
+  }
+  if (mode == 7) { return min(1.0, b + s); }
+  if (mode == 8) { return hardLight(s, b); }
+  if (mode == 9) { return softLight(b, s); }
+  if (mode == 10) { return hardLight(b, s); }
+  if (mode == 11) { return abs(b - s); }
+  if (mode == 12) { return b + s - 2.0 * b * s; }
+  return s;
+}
+`;
+
+/**
+ * See COMPOSITE_WGSL in shaders.ts: `backdrop` false is `fs` (hardware modes), true `fsBackdrop`. The
+ * group's textures hold target px row 0 first; `L_SHAPE.x` = 1 when the target's rows run bottom up
+ * (the canvas), with `L_SHAPE.y` its height, so the texel row is found from gl_FragCoord either way.
+ * The matte rule: Ported from FlashFX-v2 src/engine/renderer.ts (MATTE_SHADER) @ a91c675, adapted.
+ */
+function compositeFragment(backdrop: boolean): string {
+  return /* glsl */ `${HEADER}${LAYER}${BLEND_FUNCTIONS}
+uniform sampler2D u_picture;
+uniform sampler2D u_matte;
+uniform sampler2D u_backdrop;
+out vec4 outColor;
+
+ivec2 texel() {
+  float y = L_SHAPE.x > 0.5 ? L_SHAPE.y - gl_FragCoord.y : gl_FragCoord.y;
+  return ivec2(int(gl_FragCoord.x), int(y));
+}
+
+vec4 matted(ivec2 p) {
+  vec4 s = texelFetch(u_picture, p, 0);
+  int matte = int(L_TFX.x + 0.5);
+  if (matte == 0) { return s; }
+  vec4 m = texelFetch(u_matte, p, 0);
+  float c = m.a;
+  if (matte >= 3) { c = dot(m.rgb, vec3(0.2126, 0.7152, 0.0722)); }
+  if (matte == 2 || matte == 4) { c = 1.0 - c; }
+  return s * clamp(c, 0.0, 1.0);
+}
+
+void main() {
+  ivec2 p = texel();
+  vec4 s = matted(p);
+${backdrop ? `  vec4 b = texelFetch(u_backdrop, p, 0);
+  int mode = int(L_TFX.w + 0.5);
+  vec3 cs = s.a > 0.0 ? s.rgb / max(s.a, 1e-6) : vec3(0.0);
+  vec3 cb = b.a > 0.0 ? b.rgb / max(b.a, 1e-6) : vec3(0.0);
+  vec3 blended = vec3(blendChannel(cb.r, cs.r, mode), blendChannel(cb.g, cs.g, mode), blendChannel(cb.b, cs.b, mode));
+  vec3 rgb = s.rgb * (1.0 - b.a) + b.rgb * (1.0 - s.a) + s.a * b.a * blended;
+  outColor = vec4(rgb, s.a + b.a - s.a * b.a);` : `  outColor = s;`}
+}
+`;
+}
+
+export const COMPOSITE_FRAGMENT = compositeFragment(false);
+export const COMPOSITE_BACKDROP_FRAGMENT = compositeFragment(true);

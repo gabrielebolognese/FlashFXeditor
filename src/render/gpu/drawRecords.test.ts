@@ -218,3 +218,71 @@ describe("blur records", () => {
     expect(out).toEqual({ r: 0.5, g: 0.25, b: 0, a: 0.5 });
   });
 });
+
+describe("DrawRecords groups (spec §21.17, Batch 72)", () => {
+  const solid = (color: RGBA): Layer => ({ kind: "solid", transform: rectTransform(0, 0, 10, 10), opacity: 1, color });
+  const groupLayer = (blend: "screen" | "multiply" | "normal", matte: Layer[] | null, mode: "alpha" | "lumaInverted" = "alpha"): Layer => ({
+    kind: "group",
+    transform: IDENTITY,
+    opacity: 1,
+    blend,
+    layers: [solid(RED)],
+    matte: matte ? { mode, layers: matte } : null,
+  });
+
+  it("puts a group's layers and matte into its pictures, then a composite record over the frame", () => {
+    const records = new DrawRecords(usable);
+    const count = records.build([pane(list([solid(BLACK), groupLayer("multiply", [solid(RED)], "lumaInverted"), solid(RED)]), [2, 0, 0, 2, 0, 0])], 400, 400);
+    // background, solid, group layer, matte layer, composite, solid
+    expect(count).toBe(6);
+    const roles = Array.from({ length: count }, (_, i) => [records.at(i).kind, records.at(i).group, records.at(i).role]);
+    expect(roles).toEqual([
+      ["solid", 0, 0],
+      ["solid", 0, 0],
+      ["solid", 1, 1],
+      ["solid", 1, 2],
+      ["composite", 1, 0],
+      ["solid", 0, 0],
+    ]);
+    const composite = records.at(4);
+    expect(composite.uniform.fx?.code).toBe(2);
+    expect(composite.uniform.fx?.dx).toBe(4);
+    // The frame quad in target px.
+    expect(corner(composite.uniform.transform, 1, 1)).toEqual({ x: 200, y: 400 });
+    expect(records.groupCount).toBe(1);
+    expect(records.groups[0]).toEqual({ backdrop: true, matte: true });
+  });
+
+  it("marks hardware modes as needing no backdrop and a group without a matte as matte 0", () => {
+    const records = new DrawRecords(usable);
+    const count = records.build([pane(list([groupLayer("screen", null), groupLayer("normal", [])]), IDENTITY)], 400, 400);
+    expect(records.groupCount).toBe(2);
+    expect(records.groups.slice(0, 2)).toEqual([
+      { backdrop: false, matte: false },
+      { backdrop: false, matte: true },
+    ]);
+    const composites = Array.from({ length: count }, (_, i) => records.at(i)).filter((r) => r.kind === "composite");
+    expect(composites.map((r) => [r.group, r.uniform.fx?.code, r.uniform.fx?.dx])).toEqual([
+      [1, 5, 0],
+      [2, 0, 1],
+    ]);
+  });
+
+  it("adds nothing for a group none of whose layers draws", () => {
+    const records = new DrawRecords(usable);
+    const dead = new FakeTexture(10, 10);
+    dead.destroy();
+    const layer: Layer = { kind: "group", transform: IDENTITY, opacity: 1, blend: "multiply", layers: [{ kind: "texture", texture: dead, transform: IDENTITY, opacity: 1, crop: FULL_UV, flipX: false, flipY: false }], matte: null };
+    expect(records.build([pane(list([layer]), IDENTITY)], 400, 400)).toBe(1);
+    expect(records.groupCount).toBe(0);
+  });
+
+  it("draws a group inside a group plainly into the outer picture", () => {
+    const records = new DrawRecords(usable);
+    const inner = groupLayer("screen", null);
+    const outer: Layer = { kind: "group", transform: IDENTITY, opacity: 1, blend: "multiply", layers: [inner], matte: null };
+    const count = records.build([pane(list([outer]), IDENTITY)], 400, 400);
+    expect(count).toBe(3);
+    expect([records.at(1).group, records.at(1).role, records.at(2).kind]).toEqual([1, 1, "composite"]);
+  });
+});

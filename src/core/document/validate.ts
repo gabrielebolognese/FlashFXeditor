@@ -7,7 +7,7 @@ import { usPerFrame } from "./time.js";
 import { sequenceDurationUs, sequenceRecordIssues } from "./sequence.js";
 import { pathDataIssue } from "../shapes/pathData.js";
 import { PRIMITIVE_LIMITS, PRIMITIVE_PARAMS } from "../shapes/primitives.js";
-import { CAPTION_HIGHLIGHTS, COUNTER_SEPARATORS, CUE_ANIM_KINDS, FILL_RULES, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_UNITS, isFreeze, isMediaClip, LABEL_COLORS, LINE_CAPS, LINE_JOINS, PRIMITIVE_KINDS, SOLID_SHAPE_IDS, type NullClip, type PrimitiveKind, type ShapeClip, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type CompoundClip, type Sequence, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextSpan, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
+import { BLEND_MODES, MATTE_MODES, CAPTION_HIGHLIGHTS, COUNTER_SEPARATORS, CUE_ANIM_KINDS, FILL_RULES, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_UNITS, isFreeze, isMediaClip, LABEL_COLORS, LINE_CAPS, LINE_JOINS, PRIMITIVE_KINDS, SOLID_SHAPE_IDS, type NullClip, type PrimitiveKind, type ShapeClip, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type CompoundClip, type Sequence, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextSpan, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
 
 export class DocumentInvariantError extends Error {
   readonly issues: readonly string[];
@@ -83,6 +83,7 @@ function clipIssues(project: Project, clip: Clip): string[] {
   if (clip.autoOrient !== undefined && typeof clip.autoOrient !== "boolean") issues.push(`${label}: autoOrient must be true or false`);
   if (clip.parentId !== undefined && typeof clip.parentId !== "string") issues.push(`${label}: parentId must be a clip id`);
   issues.push(...depthIssues(clip, label));
+  issues.push(...compositingIssues(clip, label));
   // Frame styles (spec §21.7): pictures have rounded corners, an outline and a shadow.
   if (clip.kind === "video" || clip.kind === "image") issues.push(...frameIssues(clip, label));
   // Keyframes (Batch 35): known properties, one key per integer frame in order, finite values, known eases.
@@ -444,6 +445,59 @@ function parentIssues(project: Project): string[] {
   return issues;
 }
 
+/** Clip kinds drawn in the picture: the ones that take a blend mode and a track matte (spec §21.17). */
+/** Clip kinds that draw a picture (`isVisualClip` of core/effects/trackMatte.ts). */
+const VISUAL_KINDS: ReadonlySet<ClipKind> = new Set(["video", "image", "text", "solid", "shape", "compound"]);
+const BLEND_SET: ReadonlySet<string> = new Set(BLEND_MODES);
+const MATTE_SET: ReadonlySet<string> = new Set(MATTE_MODES);
+
+/** The compositing fields of a clip (spec §21.17, Batch 72): a known blend mode, a matte object, a boolean matteOnly, visual clips only. */
+function compositingIssues(clip: Clip, label: string): string[] {
+  const issues: string[] = [];
+  const visual = VISUAL_KINDS.has(clip.kind);
+  if (clip.blend !== undefined) {
+    if (!BLEND_SET.has(clip.blend)) issues.push(`${label}: blend "${String(clip.blend)}" is not a blend mode`);
+    else if (!visual) issues.push(`${label}: a ${clip.kind} clip takes no blend mode`);
+  }
+  if (clip.matte !== undefined) {
+    const matte = clip.matte as unknown;
+    if (!isObjectLike(matte) || typeof matte.clipId !== "string" || matte.clipId === "" || !MATTE_SET.has(matte.mode as string)) issues.push(`${label}: matte must be { clipId, mode } with mode alpha, alphaInverted, luma or lumaInverted`);
+    else if (!visual) issues.push(`${label}: a ${clip.kind} clip takes no matte`);
+  }
+  if (clip.matteOnly !== undefined) {
+    if (typeof clip.matteOnly !== "boolean") issues.push(`${label}: matteOnly must be true or false`);
+    else if (!visual && clip.matteOnly) issues.push(`${label}: a ${clip.kind} clip cannot be a matte`);
+  }
+  return issues;
+}
+
+/**
+ * Track mattes (spec §21.17): the matte is a visual clip of a video track in the same sequence, not the
+ * clip itself. A matte clip that is gone is ignored by the evaluation (the clip draws as if it had none).
+ */
+function matteIssues(project: Project): string[] {
+  const issues: string[] = [];
+  const scopes = new Map<ClipId, string>();
+  const scan = (tracks: readonly Track[] | undefined, scope: string) => {
+    for (const track of Array.isArray(tracks) ? tracks : []) {
+      for (const id of track?.clipIds ?? []) scopes.set(id, track.kind === "video" ? scope : `${scope}:${track.kind}`);
+    }
+  };
+  scan(project.tracks, "");
+  for (const [key, sequence] of Object.entries(project.sequences ?? {})) scan(sequence?.tracks, key);
+  for (const clip of Object.values(project.clips)) {
+    const matte = clip.matte as unknown;
+    if (!isObjectLike(matte) || typeof matte.clipId !== "string") continue;
+    const label = clipLabel(clip);
+    const source = project.clips[matte.clipId];
+    if (matte.clipId === clip.id) issues.push(`${label}: is its own matte`);
+    else if (!source) continue;
+    else if (!VISUAL_KINDS.has(source.kind) || scopes.get(source.id)?.includes(":")) issues.push(`${label}: matte ${matte.clipId} is a ${source.kind} clip, which draws no picture`);
+    else if (scopes.get(source.id) !== scopes.get(clip.id)) issues.push(`${label}: matte ${matte.clipId} is in another sequence`);
+  }
+  return issues;
+}
+
 function reachesItself(project: Project, clip: Clip): boolean {
   const seen = new Set<ClipId>([clip.id]);
   let at: Clip | undefined = clip;
@@ -650,6 +704,7 @@ export function validateProject(project: Project): string[] {
   }
   issues.push(...sequenceGraphIssues(project));
   issues.push(...parentIssues(project));
+  issues.push(...matteIssues(project));
 
   for (const [key, clip] of Object.entries(project.clips)) {
     if (key !== clip.id) issues.push(`${clipLabel(clip)}: stored under key ${key}`);

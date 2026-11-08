@@ -119,6 +119,9 @@ import { ATTRIBUTE_GROUPS, attributeTargets, pasteAttributes, pastedSpeed, type 
 import { closeSilences, cutSilences, REMOVE_SILENCE_LABEL, silencePlan, silenceTargets, spanFrames, type SilenceGroup } from "./silence.js";
 import { addNull, convertFromMotionPath, convertToMotionPath, parentCandidates, setAutoOrient, setParent, smoothMotionPath } from "./rig.js";
 import { resetDepth, setBackfaceHidden, setDepthSort } from "./depth.js";
+import { matteCandidates, setBlend, setMatte, setMatteMode, setMatteOnly } from "./compositing.js";
+import { BLEND_MODES, MATTE_MODES } from "../../core/document/types.js";
+import { isVisualClip } from "../../core/effects/trackMatte.js";
 import { setPerspective } from "../../core/commands/projectCommands.js";
 import { addSolid, newSolidClip, setSolids, type SolidEdit, type SolidLook } from "./solid.js";
 import { normalizeSpans } from "../../text/spans.js";
@@ -843,9 +846,10 @@ export type FuzzArea =
   | "media"
   | "markers"
   | "rig"
-  | "depth";
+  | "depth"
+  | "compositing";
 
-export const FUZZ_AREAS: readonly FuzzArea[] = ["move", "trim", "split", "delete", "gaps", "links", "tracks", "keyframes", "transitions", "fades", "speed", "audio", "silence", "clipboard", "props", "solids", "text", "captions", "media", "markers", "rig", "depth"];
+export const FUZZ_AREAS: readonly FuzzArea[] = ["move", "trim", "split", "delete", "gaps", "links", "tracks", "keyframes", "transitions", "fades", "speed", "audio", "silence", "clipboard", "props", "solids", "text", "captions", "media", "markers", "rig", "depth", "compositing"];
 
 export interface FuzzOp {
   name: string;
@@ -1965,6 +1969,34 @@ const DEPTH_OPS: FuzzOp[] = [
   op("depth.perspective", "depth", (store, rng) => exec(store, setPerspective(rng.pick([null, 400, 1600, 5000, 1e9])))),
 ];
 
+/** Blend modes and track mattes (Batch 72, spec §21.17): blend, matte (picked among the candidates or not), matte mode, matte only. */
+const COMPOSITING_OPS: FuzzOp[] = [
+  op("compositing.blend", "compositing", (store, rng) => {
+    const p = store.getState();
+    const clip = pickClip(p, rng, isVisualClip);
+    return clip ? exec(store, setBlend(p, selection(p, rng, clip, false), rng.pick(BLEND_MODES))) : false;
+  }),
+  op("compositing.matte", "compositing", (store, rng) => {
+    const p = store.getState();
+    const clip = pickClip(p, rng, isVisualClip);
+    if (!clip) return false;
+    // Mostly a candidate; sometimes the clip itself or none (refused or cleared).
+    const source = rng.chance(0.1) ? clip : some(rng, matteCandidates(p, clip.id));
+    const matte = rng.chance(0.2) || !source ? null : { clipId: source.id, mode: rng.pick(MATTE_MODES) };
+    return exec(store, setMatte(p, selection(p, rng, clip, false), matte));
+  }, { weight: 2 }),
+  op("compositing.matteMode", "compositing", (store, rng) => {
+    const p = store.getState();
+    const clip = pickClip(p, rng, (c) => c.matte !== undefined);
+    return clip ? exec(store, setMatteMode(p, [clip.id], rng.pick(MATTE_MODES))) : false;
+  }),
+  op("compositing.matteOnly", "compositing", (store, rng) => {
+    const p = store.getState();
+    const clip = pickClip(p, rng, isVisualClip);
+    return clip ? exec(store, setMatteOnly(p, [clip.id], rng.chance(0.5))) : false;
+  }),
+];
+
 /** Every edit operation of the catalogue, with random but sensible arguments. */
 export const FUZZ_OPS: readonly FuzzOp[] = [
   ...MOVE_OPS,
@@ -1989,6 +2021,7 @@ export const FUZZ_OPS: readonly FuzzOp[] = [
   ...MARKER_OPS,
   ...RIG_OPS,
   ...DEPTH_OPS,
+  ...COMPOSITING_OPS,
 ];
 
 /** The operations of some areas. */

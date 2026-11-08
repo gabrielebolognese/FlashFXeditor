@@ -21,6 +21,7 @@ import { MarkerSection } from "./properties/MarkerSection.js";
 import { ProjectSection } from "./properties/ProjectSection.js";
 import { QuickActions } from "./properties/QuickActions.js";
 import { Section } from "./properties/Section.js";
+import { CompositingSection } from "./properties/CompositingSection.js";
 import { FrameSection } from "./properties/FrameSection.js";
 import { ShapeSection } from "./properties/ShapeSection.js";
 import { SolidSection } from "./properties/SolidSection.js";
@@ -57,6 +58,7 @@ const SECTION_TITLES: Record<SectionId, string> = {
   crop: "Crop",
   frame: "Frame",
   opacity: "Opacity",
+  compositing: "Compositing",
   speed: "Speed",
   audio: "Audio",
   transition: "Transition",
@@ -89,6 +91,8 @@ function sectionBody(id: SectionId, context: PropertiesContext): ReactNode {
       return context.kind === "clips" ? <FrameSection ids={[...context.solidIds, ...context.mediaIds]} /> : null;
     case "opacity":
       return context.kind === "clips" ? <OpacitySection ids={context.layerIds} /> : null;
+    case "compositing":
+      return context.kind === "clips" ? <CompositingSection ids={context.layerIds} /> : null;
     case "speed":
       return context.kind === "clips" ? <SpeedSection ids={context.speedIds} /> : null;
     case "audio":

@@ -6,7 +6,7 @@
 import { MAX_GAIN_DB, MAX_SPEED, MIN_GAIN_DB } from "./limits.js";
 import { ANIMATOR_PROP_PATTERN, KEYFRAME_PROPS, SHAPE_PROP_PATTERN } from "./keyframes.js";
 import { PRIMITIVE_LIMITS } from "../shapes/primitives.js";
-import { CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, LABEL_COLORS, PRESET_SET_IDS, SCHEMA_VERSION, FILL_RULES, LINE_CAPS, LINE_JOINS, SOLID_SHAPE_IDS, STROKE_ALIGNS, COUNTER_SEPARATORS, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_DIRECTIONS, TRANSITION_KINDS, type JsonValue } from "./types.js";
+import { BLEND_MODES, MATTE_MODES, CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, LABEL_COLORS, PRESET_SET_IDS, SCHEMA_VERSION, FILL_RULES, LINE_CAPS, LINE_JOINS, SOLID_SHAPE_IDS, STROKE_ALIGNS, COUNTER_SEPARATORS, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_DIRECTIONS, TRANSITION_KINDS, type JsonValue } from "./types.js";
 
 export type FieldType =
   | { t: "string"; nonEmpty?: boolean }
@@ -232,6 +232,15 @@ const SCHEMAS: ObjectSchema[] = [
       softness: opt(num, "Wipe, iris: the soft width of the edge, 0 to 1.", 0),
       center: opt(obj("FractionPoint"), "Iris: the circle's center, fractions of the frame.", { x: 0.5, y: 0.5 }),
       ease: opt(oneOf(EASE_IDS), "The progress curve. Absent = the linear mix of schema 14 and before; the motion kinds are created with easeInOut."),
+    },
+  },
+  {
+    name: "TrackMatte",
+    doc: "A track matte (Batch 72): the clip shows only where the matte clip is opaque (alpha) or bright (luma) at the frame, or the opposite (inverted).",
+    types: ["TrackMatte"],
+    fields: {
+      clipId: req(text, "A visual clip of a video track in the same sequence (not the clip itself). While it is not at the frame the matte is empty: alpha and luma hide the clip, the inverted modes show it whole."),
+      mode: req(oneOf(MATTE_MODES), "What of the matte clip is used.", "alpha"),
     },
   },
   {
@@ -890,6 +899,9 @@ function clipBaseFields(kind?: string): Record<string, Field> {
     parentId: opt(text, "A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles."),
     autoOrient: opt(bool, "Rotation follows the tangent of the `transform.position` motion path (Batch 69)."),
     backfaceHidden: opt(bool, "2.5D (Batch 70): not drawn while its back faces the viewer.", false),
+    blend: opt(oneOf(BLEND_MODES), "Visual clips (Batch 72): how the clip blends with the picture below it (W3C formulas; `add` is linear dodge).", "normal"),
+    matte: opt(obj("TrackMatte"), "Visual clips (Batch 72): the clip shows only through another clip's alpha or luma."),
+    matteOnly: opt(bool, "Visual clips (Batch 72): not drawn on its own; it is another clip's matte.", false),
   };
 }
 

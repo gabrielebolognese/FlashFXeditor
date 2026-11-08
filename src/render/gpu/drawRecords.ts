@@ -14,16 +14,21 @@
 // projective (`wRow` holds the bottom row) and the vertex stages output w, so the GPU interpolates UVs
 // perspective-correctly. Every step that grows or moves a quad multiplies the whole projective matrix.
 import type { GradientFill, RGBA } from "../../core/document/types.js";
-import type { DrawList, Layer, PathDraw, PathLayer, SolidLayer, UvRect } from "../compositor/drawList.js";
+import type { DrawList, GroupLayer, Layer, PathDraw, PathLayer, SolidLayer, UvRect } from "../compositor/drawList.js";
+import { blendCode, isHardwareBlend } from "../../core/effects/blendModes.js";
+import { matteCode } from "../../core/effects/trackMatte.js";
 import { invertInto, multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import { boxPerimeter } from "../../core/document/fill.js";
 import { newStyleUniform, resetStyleUniform, SHAPE_CODE, type LayerUniform, type WRow } from "./layerUniforms.js";
 import { affineTimesHomography, homographyTimesAffine, newHomography, type Homography } from "../projection.js";
 import type { Pane, TextureHandle, Viewport } from "./renderer.js";
 
-export type RecordKind = "textured" | "dissolve" | "solid" | "path";
-/** The kinds the main pass draws ("path" records become "textured" before it). */
-export type QuadKind = Exclude<RecordKind, "path">;
+export type RecordKind = "textured" | "dissolve" | "solid" | "path" | "composite";
+/** The kinds drawn with the layer pipelines ("path" records become "textured" before the passes; "composite" has its own). */
+export type QuadKind = Exclude<RecordKind, "path" | "composite">;
+
+/** Where a record draws: the target (0), or a group's picture (spec §21.17): its layers (1) or its matte (2). */
+export const ROLE = { target: 0, layers: 1, matte: 2 } as const;
 
 export interface Rect {
   x: number;
@@ -45,6 +50,20 @@ export interface DrawRecord<T extends TextureHandle> {
   scissor: Rect;
   /** A "path" record's shape (its uniform's matrix maps view-box px to target px). */
   path: PathLayer | null;
+  /**
+   * Blend modes and track mattes (spec §21.17, Batch 72): the group (1, 2, ...) whose picture the record
+   * draws into with `role` layers or matte, or 0 with role target. A "composite" record (role target)
+   * draws group `group`'s picture over the target: its uniform's `fx.code` is the blend code, `fx.dx` the
+   * matte code, its quad the frame.
+   */
+  group: number;
+  role: number;
+}
+
+/** The groups of a build (spec §21.17): per group, whether its composite reads the backdrop and whether it has a matte. */
+export interface GroupInfo {
+  backdrop: boolean;
+  matte: boolean;
 }
 
 /** A record's uniform, writable. */
@@ -88,6 +107,8 @@ function newRecord<T extends TextureHandle>(): DrawRecord<T> {
     blur: 0,
     scissor: { x: 0, y: 0, width: 0, height: 0 },
     path: null,
+    group: 0,
+    role: ROLE.target,
   };
 }
 
@@ -95,6 +116,14 @@ export class DrawRecords<T extends TextureHandle> {
   /** The records; the first `count` belong to the last `build`. */
   readonly pool: DrawRecord<T>[] = [];
   count = 0;
+  /** The groups of the last `build` (spec §21.17): group g is `groups[g - 1]`; the first `groupCount` are current. */
+  readonly groups: GroupInfo[] = [];
+  groupCount = 0;
+  /** Where the records being added draw (a group's picture while its layers are added). */
+  private group = 0;
+  private role: number = ROLE.target;
+  /** The list of the pane being built (its frame size gives a composite its quad). */
+  private list: DrawList | null = null;
   private readonly inverse = mutableIdentity();
   private readonly frameBox: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private readonly frameScissor: Rect = { x: 0, y: 0, width: 0, height: 0 };
@@ -114,6 +143,9 @@ export class DrawRecords<T extends TextureHandle> {
    */
   build(panes: readonly Pane[], width: number, height: number): number {
     this.count = 0;
+    this.groupCount = 0;
+    this.group = 0;
+    this.role = ROLE.target;
     for (const pane of panes) {
       const { list, viewport } = pane;
       const bounds = clipRect(this.paneScissor, pane.bounds, width, height);
@@ -131,6 +163,7 @@ export class DrawRecords<T extends TextureHandle> {
    * (clipped to the pane). Matrices map to target px.
    */
   private paneRecords(list: DrawList, view: Viewport, frame: Rect, frameScissor: Rect | null, paneScissor: Rect): void {
+    this.list = list;
     if (frameScissor) {
       const background = this.solidRecord(list.background, frameScissor).uniform.transform;
       multiplyInto(background, view.transform, setMat(background, list.width, 0, 0, list.height, 0, 0));
@@ -155,6 +188,8 @@ export class DrawRecords<T extends TextureHandle> {
     record.texture1 = null;
     record.blur = 0;
     record.path = null;
+    record.group = this.group;
+    record.role = this.role;
     const u = record.uniform;
     setFlat(u.wRow);
     u.opacity = 1;
@@ -169,6 +204,41 @@ export class DrawRecords<T extends TextureHandle> {
     u.radii.fill(0);
     resetStyleUniform(u.style);
     return record;
+  }
+
+  /**
+   * A clip with a blend mode or a track matte (spec §21.17): its layers' records into the group's picture,
+   * its matte's into the matte picture, then the composite record that draws the picture over the target
+   * (over the frame quad). Nothing when none of its layers adds a record.
+   */
+  private groupRecords(layer: GroupLayer, view: Mat3, scissor: Rect): void {
+    const index = this.groupCount + 1;
+    const before = this.count;
+    this.group = index;
+    this.role = ROLE.layers;
+    for (const inner of layer.layers) this.layerRecord(inner, view, scissor);
+    const drawn = this.count > before;
+    let matte = false;
+    if (drawn && layer.matte) {
+      matte = true;
+      this.role = ROLE.matte;
+      for (const inner of layer.matte.layers) this.layerRecord(inner, view, scissor);
+    }
+    this.group = 0;
+    this.role = ROLE.target;
+    if (!drawn) return;
+    this.groupCount = index;
+    const info = (this.groups[index - 1] ??= { backdrop: false, matte: false });
+    info.backdrop = !isHardwareBlend(layer.blend);
+    info.matte = matte;
+    const record = this.nextRecord("composite", scissor);
+    record.group = index;
+    const list = this.list as DrawList;
+    const u = record.uniform;
+    multiplyInto(u.transform, view, setMat(u.transform, list.width, 0, 0, list.height, 0, 0));
+    const fx = u.fx as { code: number; dx: number };
+    fx.code = blendCode(layer.blend);
+    fx.dx = matte && layer.matte ? matteCode(layer.matte.mode) : 0;
   }
 
   /** A flat color quad. */
@@ -187,6 +257,15 @@ export class DrawRecords<T extends TextureHandle> {
   /** Adds the record of a document layer (its matrix mapped to target px by `view`); layers with a missing or dead texture are skipped. */
   private layerRecord(layer: Layer, view: Mat3, scissor: Rect): void {
     switch (layer.kind) {
+      case "group": {
+        // Groups do not nest (a matte's own blend and matte are not drawn): an inner group draws plainly.
+        if (this.group !== 0) {
+          for (const inner of layer.layers) this.layerRecord(inner, view, scissor);
+          return;
+        }
+        this.groupRecords(layer, view, scissor);
+        return;
+      }
       case "texture": {
         if (!this.usable(layer.texture)) return;
         const record = this.nextRecord("textured", scissor);

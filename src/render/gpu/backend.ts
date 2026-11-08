@@ -30,6 +30,8 @@ export interface BackendRenderer extends Renderer {
   readonly backend: RendererBackend;
   /** Textures allocated and not freed (pool frames, images, text rasters, targets, spares). */
   readonly textureCounts: { live: number; bytes: number };
+  /** Copies of the target made for a non-hardware blend mode so far (spec §21.17; the Batch 72 acceptance counter). */
+  readonly backdropCopies: number;
   /** Frees what the renderer keeps for reuse (spare frame textures, blur textures): a closed project leaves nothing on the GPU (P13). */
   releaseCaches(): void;
 }

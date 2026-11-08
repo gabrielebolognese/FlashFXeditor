@@ -66,6 +66,7 @@
 //   `depthSort` draws its layers farthest first (painter's order of their z, stable: equal depths keep
 //   track order). The 2D parent of a clip does not pass its own 3D placement on (the Batch 69 rig is 2D).
 // Layer structs and arrays are reused between frames; evaluating allocates nothing once warm.
+import { isVisualClip } from "../../core/effects/trackMatte.js";
 import { sequenceView } from "../../core/document/sequences.js";
 import { isRgba } from "../../core/document/color.js";
 import { animatedOpacity, animatedTransform, maxKeyedScale } from "../../core/document/keyframes.js";
@@ -74,7 +75,7 @@ import { painterOrder, type DepthSortItem } from "../../core/space/camera3d.js";
 import { facesAway, isDepthTransform, newHomography, projectedCorners, viewingDistance, writeProjection, type Homography } from "../projection.js";
 import { framesToSourceUs, secondsToFrames } from "../../core/document/time.js";
 import { handleTimeUs, TRANSITION_CODE, transitionFx, transitionMix } from "../../core/document/transitions.js";
-import type { CaptionClip, CaptionStyle, CaptionWord, Clip, ClipId, CompoundClip, Crop, Frame, MediaClip, MediaId, Project, RGBA, ShadowStyle, ShapeClip, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
+import type { CaptionClip, CaptionStyle, CaptionWord, Clip, ClipId, CompoundClip, Crop, Frame, MatteMode, MediaClip, MediaId, Project, RGBA, ShadowStyle, ShapeClip, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
 import { pathFramesAt, type PathFrameScratch } from "./shapeFrames.js";
 import { activeWordIndex, captionPlace, defaultCaptionStyle, effectiveCaptionStyle } from "../../text/captions.js";
 import { activeAnim, animUnit, isPlayable, newUnitState, presence, resetUnitState, typedCount, unitProgress, writeUnitShape, type ActiveAnim, type UnitState } from "../../text/anim.js";
@@ -99,7 +100,7 @@ import { GLYPH_SLOT, TINT_SLOT, decodeGlyphChars, isKinetic, newKineticScratch, 
 import { counterGlyphs } from "../../text/counter.js";
 import { finestUnit } from "../text/animUnits.js";
 import { isGradientFill } from "../../core/document/fill.js";
-import { HIGHLIGHT_SLOT, TRANSITION_SLOT, type CaptionHighlightFrame, type CompoundCompositeLayer, type CaptionWordBoxes, type Composite, type CompositeLayer, type ShapeCompositeLayer, type ShapePathFrame, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextCompositeLayer, type TransitionCompositeLayer } from "./drawList.js";
+import { HIGHLIGHT_SLOT, MATTE_SLOT, TRANSITION_SLOT, type CaptionHighlightFrame, type GroupCompositeLayer, type PlainCompositeLayer, type CompoundCompositeLayer, type CaptionWordBoxes, type Composite, type CompositeLayer, type ShapeCompositeLayer, type ShapePathFrame, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextCompositeLayer, type TransitionCompositeLayer } from "./drawList.js";
 
 /** How far from the playhead the clips next to it count as cut neighbours (seconds). */
 export const NEIGHBOR_SECONDS = 2;
@@ -207,6 +208,24 @@ interface WritableComposite extends Composite {
   layers: CompositeLayer[];
 }
 
+type WritableGroupLayer = Omit<GroupCompositeLayer, "layers" | "matte"> & {
+  layers: PlainCompositeLayer[];
+  matte: GroupCompositeLayer["matte"];
+  matteValue: { mode: MatteMode; layers: readonly PlainCompositeLayer[] };
+  /** Evaluates the matte clip (made on first use; plain: it groups nothing). */
+  child: Compositor | null;
+};
+/** The live values `evaluate` takes after the frame. */
+type LiveMaps = [
+  ReadonlyMap<ClipId, Transform> | null,
+  ReadonlyMap<ClipId, number> | null,
+  ReadonlyMap<ClipId, Crop> | null,
+  ReadonlyMap<ClipId, LiveText> | null,
+  ReadonlyMap<ClipId, LiveAnims> | null,
+  LiveCaptions | null,
+  ReadonlyMap<ClipId, SolidLook> | null,
+  ReadonlyMap<ClipId, ShapeClip> | null,
+];
 type WritableCompoundLayer = Omit<CompoundCompositeLayer, "model" | "inner"> & { model: MutableMat3; inner: Composite; child: Compositor };
 /** A shape layer with the frames its keyed paths are written into (per path index). */
 type WritableShapeLayer = Omit<ShapeCompositeLayer, "model" | "paths"> & { model: MutableMat3; paths: readonly ShapePathFrame[]; keyed: ShapePathFrame[]; scratch: PathFrameScratch[] };
@@ -315,8 +334,16 @@ export class Compositor {
   private readonly glyphTexts = new Map<string, TextContent>();
   private readonly kineticDeps: KineticDeps = { glyphContent: (clip, chars) => this.glyphText(clip.id, chars) };
 
-  /** `offline`: what offline media show; without it every media clip is drawn as online. */
-  constructor(private readonly offline: OfflineSlates | null = null) {}
+  /** Clips with a blend mode or a track matte (spec §21.17, Batch 72), grouped in the frame. */
+  private readonly groupPool: WritableGroupLayer[] = [];
+  /** The live values of the evaluation in progress (passed on to the matte clips' evaluation). */
+  private readonly live: LiveMaps = [null, null, null, null, null, null, null, null];
+
+  /**
+   * `offline`: what offline media show; without it every media clip is drawn as online. `plain`: the
+   * compositor of a matte clip (spec §21.17): it draws `matteOnly` clips and groups nothing.
+   */
+  constructor(private readonly offline: OfflineSlates | null = null, private readonly plain = false) {}
 
   /**
    * The document at `frame`, bottom track first, with `transforms` (a canvas gesture's or a field
@@ -347,6 +374,16 @@ export class Compositor {
     this.perspCount = 0;
     this.depths.length = 0;
     this.rig.begin(doc, frame, transforms);
+    const live = this.live;
+    live[0] = transforms;
+    live[1] = opacities;
+    live[2] = crops;
+    live[3] = texts;
+    live[4] = anims;
+    live[5] = captions;
+    live[6] = solids;
+    live[7] = shapeEdits;
+    let groups = 0;
     let media = 0;
     let solidLayers = 0;
     let textLayers = 0;
@@ -370,6 +407,9 @@ export class Compositor {
       const index = trackIndex(doc, track);
       const clip = clipInIndex(index, frame);
       if (!clip?.enabled || clip.kind === "audio" || clip.kind === "caption" || clip.kind === "null") continue;
+      // Another clip's matte, not drawn on its own (spec §21.17); the matte's compositor draws it.
+      if (clip.matteOnly === true && !this.plain) continue;
+      const first = out.layers.length;
       // A frame of a transition (Batch 36): the track's two clips.
       const pair = (clip.kind === "video" || clip.kind === "image") && (clip.transitionIn || clip.transitionOut) ? transitionPair(index, clip, frame) : null;
       if (pair) {
@@ -420,13 +460,14 @@ export class Compositor {
             solidLayers += 1;
           }
         }
+        // Blend and matte of the side shown more: the whole transition picture is blended and matted.
+        if (this.group(doc, mix < 0.5 ? left : right, frame, first, groups)) groups += 1;
         continue;
       }
       // The keyed values at the frame (the clip's own when unkeyed; `animated` is reused per layer).
       const rel = frame - clip.start;
       const transform = this.rig.resolve(clip, transforms?.get(clip.id) ?? animatedTransform(clip, rel, this.animated), this.world);
       const opacity = opacities?.get(clip.id) ?? animatedOpacity(clip, rel);
-      const first = out.layers.length;
       if (clip.kind === "video" || clip.kind === "image") {
         const reason = this.offline?.label(clip.mediaId) ?? null;
         if (reason !== null && this.offline) {
@@ -442,6 +483,7 @@ export class Compositor {
             textLayers += 1;
           }
           this.place3d(doc, clip, transform, first);
+          if (this.group(doc, clip, frame, first, groups)) groups += 1;
           continue;
         }
         const layer = (this.mediaPool[media] ??= newMediaLayer());
@@ -514,9 +556,56 @@ export class Compositor {
         }
       }
       this.place3d(doc, clip, transform, first);
+      if (this.group(doc, clip, frame, first, groups)) groups += 1;
     }
     if (this.depthSort) this.sortByDepth();
     return out;
+  }
+
+  /**
+   * A clip with a blend mode or a track matte (spec §21.17): the layers it pushed from `first` on become
+   * one group layer (at the clip's depth), with its matte clip's layers at the frame. False when the clip
+   * draws plainly (normal blend and no usable matte) or drew nothing. A matte naming a clip that is gone,
+   * the clip itself or a clip with no picture is ignored; a matte clip off the frame gives an empty matte.
+   */
+  private group(doc: Project, clip: Clip, frame: Frame, first: number, index: number): boolean {
+    if (this.plain) return false;
+    const blend = clip.blend ?? "normal";
+    const source = clip.matte ? doc.clips[clip.matte.clipId] : undefined;
+    // A matte clip that is gone, is the clip itself, draws no picture or is not in this sequence is ignored.
+    const view = clip.matte && source && source.id !== clip.id && isVisualClip(source) ? matteView(doc, source.id) : null;
+    const matte = view ? clip.matte : null;
+    if (blend === "normal" && !matte) return false;
+    const layers = this.out.layers;
+    if (layers.length === first) return false;
+    const group = (this.groupPool[index] ??= newGroupLayer());
+    group.trackId = clip.trackId;
+    group.clipId = clip.id;
+    group.blend = blend;
+    group.layers.length = 0;
+    for (let i = first; i < layers.length; i++) group.layers.push(layers[i] as PlainCompositeLayer);
+    const depth = this.depths[first] ?? 0;
+    layers.length = first;
+    this.depths.length = first;
+    group.matte = null;
+    if (matte && view) {
+      const child = (group.child ??= new Compositor(this.offline, true));
+      group.matteValue.mode = matte.mode;
+      const matteLayers = child.evaluate(view, frame, ...this.live).layers as readonly PlainCompositeLayer[];
+      // The matte's video on its own texture slots: in a transition the track's slots show other clips.
+      for (const inner of matteLayers) {
+        if (inner.kind === "media") inner.trackId += MATTE_SLOT;
+        else if (inner.kind === "dissolve") {
+          inner.from.trackId += MATTE_SLOT;
+          inner.to.trackId += MATTE_SLOT;
+        }
+      }
+      group.matteValue.layers = matteLayers;
+      group.matte = group.matteValue;
+    }
+    layers.push(group);
+    this.depths.push(depth);
+    return true;
   }
 
   /**
@@ -528,7 +617,7 @@ export class Compositor {
     const layers = this.out.layers;
     if (layers.length === first) return;
     const lead = layers[first] as CompositeLayer;
-    const persp = lead.kind === "dissolve" ? null : this.projection(doc, clip, transform, ...boxOf(lead));
+    const persp = lead.kind === "dissolve" || lead.kind === "group" ? null : this.projection(doc, clip, transform, ...boxOf(lead));
     if (persp === false) {
       layers.length = first;
       return;
@@ -585,7 +674,6 @@ export class Compositor {
     layer.width = w;
     layer.height = h;
     layer.scale = Math.max(Math.hypot(m[0], m[1]) / w, Math.hypot(m[2], m[3]) / h);
-    // TODO(batch 72): blend mode and track matte of a compound clip.
     // TODO(batch 73): masks on a compound clip.
     // TODO(batch 74): the effect stack of a compound clip (applied to its target before it is drawn).
     layer.opacity = clamp01(opacity) * fadeFactor(clip, frame);
@@ -1140,8 +1228,34 @@ export class Compositor {
   }
 }
 
+const matteViews = new WeakMap<Project, Map<ClipId, Project | null>>();
+
+/**
+ * The document reduced to the matte clip `clipId` (spec §21.17): one visible video track on its own slot
+ * (`trackId + MATTE_SLOT`) listing only that clip; null when no video track of `doc` lists it (another
+ * sequence). Cached per document: playback makes none.
+ */
+function matteView(doc: Project, clipId: ClipId): Project | null {
+  let byClip = matteViews.get(doc);
+  if (!byClip) {
+    byClip = new Map();
+    matteViews.set(doc, byClip);
+  }
+  let view = byClip.get(clipId);
+  if (view === undefined) {
+    const track = doc.tracks.find((t) => t.kind === "video" && t.clipIds.includes(clipId));
+    view = track ? { ...doc, tracks: [{ ...track, id: track.id + MATTE_SLOT, clipIds: [clipId], hidden: false, muted: false }] } : null;
+    byClip.set(clipId, view);
+  }
+  return view;
+}
+
+function newGroupLayer(): WritableGroupLayer {
+  return { kind: "group", trackId: "", clipId: "", blend: "normal", layers: [], matte: null, matteValue: { mode: "alpha", layers: [] }, child: null };
+}
+
 /** The box a layer lays out (its matrix and the box size it maps): the unit quad, or its content px. */
-function boxOf(layer: Exclude<CompositeLayer, TransitionCompositeLayer>): [Mat3, number, number] {
+function boxOf(layer: Exclude<CompositeLayer, TransitionCompositeLayer | GroupCompositeLayer>): [Mat3, number, number] {
   switch (layer.kind) {
     case "media":
     case "solid":

@@ -89,6 +89,8 @@ export function copyClips(clips: readonly Clip[], newId: () => string, options: 
     let copy = { ...structuredClone(clip), id: ids[index] as string } as Clip;
     // A parent copied along is followed by the copy (Batch 69); one left behind stays the parent.
     if (clip.parentId !== undefined && copied.has(clip.parentId)) copy.parentId = copied.get(clip.parentId) as string;
+    // Likewise a track matte copied along (Batch 72); one left behind stays the matte.
+    if (clip.matte && copied.has(clip.matte.clipId)) copy.matte = { ...clip.matte, clipId: copied.get(clip.matte.clipId) as string };
     copy = withField(copy, "linkGroup", options.links && clip.linkGroup !== undefined ? links.get(clip.linkGroup) : undefined);
     copy = withField(copy, "group", clip.group !== undefined ? groups.get(clip.group) : undefined);
     if (isMediaClip(copy)) {

@@ -49,7 +49,7 @@
 //   yet, the other is drawn alone. Export frame resolves both sides exactly.
 // The draw lists, the slot structs and their keys are reused between passes: a pass allocates nothing
 // unless it requests or pins a new frame (or rasterizes a text).
-import type { MediaId, ShadowStyle, StrokeStyle, TextStyle, TrackId } from "../../core/document/types.js";
+import type { MatteMode, MediaId, ShadowStyle, StrokeStyle, TextStyle, TrackId } from "../../core/document/types.js";
 import { imageKey, type Lod, type TextureKey, type TexturePool } from "../../media/cache/TexturePool.js";
 import type { FrameResult, FrameService } from "../../media/decode/FrameService.js";
 import type { ImageService } from "../../media/decode/ImageService.js";
@@ -58,7 +58,7 @@ import { isAbortError, isWorkerCrash, type FramePriority } from "../../media/wor
 import { newUnitState, type UnitState } from "../../text/anim.js";
 import type { NeighborFrame, UpcomingText } from "../compositor/Compositor.js";
 import { transitionFx, type TransitionFx } from "../../core/document/transitions.js";
-import { type CaptionHighlightFrame, type Composite, type CompoundCompositeLayer, type DissolveLayer, type DrawList, type Layer, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextGlyphDraw, type TextCompositeLayer, type TextureLayer, type TransitionCompositeLayer, type UvRect } from "../compositor/drawList.js";
+import { type CaptionHighlightFrame, type Composite, type CompoundCompositeLayer, type DissolveLayer, type DrawList, type GroupCompositeLayer, type GroupLayer, type Layer, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextGlyphDraw, type TextCompositeLayer, type TextureLayer, type TransitionCompositeLayer, type UvRect } from "../compositor/drawList.js";
 import type { TextureHandle } from "../gpu/renderer.js";
 import { multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import type { Homography } from "../projection.js";
@@ -207,6 +207,9 @@ export class LayerTextures {
   /** Shape layers of each pane (reused in order) and the shape geometry cache. */
   private readonly pathLayers: [WritablePathLayer[], WritablePathLayer[]] = [[], []];
   private pathCount = 0;
+  /** Group layers of each pane (blend modes and track mattes, spec §21.17; reused in order). */
+  private readonly groupLayers: [WritableGroupLayer[], WritableGroupLayer[]] = [[], []];
+  private groupCount = 0;
   private readonly shapes: ShapeGeometryCache;
 
   constructor(private readonly deps: LayerTexturesDeps, private readonly path: string | null = null) {
@@ -286,7 +289,13 @@ export class LayerTextures {
     this.dissolveCount = 0;
     this.compoundCount = 0;
     this.pathCount = 0;
-    for (const layer of composite.layers) {
+    this.groupCount = 0;
+    this.resolveLayers(pane, list, composite.layers, composite, priority);
+  }
+
+  /** The draw layers of `layers` (a composite's, or a group's), pushed onto `list`. */
+  private resolveLayers(pane: 0 | 1, list: WritableList, layers: Composite["layers"], composite: Composite, priority: FramePriority): void {
+    for (const layer of layers) {
       const start = list.layers.length;
       this.resolveOne(pane, list, layer, composite, priority);
       // The 2.5D projection of the clip (spec §21.15) on every layer it drew (a dissolve sets its own).
@@ -294,9 +303,36 @@ export class LayerTextures {
     }
   }
 
+  /**
+   * A clip with a blend mode or a track matte (spec §21.17): its layers and its matte clip's resolved into
+   * a pooled group layer; null when none of its layers can be drawn.
+   */
+  private resolveGroup(pane: 0 | 1, layer: GroupCompositeLayer, composite: Composite, priority: FramePriority): GroupLayer | null {
+    const pool = this.groupLayers[pane];
+    const out = (pool[this.groupCount] ??= newGroupLayer());
+    out.list.layers.length = 0;
+    out.matteList.layers.length = 0;
+    this.resolveLayers(pane, out.list, layer.layers, composite, priority);
+    if (out.list.layers.length === 0) return null;
+    this.groupCount += 1;
+    out.blend = layer.blend;
+    out.matte = null;
+    if (layer.matte) {
+      this.resolveLayers(pane, out.matteList, layer.matte.layers, composite, priority);
+      out.matteValue.mode = layer.matte.mode;
+      out.matte = out.matteValue;
+    }
+    return out;
+  }
+
   /** The draw layers of one composite layer, pushed onto `list`. */
   private resolveOne(pane: 0 | 1, list: WritableList, layer: Composite["layers"][number], composite: Composite, priority: FramePriority): void {
     const stats = this.stats;
+    if (layer.kind === "group") {
+      const drawn = this.resolveGroup(pane, layer, composite, priority);
+      if (drawn) list.layers.push(drawn);
+      return;
+    }
     if (layer.kind === "shape") {
       const pool = this.pathLayers[pane];
       const out = (pool[this.pathCount] ??= newPathLayer());
@@ -354,7 +390,7 @@ export class LayerTextures {
 
   /** A compound clip: its sequence resolved by its own resolver, drawn into its texture (unchanged: kept), shown as one layer. */
   private resolveCompound(pane: 0 | 1, layer: CompoundCompositeLayer, priority: FramePriority): TextureLayer | null {
-    // TODO(batch 72): blend mode and matte, TODO(batch 73): masks, TODO(batch 74): effects run on the compound target here.
+    // TODO(batch 73): masks, TODO(batch 74): effects run on the compound target here.
     const targets = this.deps.compounds;
     if (!targets) return null;
     const scale = this.renderScale * layer.scale;
@@ -654,13 +690,7 @@ export class LayerTextures {
     };
     const layers: Layer[] = [];
     try {
-      for (const layer of composite.layers) {
-        const start = layers.length;
-        // Copied before waiting: the composite's layers are reused by the next evaluation.
-        const persp = layer.kind === "dissolve" ? null : copyPersp(layer.persp);
-        await this.exactOne(layer, layers, composite, maxLongEdge, renderScale, unpins);
-        if (layer.kind !== "dissolve") project(layers, start, persp);
-      }
+      await this.exactLayers(composite.layers, layers, composite, maxLongEdge, renderScale, unpins);
     } catch (error) {
       release();
       throw error;
@@ -668,8 +698,36 @@ export class LayerTextures {
     return { list: { width: composite.width, height: composite.height, background: composite.background, layers }, release };
   }
 
+  /** The exact draw layers of `source` (a composite's, or a group's), pushed onto `layers`. */
+  private async exactLayers(source: Composite["layers"], layers: Layer[], composite: Composite, maxLongEdge: number, renderScale: number, unpins: (() => void)[]): Promise<void> {
+    // Copied before waiting: the composite's layers are reused by the next evaluation.
+    for (const layer of [...source]) {
+      const start = layers.length;
+      const persp = layer.kind === "dissolve" ? null : copyPersp(layer.persp);
+      await this.exactOne(layer, layers, composite, maxLongEdge, renderScale, unpins);
+      if (layer.kind !== "dissolve") project(layers, start, persp);
+    }
+  }
+
   /** The exact draw layers of one composite layer, pushed onto `layers`. */
   private async exactOne(layer: Composite["layers"][number], layers: Layer[], composite: Composite, maxLongEdge: number, renderScale: number, unpins: (() => void)[]): Promise<void> {
+    if (layer.kind === "group") {
+      // Blend mode and track matte (spec §21.17): the clip's layers and its matte's, exactly.
+      const { blend, matte } = layer;
+      const mode = matte?.mode ?? null;
+      const matteLayers = matte ? [...matte.layers] : null;
+      const inner: Layer[] = [];
+      await this.exactLayers(layer.layers, inner, composite, maxLongEdge, renderScale, unpins);
+      if (inner.length === 0) return;
+      let resolvedMatte: GroupLayer["matte"] = null;
+      if (mode && matteLayers) {
+        const keyed: Layer[] = [];
+        await this.exactLayers(matteLayers, keyed, composite, maxLongEdge, renderScale, unpins);
+        resolvedMatte = { mode, layers: keyed };
+      }
+      layers.push({ kind: "group", transform: mutableIdentity(), opacity: 1, persp: null, blend, layers: inner, matte: resolvedMatte });
+      return;
+    }
     if (layer.kind === "shape") {
       // Export draws at project size: one device px per project px (compounds pass their own scale).
       const out = newPathLayer();
@@ -1217,6 +1275,21 @@ export class LayerTextures {
     slot.hasShown = false;
     slot.shown.texture = NO_TEXTURE;
   }
+}
+
+/** A pooled group layer: its layers and its matte's live in their own lists (the list's array is the layer's). */
+type WritableGroupLayer = Omit<GroupLayer, "layers" | "matte"> & {
+  layers: Layer[];
+  matte: GroupLayer["matte"];
+  matteValue: { mode: MatteMode; layers: Layer[] };
+  list: WritableList;
+  matteList: WritableList;
+};
+
+function newGroupLayer(): WritableGroupLayer {
+  const list = newList();
+  const matteList = newList();
+  return { kind: "group", transform: mutableIdentity(), opacity: 1, persp: null, blend: "normal", layers: list.layers, matte: null, matteValue: { mode: "alpha", layers: matteList.layers }, list, matteList };
 }
 
 function newTextureLayer(): WritableTextureLayer {

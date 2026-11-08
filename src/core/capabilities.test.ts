@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { buildCapabilities, FEATURES, formatCapabilities, LAST_BATCH, MANIFEST_VERSION } from "./capabilities.js";
 import { KEYFRAME_PROPS } from "./document/keyframes.js";
 import { MAX_GAIN_DB, MAX_SPEED, MIN_GAIN_DB, MIN_SPEED } from "./document/limits.js";
-import { CAPTION_HIGHLIGHTS, CLIP_KINDS, EASE_IDS, SCHEMA_VERSION, SOLID_SHAPE_IDS, TEXT_ANIM_IDS, TRACK_KINDS, TRANSITION_KINDS } from "./document/types.js";
+import { BLEND_MODES, CAPTION_HIGHLIGHTS, CLIP_KINDS, EASE_IDS, SCHEMA_VERSION, SOLID_SHAPE_IDS, TEXT_ANIM_IDS, TRACK_KINDS, TRANSITION_KINDS } from "./document/types.js";
 import { ACCEPTED_EXTENSIONS } from "../media/mediaKinds.js";
 
 const repoFile = (name: string) => readFileSync(join(process.cwd(), name), "utf8");
@@ -35,7 +35,7 @@ describe("capabilities.json (spec §21.2)", () => {
   });
 
   it("has schemaVersion 9 and the Batch 54 to 64 keys true, the keys of later batches false", () => {
-    expect(manifest.schemaVersion).toBe(15);
+    expect(manifest.schemaVersion).toBe(16);
     expect(manifest.manifestVersion).toBe(MANIFEST_VERSION);
     expect(manifest.lastBatch).toBe(LAST_BATCH);
     expect(manifest.cli).toEqual({ validate: true, normalize: true, info: true, render: true, compare: true });
@@ -53,7 +53,7 @@ describe("capabilities.json (spec §21.2)", () => {
     expect(manifest.solid).toMatchObject({ fills: ["color", "gradient2", "linear", "radial"], stroke: true, shadow: true, cornerRadii: true });
     expect(manifest.mediaFrame).toEqual({ stroke: true, shadow: true, cornerRadius: true });
     expect(manifest.text.fills).toEqual(["color", "gradient2", "linear", "radial"]);
-    expect(manifest.compositing).toEqual({ compound: true, blendModes: ["normal"], trackMatte: false, masks: false, adjustment: false });
+    expect(manifest.compositing).toEqual({ compound: true, blendModes: [...BLEND_MODES], trackMatte: true, masks: false, adjustment: false });
     expect(manifest.export).toEqual({ containers: ["mp4"], videoCodecs: ["h264", "hevc", "av1"], alpha: false, imageSequence: false, gif: false, stems: false });
     expect(manifest.effects).toEqual([]);
   });

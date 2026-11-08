@@ -81,12 +81,12 @@ export function canvasLayersAt(
   solids: ReadonlyMap<ClipId, SolidLook> | null = null,
   captions: LiveCaptions | null = null,
 ): CanvasLayer[] {
-  return layersAt(project, frame, transforms, crops, texts, solids, captions, (track) => !track.hidden && !track.locked);
+  return layersAt(project, frame, transforms, crops, texts, solids, captions, (track) => !track.hidden && !track.locked, false);
 }
 
 /** The layers in the picture at `frame`, bottom first: the compositor's tracks (locked included, §6.12). */
 export function pictureLayersAt(project: Project, frame: Frame, transforms: ReadonlyMap<ClipId, Transform> | null = null): CanvasLayer[] {
-  return layersAt(project, frame, transforms, null, null, null, null, (track) => !track.hidden && (track.kind === "caption" || !track.muted));
+  return layersAt(project, frame, transforms, null, null, null, null, (track) => !track.hidden && (track.kind === "caption" || !track.muted), true);
 }
 
 /** Parent chains of the frame being listed. */
@@ -101,6 +101,8 @@ function layersAt(
   solids: ReadonlyMap<ClipId, SolidLook> | null,
   captions: LiveCaptions | null,
   include: (track: Track) => boolean,
+  /** The picture only: a matte-only clip (spec §21.17) is not in it, though it stays editable on the canvas like a muted track's. */
+  picture: boolean,
 ): CanvasLayer[] {
   const layers: CanvasLayer[] = [];
   let cueTrack: Track | null = null;
@@ -109,7 +111,7 @@ function layersAt(
     if (track.kind === "caption" && include(track)) cueTrack = track;
     if (track.kind !== "video" || !include(track)) continue;
     const found = clipInIndex(trackIndex(project, track), frame);
-    if (!found?.enabled || !isTransformClip(found)) continue;
+    if (!found?.enabled || !isTransformClip(found) || (picture && found.matteOnly === true)) continue;
     const live = found.kind === "text" ? texts?.get(found.id) : undefined;
     const look = found.kind === "solid" ? solids?.get(found.id) : undefined;
     const clip = live && found.kind === "text" ? { ...found, text: live.text, style: live.style } : look && found.kind === "solid" ? { ...found, ...look } : found;

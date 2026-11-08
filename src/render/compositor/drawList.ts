@@ -4,7 +4,7 @@
 // frame (media and time) and text layers their text instead of a texture. The preview resolves them
 // to pool textures and text rasters, and skips the redraw when the resolved list equals the one it
 // drew last (`DrawListSnapshot`).
-import type { ClipId, Fill, FillRule, GradientFill, MediaId, PathStroke, PathTrim, RGBA, ShadowStyle, StrokeStyle, TextContent, TextStyle, TrackId } from "../../core/document/types.js";
+import type { BlendMode, ClipId, Fill, FillRule, GradientFill, MediaId, MatteMode, PathStroke, PathTrim, RGBA, ShadowStyle, StrokeStyle, TextContent, TextStyle, TrackId } from "../../core/document/types.js";
 import type { TransitionFx } from "../../core/document/transitions.js";
 import type { Bounds, PathSource } from "../../core/shapes/geometry.js";
 import type { UnitState } from "../../text/anim.js";
@@ -148,7 +148,20 @@ export interface PathLayer extends LayerBase {
   bounds: Bounds;
 }
 
-export type Layer = TextureLayer | DissolveLayer | SolidLayer | PathLayer;
+/**
+ * A clip drawn with a blend mode or a track matte (spec §21.17, Batch 72): its `layers` are drawn on
+ * their own into a transparent picture of the frame, kept where the `matte` layers' picture is opaque
+ * or bright (`mode`), and that picture is blended over what is below with `blend`. Its own `transform`
+ * is the identity and its `opacity` 1 (the clip's opacity is in its layers). Groups do not nest.
+ */
+export interface GroupLayer extends LayerBase {
+  kind: "group";
+  blend: BlendMode;
+  layers: readonly Layer[];
+  matte: { mode: MatteMode; layers: readonly Layer[] } | null;
+}
+
+export type Layer = TextureLayer | DissolveLayer | SolidLayer | PathLayer | GroupLayer;
 
 /** A media frame not resolved to a texture yet: what a video or image clip shows at the frame. */
 export interface MediaLayer extends LayerBase {
@@ -343,7 +356,29 @@ export interface ShapeCompositeLayer {
   paths: readonly ShapePathFrame[];
 }
 
-export type CompositeLayer = MediaLayer | SolidLayer | TextCompositeLayer | TransitionCompositeLayer | CompoundCompositeLayer | ShapeCompositeLayer;
+/**
+ * A clip with a blend mode or a track matte at its frame (spec §21.17, Batch 72): the composite layers
+ * the clip drew (`layers`), and those of its matte clip at the frame (`matte.layers`, empty while the
+ * matte clip is not at the frame; its media on `trackId + MATTE_SLOT` slots). Resolved to a `GroupLayer`.
+ */
+export interface GroupCompositeLayer {
+  kind: "group";
+  trackId: TrackId;
+  clipId: ClipId;
+  blend: BlendMode;
+  layers: readonly PlainCompositeLayer[];
+  matte: { mode: MatteMode; layers: readonly PlainCompositeLayer[] } | null;
+  /** Always null: the projection of a 2.5D clip is on its layers. */
+  persp?: null;
+}
+
+/** The texture slot suffix of a matte clip's media (its own slots: the clip may also be drawn on its track). */
+export const MATTE_SLOT = "#matte";
+
+/** Every composite layer but a group (what a group holds). */
+export type PlainCompositeLayer = MediaLayer | SolidLayer | TextCompositeLayer | TransitionCompositeLayer | CompoundCompositeLayer | ShapeCompositeLayer;
+
+export type CompositeLayer = PlainCompositeLayer | GroupCompositeLayer;
 
 /** The document evaluated at a frame (`Compositor.evaluate`), before texture resolution. */
 export interface Composite {
@@ -360,4 +395,14 @@ export interface DrawList {
   /** Shown where the layers leave the frame transparent (project settings, straight alpha). */
   background: RGBA;
   layers: readonly Layer[];
+}
+
+/** Every layer of `layers` with groups opened (their layers, then their matte's; spec §21.17). Allocates: not for playback. */
+export function plainLayers(layers: readonly CompositeLayer[]): PlainCompositeLayer[] {
+  const out: PlainCompositeLayer[] = [];
+  for (const layer of layers) {
+    if (layer.kind !== "group") out.push(layer);
+    else out.push(...layer.layers, ...(layer.matte?.layers ?? []));
+  }
+  return out;
 }

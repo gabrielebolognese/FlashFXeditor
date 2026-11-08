@@ -395,3 +395,14 @@ describe("random documents", () => {
   });
 });
 
+describe("Blend modes and track mattes (Batch 72)", { timeout: 60_000 }, () => {
+  const ops = [...opsOf("compositing", "depth", "split", "delete", "clipboard", "move", "transitions", "tracks")];
+  for (const seed of [721, 722, 723]) {
+    it(`blend, matte, matte mode and matte only mixed with edits keep every invariant (seed ${seed})`, () => {
+      const result = property({ seed, steps: 400, ops });
+      // The run blended and matted clips at all.
+      const clips = Object.values(result.final.clips);
+      expect(clips.some((clip) => clip.blend !== undefined) && clips.some((clip) => clip.matte !== undefined)).toBe(true);
+    });
+  }
+});

@@ -48,12 +48,12 @@ describe("properties context (spec §11)", () => {
       captionTrackId: null,
       cueIds: [],
     });
-    expect(sectionIds(linked)).toEqual(["clip", "transform", "crop", "frame", "opacity", "speed", "audio"]);
+    expect(sectionIds(linked)).toEqual(["clip", "transform", "crop", "frame", "opacity", "compositing", "speed", "audio"]);
     const audio = propertiesContext(selectClips(["a"]), null, p);
     expect(sectionIds(audio)).toEqual(["clip", "speed", "audio"]);
     const solid = propertiesContext(selectClips(["gone", "s"], "gone"), null, p);
     expect(solid).toMatchObject({ clipIds: ["s"], primary: "s", layerPrimary: "s", mediaIds: [], speedIds: [] });
-    expect(sectionIds(solid)).toEqual(["clip", "solid", "transform", "frame", "opacity"]);
+    expect(sectionIds(solid)).toEqual(["clip", "solid", "transform", "frame", "opacity", "compositing"]);
     expect(solid).toMatchObject({ solidIds: ["s"] });
     expect(propertiesContext(selectClips(["s", "v"]), null, p)).toMatchObject({ layerIds: ["s", "v"], mediaIds: ["v"] });
     expect(propertiesContext(selectClips(["gone"]), null, p)).toEqual({ kind: "none" });
@@ -63,7 +63,7 @@ describe("properties context (spec §11)", () => {
     const p = project();
     const text = propertiesContext(selectClips(["t", "s"]), null, p);
     expect(text).toMatchObject({ layerIds: ["t", "s"], textIds: ["t"], solidIds: ["s"], mediaIds: [] });
-    expect(sectionIds(text)).toEqual(["clip", "text", "animation", "animators", "solid", "transform", "frame", "opacity"]);
+    expect(sectionIds(text)).toEqual(["clip", "text", "animation", "animators", "solid", "transform", "frame", "opacity", "compositing"]);
   });
 
   it("adds Caption style for cues and for the caption track (Batch 32)", () => {
@@ -72,7 +72,7 @@ describe("properties context (spec §11)", () => {
     const cue = propertiesContext(selectClips(["q"]), null, p);
     expect(cue).toMatchObject({ kind: "clips", captionTrackId: "cc", layerIds: [], textIds: [] });
     expect(sectionIds(cue)).toEqual(["clip", "captionStyle"]);
-    expect(sectionIds(propertiesContext(selectClips(["q", "t"]), null, p))).toEqual(["clip", "text", "animation", "animators", "captionStyle", "transform", "opacity"]);
+    expect(sectionIds(propertiesContext(selectClips(["q", "t"]), null, p))).toEqual(["clip", "text", "animation", "animators", "captionStyle", "transform", "opacity", "compositing"]);
     const track = propertiesContext(selectTracks(["cc"]), null, p);
     expect(track).toEqual({ kind: "track", trackIds: ["cc"], captionTrackId: "cc" });
     expect(sectionIds(track)).toEqual(["track", "captionStyle"]);

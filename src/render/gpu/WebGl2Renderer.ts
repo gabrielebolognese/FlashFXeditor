@@ -21,10 +21,10 @@ import type { RGBA } from "../../core/document/types.js";
 import type { DrawList } from "../compositor/drawList.js";
 import { IDENTITY, mutableIdentity, setMat, type MutableMat3 } from "../mat3.js";
 import type { BackendRenderer } from "./backend.js";
-import { blurRegionInto, DrawRecords, newRecordUniform, pathRegionInto, premultipliedInto, showBlurred, showPath, writePathUniform, type BlurRegion, type QuadKind, type Rect } from "./drawRecords.js";
+import { blurRegionInto, DrawRecords, newRecordUniform, pathRegionInto, premultipliedInto, ROLE, showBlurred, showPath, writePathUniform, type BlurRegion, type DrawRecord, type QuadKind, type Rect } from "./drawRecords.js";
 import { fitWithin, hasAlphaFormat } from "./fitWithin.js";
 import type { GlContext } from "./GlContext.js";
-import { BLUR_FRAGMENT, DISSOLVE_FRAGMENT, DISSOLVE_VERTEX, FULLSCREEN_VERTEX, LAYER_VERTEX, PATH_COVER_FRAGMENT, PATH_COVER_VERTEX, PATH_STENCIL_FRAGMENT, PATH_STENCIL_VERTEX, SCALE_ALPHA_FRAGMENT, SCALE_FRAGMENT, SOLID_FRAGMENT, TEXTURED_FRAGMENT } from "./glShaders.js";
+import { BLUR_FRAGMENT, COMPOSITE_BACKDROP_FRAGMENT, COMPOSITE_FRAGMENT, DISSOLVE_FRAGMENT, DISSOLVE_VERTEX, FULLSCREEN_VERTEX, LAYER_VERTEX, PATH_COVER_FRAGMENT, PATH_COVER_VERTEX, PATH_STENCIL_FRAGMENT, PATH_STENCIL_VERTEX, SCALE_ALPHA_FRAGMENT, SCALE_FRAGMENT, SOLID_FRAGMENT, TEXTURED_FRAGMENT } from "./glShaders.js";
 import { isHdrColorSpace, toneMapToCanvas } from "./hdr.js";
 import { layerFloats, LAYER_SIZE, LAYER_STRIDE, packLayer, packMat3, pixelsToClipInto } from "./layerUniforms.js";
 import { mipLevelCount, textureBytes } from "./mipmaps.js";
@@ -151,8 +151,29 @@ interface Program {
   layer: WebGLUniformLocation | null;
   mipmapped: WebGLUniformLocation | null;
   blur: WebGLUniformLocation | null;
-  /** The draw whose view matrix it holds. */
+  /** The view (`WebGl2Renderer.viewStamp`) whose matrix it holds. */
   viewDraw: number;
+}
+
+/** A group's pictures (spec §21.17), the target's size: its layers and its matte (made on the first matte). */
+interface GlGroupTarget {
+  width: number;
+  height: number;
+  picture: GlTexture;
+  matte: GlTexture | null;
+  /** The draw that last used it. */
+  used: number;
+}
+
+/** Blend modes and track mattes (Batch 72), built on the first group. */
+interface GlComposite {
+  /** The hardware modes (normal, screen, add: blend states) and the others (the W3C composite with the backdrop). */
+  hardware: Program;
+  backdrop: Program;
+  groups: GlGroupTarget[];
+  /** The copy of the target the non-hardware modes read. */
+  copy: GlTexture | null;
+  copyUsed: number;
 }
 
 /** Everything that belongs to one context generation. */
@@ -165,6 +186,8 @@ interface Resources {
   quads: WebGLVertexArrayObject;
   /** Shapes; null until the first one is drawn. */
   path: GlPath | null;
+  /** Blend modes and track mattes; null until the first group is drawn. */
+  composite: GlComposite | null;
   scale: Program;
   /** `scale` with an alpha plane on unit 1 (Batch 64); linked on the first video with alpha. */
   scaleAlpha: Program | null;
@@ -202,6 +225,14 @@ export class WebGl2Renderer implements BackendRenderer {
   private pathVertices = new Float32Array(1024);
   /** Draws so far (the blur pool's clock, and which draw a program's view belongs to). */
   private draws = 0;
+  /** Bumped whenever the view matrix in `viewData` changes (programs upload it once per stamp). */
+  private viewStamp = 0;
+  /** The program in use during a pass. */
+  private current: Program | null = null;
+  /** This draw's group pictures: group g is `groupTargets[g - 1]`. */
+  private readonly groupTargets: GlGroupTarget[] = [];
+  /** See WebGpuRenderer.backdropCopies. */
+  backdropCopies = 0;
 
   private readonly owner: SurfaceOwner = {
     generation: () => this.resources?.generation ?? -1,
@@ -314,6 +345,15 @@ export class WebGl2Renderer implements BackendRenderer {
     for (const surface of this.spares.splice(0)) if (res) this.deleteSurface(res, surface);
     if (res) {
       for (const entry of res.blurPool.splice(0)) entry.texture.destroy();
+      const composite = res.composite;
+      if (composite) {
+        for (const entry of composite.groups.splice(0)) {
+          entry.picture.destroy();
+          entry.matte?.destroy();
+        }
+        composite.copy?.destroy();
+        composite.copy = null;
+      }
       this.dropScratch(res);
       this.dropPathScratch(res);
     }
@@ -358,6 +398,10 @@ export class WebGl2Renderer implements BackendRenderer {
     this.draws += 1;
     this.pathRecords(res, count);
     this.blurRecords(res, count);
+    const { width, height } = target;
+    if (this.layerData.length < layerFloats(count)) this.layerData = new Float32Array(layerFloats(Math.max(count, 2 * (this.layerData.length / LAYER_STRIDE_FLOATS))));
+    // Blend modes and track mattes (spec §21.17): each group's layers and matte into their pictures first.
+    const composite = this.records.groupCount > 0 ? this.groupPasses(res, count, width, height) : null;
 
     // Framebuffers keep row 0 at the top: the view turns y for them.
     let topDown: boolean;
@@ -372,7 +416,6 @@ export class WebGl2Renderer implements BackendRenderer {
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebufferOf(res, target.texture.surface));
       topDown = true;
     }
-    const { width, height } = target;
     gl.viewport(0, 0, width, height);
     gl.disable(gl.SCISSOR_TEST);
     premultipliedInto(this.clear, first.viewport.outside);
@@ -382,50 +425,64 @@ export class WebGl2Renderer implements BackendRenderer {
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
-    const toClip = pixelsToClipInto(this.toClip, width, height, IDENTITY);
-    if (topDown) {
-      toClip[1] = -toClip[1];
-      toClip[3] = -toClip[3];
-      toClip[5] = -toClip[5];
-    }
-    packMat3(this.viewData, 0, toClip);
-    if (this.layerData.length < layerFloats(count)) this.layerData = new Float32Array(layerFloats(Math.max(count, 2 * (this.layerData.length / LAYER_STRIDE_FLOATS))));
+    this.setView(width, height, topDown);
 
     const last = this.lastScissor;
     last.width = -1;
-    let current: Program | null = null;
+    this.current = null;
     for (let index = 0; index < count; index++) {
       const record = this.records.at(index);
-      const { scissor } = record;
-      if (scissor.x !== last.x || scissor.y !== last.y || scissor.width !== last.width || scissor.height !== last.height) {
-        gl.scissor(scissor.x, topDown ? scissor.y : height - scissor.y - scissor.height, scissor.width, scissor.height);
-        last.x = scissor.x;
-        last.y = scissor.y;
-        last.width = scissor.width;
-        last.height = scissor.height;
+      if (record.role !== ROLE.target) continue;
+      if (record.kind !== "composite") {
+        this.quad(res, index, record, topDown, height);
+        continue;
       }
-      if (record.kind === "path" || (record.kind === "textured" && !record.texture0)) continue;
-      const program = res.programs[record.kind];
-      if (program !== current) {
-        gl.useProgram(program.program);
-        current = program;
+      const group = this.groupTargets[record.group - 1];
+      if (!composite || !group) continue;
+      const backdrop = this.records.groups[record.group - 1]?.backdrop === true;
+      if (backdrop) {
+        // A non-hardware mode reads what is below: copy the target (rows top first) into the backdrop.
+        const copy = this.backdropCopy(res, composite, width, height);
+        const read = topDown && target instanceof GlOffscreenTarget ? this.framebufferOf(res, target.texture.surface) : null;
+        const draw = this.framebufferOf(res, copy.surface);
+        gl.bindFramebuffer(gl.READ_FRAMEBUFFER, read);
+        gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, draw);
+        gl.disable(gl.SCISSOR_TEST);
+        if (topDown) gl.blitFramebuffer(0, 0, width, height, 0, 0, width, height, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+        else gl.blitFramebuffer(0, 0, width, height, 0, height, width, 0, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+        gl.enable(gl.SCISSOR_TEST);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, read);
+        last.width = -1;
+        this.backdropCopies += 1;
       }
-      if (program.viewDraw !== this.draws) {
-        gl.uniform4fv(program.view, this.viewData, 0, 12);
-        program.viewDraw = this.draws;
-      }
+      this.scissor(record, topDown, height);
+      const program = backdrop ? composite.backdrop : composite.hardware;
+      this.useProgram(program);
       packLayer(this.layerData, index, record.uniform);
+      // L_SHAPE: 1 when the target's rows run bottom up (the canvas), and its height.
+      const o = index * LAYER_STRIDE_FLOATS + 28;
+      this.layerData[o] = topDown ? 0 : 1;
+      this.layerData[o + 1] = height;
       gl.uniform4fv(program.layer, this.layerData, index * LAYER_STRIDE_FLOATS, LAYER_FLOATS);
-      const texture0 = record.texture0;
-      if (texture0) {
-        bindTexture(gl, texture0.surface.texture);
-        if (program.mipmapped) gl.uniform1f(program.mipmapped, texture0.mipLevels > 1 ? 1 : 0);
-      }
-      if (record.texture1) {
-        gl.activeTexture(gl.TEXTURE1);
-        gl.bindTexture(gl.TEXTURE_2D, record.texture1.surface.texture);
-      }
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, group.picture.surface.texture);
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, group.matte ? group.matte.surface.texture : null);
+      gl.activeTexture(gl.TEXTURE2);
+      gl.bindTexture(gl.TEXTURE_2D, backdrop && composite.copy ? composite.copy.surface.texture : null);
+      const code = record.uniform.fx?.code ?? 0;
+      if (backdrop) gl.disable(gl.BLEND);
+      else if (code === SCREEN_CODE) gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_COLOR, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      else if (code === ADD_CODE) gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      // The pictures are drawn into on the next draw: leave none bound.
+      gl.bindTexture(gl.TEXTURE_2D, null);
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, null);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, null);
     }
     gl.disable(gl.BLEND);
     gl.disable(gl.SCISSOR_TEST);
@@ -444,6 +501,154 @@ export class WebGl2Renderer implements BackendRenderer {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     // Rows come top first (framebuffers are drawn that way up), premultiplied.
     return createImageBitmap(new ImageData(unpadAndUnpremultiply(pixels, width, height, width * 4), width, height), { premultiplyAlpha: "none" });
+  }
+
+  /** Puts the view of a `width` x `height` target (rows top first when `topDown`) into `viewData`. */
+  private setView(width: number, height: number, topDown: boolean): void {
+    const toClip = pixelsToClipInto(this.toClip, width, height, IDENTITY);
+    if (topDown) {
+      toClip[1] = -toClip[1];
+      toClip[3] = -toClip[3];
+      toClip[5] = -toClip[5];
+    }
+    packMat3(this.viewData, 0, toClip);
+    this.viewStamp += 1;
+  }
+
+  private useProgram(program: Program): void {
+    const { gl } = this.require();
+    if (program !== this.current) {
+      gl.useProgram(program.program);
+      this.current = program;
+    }
+    if (program.viewDraw !== this.viewStamp) {
+      gl.uniform4fv(program.view, this.viewData, 0, 12);
+      program.viewDraw = this.viewStamp;
+    }
+  }
+
+  /** Sets the record's scissor when it differs from the last one set. */
+  private scissor(record: DrawRecord<GlTexture>, topDown: boolean, height: number): void {
+    const { scissor } = record;
+    const last = this.lastScissor;
+    if (scissor.x !== last.x || scissor.y !== last.y || scissor.width !== last.width || scissor.height !== last.height) {
+      this.require().gl.scissor(scissor.x, topDown ? scissor.y : height - scissor.y - scissor.height, scissor.width, scissor.height);
+      last.x = scissor.x;
+      last.y = scissor.y;
+      last.width = scissor.width;
+      last.height = scissor.height;
+    }
+  }
+
+  /** Draws a quad record (textured, dissolve or solid; a shape is a textured record by now). */
+  private quad(res: Resources, index: number, record: DrawRecord<GlTexture>, topDown: boolean, height: number): void {
+    const { gl } = res;
+    this.scissor(record, topDown, height);
+    if (record.kind === "path" || record.kind === "composite" || (record.kind === "textured" && !record.texture0)) return;
+    const program = res.programs[record.kind];
+    this.useProgram(program);
+    packLayer(this.layerData, index, record.uniform);
+    gl.uniform4fv(program.layer, this.layerData, index * LAYER_STRIDE_FLOATS, LAYER_FLOATS);
+    const texture0 = record.texture0;
+    if (texture0) {
+      bindTexture(gl, texture0.surface.texture);
+      if (program.mipmapped) gl.uniform1f(program.mipmapped, texture0.mipLevels > 1 ? 1 : 0);
+    }
+    if (record.texture1) {
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, record.texture1.surface.texture);
+    }
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
+  /**
+   * See WebGpuRenderer.groupPasses: each group's layer records into its picture and its matte records
+   * into its matte picture (framebuffers, rows top first, cleared transparent).
+   */
+  private groupPasses(res: Resources, count: number, width: number, height: number): GlComposite {
+    const { gl } = res;
+    const composite = (res.composite ??= this.buildComposite(res));
+    const pool = composite.groups;
+    this.groupTargets.length = 0;
+    this.setView(width, height, true);
+    gl.viewport(0, 0, width, height);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    for (let g = 1; g <= this.records.groupCount; g++) {
+      let group: GlGroupTarget | null = null;
+      for (const entry of pool) {
+        if (entry.width === width && entry.height === height && entry.used !== this.draws && entry.picture.valid) {
+          group = entry;
+          break;
+        }
+      }
+      if (!group) {
+        group = { width, height, picture: this.newTexture(res, width, height, { label: "group picture" }), matte: null, used: this.draws };
+        pool.push(group);
+      }
+      group.used = this.draws;
+      this.groupTargets.push(group);
+      this.groupPass(res, count, g, ROLE.layers, group.picture, height);
+      if (this.records.groups[g - 1]?.matte) {
+        group.matte ??= this.newTexture(res, width, height, { label: "group matte" });
+        this.groupPass(res, count, g, ROLE.matte, group.matte, height);
+      }
+    }
+    gl.disable(gl.BLEND);
+    gl.disable(gl.SCISSOR_TEST);
+    for (let i = pool.length - 1; i >= 0; i--) {
+      const entry = pool[i] as GlGroupTarget;
+      if (this.draws - entry.used <= BLUR_KEEP_DRAWS) continue;
+      entry.picture.destroy();
+      entry.matte?.destroy();
+      pool.splice(i, 1);
+    }
+    if (composite.copy && this.draws - composite.copyUsed > BLUR_KEEP_DRAWS) {
+      composite.copy.destroy();
+      composite.copy = null;
+    }
+    return composite;
+  }
+
+  private groupPass(res: Resources, count: number, group: number, role: number, into: GlTexture, height: number): void {
+    const { gl } = res;
+    this.framebufferOf(res, into.surface);
+    gl.disable(gl.SCISSOR_TEST);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.enable(gl.SCISSOR_TEST);
+    this.lastScissor.width = -1;
+    this.current = null;
+    for (let index = 0; index < count; index++) {
+      const record = this.records.at(index);
+      if (record.group === group && record.role === role) this.quad(res, index, record, true, height);
+    }
+  }
+
+  /** The copy of the target the non-hardware modes read (one, the target's size). */
+  private backdropCopy(res: Resources, composite: GlComposite, width: number, height: number): GlTexture {
+    if (!composite.copy || !composite.copy.valid || composite.copy.width !== width || composite.copy.height !== height) {
+      composite.copy?.destroy();
+      composite.copy = this.newTexture(res, width, height, { label: "backdrop" });
+    }
+    composite.copyUsed = this.draws;
+    return composite.copy;
+  }
+
+  private buildComposite(res: Resources): GlComposite {
+    const { gl } = res;
+    const program = (label: string, fragment: string): Program => {
+      const made = linkProgram(gl, label, LAYER_VERTEX, fragment);
+      gl.useProgram(made);
+      gl.uniform1i(gl.getUniformLocation(made, "u_picture"), 0);
+      gl.uniform1i(gl.getUniformLocation(made, "u_matte"), 1);
+      gl.uniform1i(gl.getUniformLocation(made, "u_backdrop"), 2);
+      return { program: made, view: gl.getUniformLocation(made, "u_view"), layer: gl.getUniformLocation(made, "u_layer"), mipmapped: null, blur: null, viewDraw: -1 };
+    };
+    const composite = { hardware: program("composite", COMPOSITE_FRAGMENT), backdrop: program("composite backdrop", COMPOSITE_BACKDROP_FRAGMENT), groups: [], copy: null, copyUsed: 0 };
+    gl.useProgram(null);
+    this.current = null;
+    return composite;
   }
 
   /** See WebGpuRenderer.pathRecords: every shape record drawn into a pooled texture, the record pointed at it. */
@@ -940,11 +1145,16 @@ export class WebGl2Renderer implements BackendRenderer {
       blurPool: [],
       quads,
       path: null,
+      composite: null,
     };
     gl.useProgram(null);
     return resources;
   }
 }
+
+/** Blend codes (`BLEND_MODES` indices) of the hardware modes besides normal. */
+const SCREEN_CODE = 5;
+const ADD_CODE = 7;
 
 /** Binds `texture` on unit 0 (uploads, passes and textured layers sample unit 0). */
 function bindTexture(gl: WebGL2RenderingContext, texture: WebGLTexture): void {

@@ -94,6 +94,10 @@ export class SwitchRenderer implements Renderer {
     return this.chosen?.textureCounts ?? { live: 0, bytes: 0 };
   }
 
+  get backdropCopies(): number {
+    return this.chosen?.backdropCopies ?? 0;
+  }
+
   subscribe(listener: (event: DeviceEvent) => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);

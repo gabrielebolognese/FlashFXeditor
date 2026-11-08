@@ -43,9 +43,14 @@ export interface DetailScales {
  * media's pixel size. Rotation and crop count: the layer's crop area in source px over its area on
  * the frame. Text layers count their raster's limit (`TextCompositeLayer.detail`).
  */
-export function sourceDetail(composite: Composite, size: (mediaId: string) => { width: number; height: number } | null): number {
+export function sourceDetail(composite: Pick<Composite, "layers">, size: (mediaId: string) => { width: number; height: number } | null): number {
   let detail = 1;
   for (const layer of composite.layers) {
+    if (layer.kind === "group") {
+      // A blended or matted clip (spec §21.17): its layers and its matte's.
+      detail = Math.max(detail, sourceDetail(layer, size), layer.matte ? sourceDetail(layer.matte, size) : 1);
+      continue;
+    }
     if (layer.kind === "text") {
       if (layer.detail > detail) detail = layer.detail;
       continue;

@@ -1,7 +1,7 @@
 // The persistent document (spec §5.2). Plain JSON only: no classes, Maps, Sets or undefined-valued
 // keys, so a Project can be serialized as-is and diffed by Immer patches.
 
-export const SCHEMA_VERSION = 15;
+export const SCHEMA_VERSION = 16;
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: JsonValue };
@@ -541,6 +541,20 @@ export interface Track {
   height: "S" | "M" | "L";
 }
 
+/** Blend modes (spec §21.17, Batch 72), in the UI's order (normal, darken, lighten, contrast, inversion groups). */
+export const BLEND_MODES = ["normal", "darken", "multiply", "colorBurn", "lighten", "screen", "colorDodge", "add", "overlay", "softLight", "hardLight", "difference", "exclusion"] as const;
+export type BlendMode = (typeof BLEND_MODES)[number];
+
+/** Track matte modes (spec §21.17): the matte clip's alpha or luma, optionally inverted. */
+export const MATTE_MODES = ["alpha", "alphaInverted", "luma", "lumaInverted"] as const;
+export type MatteMode = (typeof MATTE_MODES)[number];
+
+/** A track matte (spec §21.17): the clip shows only where `clipId` (a visual clip of the same sequence) is opaque or bright. */
+export interface TrackMatte {
+  clipId: ClipId;
+  mode: MatteMode;
+}
+
 export const CLIP_KINDS = ["video", "audio", "image", "text", "solid", "caption", "compound", "shape", "null"] as const;
 export type ClipKind = (typeof CLIP_KINDS)[number];
 
@@ -564,6 +578,12 @@ export interface ClipBase {
   autoOrient?: boolean;
   /** 2.5D (spec §21.15, Batch 70): the layer is not drawn while its back faces the viewer. */
   backfaceHidden?: boolean;
+  /** Visual clips (spec §21.17, Batch 72): how the clip blends with what is below it; absent = normal. */
+  blend?: BlendMode;
+  /** Visual clips: the clip shows only where the matte clip is opaque (alpha) or bright (luma) at the frame. */
+  matte?: TrackMatte;
+  /** The clip is not drawn on its own (it is another clip's matte); absent = drawn. */
+  matteOnly?: boolean;
 }
 
 export interface MediaClip extends ClipBase {

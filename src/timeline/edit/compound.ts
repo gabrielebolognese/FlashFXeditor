@@ -73,6 +73,8 @@ function planMake(project: Project, ids: Iterable<ClipId>): MakePlan | string {
   for (const key in project.clips) {
     const other = project.clips[key] as Clip;
     if (other.parentId !== undefined && taken.has(other.id) !== taken.has(other.parentId) && project.clips[other.parentId]) return "A layer and the layers that follow it must be in the compound together";
+    // Likewise a clip and its track matte (spec §21.17: the matte is in the clip's sequence).
+    if (other.matte && taken.has(other.id) !== taken.has(other.matte.clipId) && project.clips[other.matte.clipId]) return "A clip and its track matte must be in the compound together";
   }
   const memo = new Map<SequenceId, number>();
   const inner = Math.max(0, ...clips.filter((clip): clip is CompoundClip => clip.kind === "compound").map((clip) => 1 + sequenceHeight(project, clip.sequenceId, memo)));

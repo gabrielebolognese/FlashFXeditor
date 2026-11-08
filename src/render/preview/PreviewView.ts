@@ -52,7 +52,7 @@ import { cssColorToRgba } from "../../core/theme/cssColor.js";
 import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
 import { secondsToFrames } from "../../core/document/time.js";
 import { Compositor, type LiveAnims, type LiveCaptions, type LiveText, type OfflineSlates, type SlateLook } from "../compositor/Compositor.js";
-import type { Composite, DrawList, Layer, TextureLayer } from "../compositor/drawList.js";
+import { plainLayers, type Composite, type DrawList, type Layer, type TextureLayer } from "../compositor/drawList.js";
 import { DrawListSnapshot } from "../compositor/DrawListSnapshot.js";
 import type { FramePriority } from "../../media/workers/protocol.js";
 import { isSvgImage } from "../../media/mediaKinds.js";
@@ -663,7 +663,7 @@ export class PreviewView implements RenderView {
     // Text measured with a font that was still loading is laid out again once it is there.
     const loadFonts = this.deps.loadFonts;
     if (loadFonts) {
-      const waits = composite.layers.flatMap((layer) => (layer.kind === "text" ? [loadFonts(layer.style, layer.text.value), ...spanFaceStyles(layer.style, (layer.text as { spans?: readonly TextSpan[] }).spans).map((style) => loadFonts(style, layer.text.value))] : []));
+      const waits = plainLayers(composite.layers).flatMap((layer) => (layer.kind === "text" ? [loadFonts(layer.style, layer.text.value), ...spanFaceStyles(layer.style, (layer.text as { spans?: readonly TextSpan[] }).spans).map((style) => loadFonts(style, layer.text.value))] : []));
       if ((await Promise.all(waits)).includes(true)) composite = this.exportCompositor.evaluate(doc, frame);
     }
     const { list, release } = await this.textures.resolveExact(composite, Math.min(DETAIL_MAX_SIZE, renderer.maxTextureSize));

@@ -675,3 +675,92 @@ fn fs(@builtin(position) position: vec4f) -> @location(0) vec4f {
   return sum * 0.25;
 }
 `;
+
+/**
+ * Blend modes and track mattes (spec §21.17, Batch 72): the W3C blend function of every mode, line for
+ * line `blendChannel` of core/effects/blendModes.ts (codes are `BLEND_MODES` indices: 0 normal, 1 darken,
+ * 2 multiply, 3 color burn, 4 lighten, 5 screen, 6 color dodge, 7 add, 8 overlay, 9 soft light, 10 hard
+ * light, 11 difference, 12 exclusion).
+ */
+const BLEND_FUNCTIONS = /* wgsl */ `
+fn hardLight(cb: f32, cs: f32) -> f32 {
+  return select(1.0 - 2.0 * (1.0 - cb) * (1.0 - cs), 2.0 * cb * cs, cs <= 0.5);
+}
+
+fn softLight(cb: f32, cs: f32) -> f32 {
+  if (cs <= 0.5) { return cb - (1.0 - 2.0 * cs) * cb * (1.0 - cb); }
+  let d = select(sqrt(cb), ((16.0 * cb - 12.0) * cb + 4.0) * cb, cb <= 0.25);
+  return cb + (2.0 * cs - 1.0) * (d - cb);
+}
+
+fn blendChannel(cbIn: f32, csIn: f32, mode: i32) -> f32 {
+  let b = clamp(cbIn, 0.0, 1.0);
+  let s = clamp(csIn, 0.0, 1.0);
+  if (mode == 1) { return min(b, s); }
+  if (mode == 2) { return b * s; }
+  if (mode == 3) {
+    if (b >= 1.0) { return 1.0; }
+    if (s <= 0.0) { return 0.0; }
+    return 1.0 - min(1.0, (1.0 - b) / s);
+  }
+  if (mode == 4) { return max(b, s); }
+  if (mode == 5) { return b + s - b * s; }
+  if (mode == 6) {
+    if (b <= 0.0) { return 0.0; }
+    if (s >= 1.0) { return 1.0; }
+    return min(1.0, b / (1.0 - s));
+  }
+  if (mode == 7) { return min(1.0, b + s); }
+  if (mode == 8) { return hardLight(s, b); }
+  if (mode == 9) { return softLight(b, s); }
+  if (mode == 10) { return hardLight(b, s); }
+  if (mode == 11) { return abs(b - s); }
+  if (mode == 12) { return b + s - 2.0 * b * s; }
+  return s;
+}
+`;
+
+/**
+ * The composite of a group (spec §21.17): one quad over the frame reads, at its own pixel, the group's
+ * picture (its clip drawn alone, premultiplied) and keeps it where the matte picture is opaque or bright
+ * (`tfx.x`: 0 none, 1 alpha, 2 alpha inverted, 3 luma, 4 luma inverted; `matteCoverage` of
+ * core/effects/trackMatte.ts). `fs`: the hardware modes (normal, screen, add), whose blend state does the
+ * rest. `fsBackdrop`: the other modes read a copy of what is below (`backdrop`) and return the W3C
+ * composite (`compositeBlend`), drawn without blending. Every texture has the target's size.
+ * The matte rule: Ported from FlashFX-v2 src/engine/renderer.ts (MATTE_SHADER) @ a91c675, adapted: luma
+ * of the premultiplied matte pixel (see core/effects/trackMatte.ts), applied in the same pass as the blend.
+ */
+export const COMPOSITE_WGSL = /* wgsl */ `${COMMON}${BLEND_FUNCTIONS}
+@group(1) @binding(0) var pictureTex: texture_2d<f32>;
+@group(1) @binding(1) var matteTex: texture_2d<f32>;
+@group(1) @binding(2) var backdropTex: texture_2d<f32>;
+
+fn matted(p: vec2i) -> vec4f {
+  let s = textureLoad(pictureTex, p, 0);
+  let matte = i32(layer.tfx.x + 0.5);
+  if (matte == 0) { return s; }
+  let m = textureLoad(matteTex, p, 0);
+  var c = m.a;
+  if (matte >= 3) { c = dot(m.rgb, vec3f(0.2126, 0.7152, 0.0722)); }
+  if (matte == 2 || matte == 4) { c = 1.0 - c; }
+  return s * clamp(c, 0.0, 1.0);
+}
+
+@fragment
+fn fs(in: VertexOut) -> @location(0) vec4f {
+  return matted(vec2i(in.position.xy));
+}
+
+@fragment
+fn fsBackdrop(in: VertexOut) -> @location(0) vec4f {
+  let p = vec2i(in.position.xy);
+  let s = matted(p);
+  let b = textureLoad(backdropTex, p, 0);
+  let mode = i32(layer.tfx.w + 0.5);
+  let cs = select(vec3f(0.0), s.rgb / max(s.a, 1e-6), s.a > 0.0);
+  let cb = select(vec3f(0.0), b.rgb / max(b.a, 1e-6), b.a > 0.0);
+  let blended = vec3f(blendChannel(cb.r, cs.r, mode), blendChannel(cb.g, cs.g, mode), blendChannel(cb.b, cs.b, mode));
+  let rgb = s.rgb * (1.0 - b.a) + b.rgb * (1.0 - s.a) + s.a * b.a * blended;
+  return vec4f(rgb, s.a + b.a - s.a * b.a);
+}
+`;

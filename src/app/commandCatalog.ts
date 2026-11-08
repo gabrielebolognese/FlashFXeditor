@@ -4,6 +4,7 @@
 // names and icons here, and the dev audit (app/commandAudit.ts) checks that both agree with the keymap.
 import {
   Activity,
+  Contrast,
   ArrowUpDown,
   Bold,
   Italic,
@@ -141,7 +142,8 @@ import {
 import { EASE_LABELS, KEYFRAME_SECTIONS, SECTION_LABELS, type KeyframeSection } from "../core/document/keyframes.js";
 import { TRANSITION_LABELS } from "../core/document/transitions.js";
 import { TRANSITION_ICONS } from "../panels/properties/transitionIcons.js";
-import { EASE_IDS, LABEL_COLORS, TRANSITION_KINDS } from "../core/document/types.js";
+import { BLEND_MODES, EASE_IDS, LABEL_COLORS, TRANSITION_KINDS } from "../core/document/types.js";
+import { BLEND_MODE_META } from "../core/effects/blendModes.js";
 import type { FocusScope } from "../core/keyboard/focusScope.js";
 import { FADE_PRESET_SECONDS } from "../timeline/edit/fades.js";
 import { LABEL_NAMES } from "../timeline/menus/labelSwatches.js";
@@ -358,6 +360,9 @@ export const COMMANDS: readonly CommandInfo[] = [
   clip("transform.reset3d", "Reset 3D rotation", { icon: Rotate3d, keywords: "2.5d tilt perspective depth z rotation x y flat" }),
   clip("clip.backface", "Hide back side (toggle)", { icon: EyeOff, keywords: "backface 2.5d 3d card flip" }),
   clip("compound.depthSort", "Sort compound layers by depth (toggle)", { icon: Layers, keywords: "2.5d 3d z order depth sort" }),
+  ...BLEND_MODES.map((mode) => clip(`clip.blend.${mode}`, `Blend: ${BLEND_MODE_META[mode].label}`, { icon: Blend, keywords: "blend mode composite compositing" })),
+  clip("clip.matte.clear", "Remove track matte", { icon: Contrast, keywords: "matte mask alpha luma compositing" }),
+  clip("clip.matteOnly", "Use as matte only (toggle)", { icon: Contrast, keywords: "track matte hide compositing" }),
   clip("crop.toFrame", "Crop to frame", { icon: Frame }),
   clip("crop.reset", "Reset crop", { icon: RotateCcw }),
   clip("crop.toggleMode", "Crop mode", { icon: Crop, keywords: "enter leave crop" }),

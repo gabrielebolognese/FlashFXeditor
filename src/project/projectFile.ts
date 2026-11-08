@@ -40,6 +40,8 @@ export type Migration = (raw: JsonObject) => JsonObject;
  * - 14 -> 15 (Batch 71): the transition kinds slide, push, wipe, iris, zoomIn, zoomOut, whip, blurDissolve, glitch and flash and
  *   `Transition.direction`, `.angle`, `.softness`, `.center`, `.ease` (all optional; an absent `ease` is the v1 linear mix):
  *   older projects open unchanged.
+ * - 15 -> 16 (Batch 72): `ClipBase.blend`, `.matte` and `.matteOnly` (all optional; absent = normal, no matte, drawn):
+ *   older projects open unchanged.
  * - 7 -> 8 (Batch 62): `sequences` (empty) and the `compound` clip kind: older projects open unchanged.
  * - 6 -> 7 (Batch 60): the 30 Penner eases, `bezier` and `spring` on keys, vector (color) key values and the keyframe
  *   properties of spec §21.9 (all new values of existing fields): older projects open unchanged.
@@ -79,6 +81,8 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   13: (raw) => raw,
   // 14 -> 15 (Batch 71): new transition kinds and optional transition fields: none in an older project, no `ease` = the v1 linear mix.
   14: (raw) => raw,
+  // 15 -> 16 (Batch 72): blend modes and track mattes: all optional, none in an older project.
+  15: (raw) => raw,
 };
 
 function isObject(value: unknown): value is JsonObject {

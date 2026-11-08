@@ -2,8 +2,8 @@
   "manifestVersion": 1,
   "app": "shorts-editor",
   "appVersion": "1.1.0",
-  "lastBatch": 71,
-  "schemaVersion": 15,
+  "lastBatch": 72,
+  "schemaVersion": 16,
   "project": {
     "file": "project.json",
     "fontsManifest": "fonts/fonts.json",
@@ -277,9 +277,21 @@
   "compositing": {
     "compound": true,
     "blendModes": [
-      "normal"
+      "normal",
+      "darken",
+      "multiply",
+      "colorBurn",
+      "lighten",
+      "screen",
+      "colorDodge",
+      "add",
+      "overlay",
+      "softLight",
+      "hardLight",
+      "difference",
+      "exclusion"
     ],
-    "trackMatte": false,
+    "trackMatte": true,
     "masks": false,
     "adjustment": false
   },

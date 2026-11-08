@@ -3,9 +3,11 @@
 // the GPU redraw. Comparing allocates nothing once the buffers are big enough.
 import type { TextureHandle } from "../gpu/renderer.js";
 import type { GradientFill } from "../../core/document/types.js";
-import type { DissolveSide, DrawList } from "./drawList.js";
+import type { DissolveSide, DrawList, Layer } from "./drawList.js";
+import { blendCode } from "../../core/effects/blendModes.js";
+import { matteCode } from "../../core/effects/trackMatte.js";
 
-const KIND_CODE = { texture: 1, dissolve: 2, solid: 3, path: 4 } as const;
+const KIND_CODE = { texture: 1, dissolve: 2, solid: 3, path: 4, group: 5 } as const;
 const RULE_CODE = { nonzero: 1, evenodd: 2, union: 3, inside: 4, outside: 5 } as const;
 
 export class DrawListSnapshot {
@@ -26,8 +28,23 @@ export class DrawListSnapshot {
     this.push(list.width);
     this.push(list.height);
     this.color(list.background);
-    this.push(list.layers.length);
-    for (const layer of list.layers) {
+    this.layers(list.layers);
+    const changed = !this.same();
+    const numbers = this.current;
+    this.current = this.next;
+    this.next = numbers;
+    const refs = this.currentRefs;
+    this.currentRefs = this.nextRefs;
+    this.nextRefs = refs;
+    this.currentLength = this.length;
+    this.currentRefCount = this.refCount;
+    return changed;
+  }
+
+  /** Records the layers of a list (or of a group: spec §21.17). */
+  private layers(layers: readonly Layer[]): void {
+    this.push(layers.length);
+    for (const layer of layers) {
       this.push(KIND_CODE[layer.kind]);
       for (let i = 0; i < 6; i++) this.push(layer.transform[i] as number);
       // A 2.5D layer's projection (spec §21.15): 0 when flat.
@@ -105,18 +122,15 @@ export class DrawListSnapshot {
           }
           for (let i = 0; i < 4; i++) this.push(layer.bounds[i] as number);
           break;
+        case "group":
+          // Blend mode and track matte (spec §21.17): the mode, the layers, the matte's mode and layers.
+          this.push(blendCode(layer.blend));
+          this.layers(layer.layers);
+          this.push(matteCode(layer.matte?.mode));
+          if (layer.matte) this.layers(layer.matte.layers);
+          break;
       }
     }
-    const changed = !this.same();
-    const numbers = this.current;
-    this.current = this.next;
-    this.next = numbers;
-    const refs = this.currentRefs;
-    this.currentRefs = this.nextRefs;
-    this.nextRefs = refs;
-    this.currentLength = this.length;
-    this.currentRefCount = this.refCount;
-    return changed;
   }
 
   /** Forgets the recorded list: the next `update` reports a change (a failed draw, a new device). */

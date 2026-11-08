@@ -711,6 +711,43 @@ At the i-th of the transition's `before + after` frames the progress is `(i + 1)
 
 `fixtures/interop/transitions` is a complete project: fourteen stills alternating between two pictures, joined by thirteen 11-frame transitions (6 frames before the cut, 5 after), one of every kind. Its expected frames are each transition's midpoint, the frame before the cut (progress exactly 0.5): 29, 59, 89 and so on. `npm run test:render` renders them on both backends.
 
+### 5.11 Blend modes and track mattes (manifest keys `compositing.blendModes`, `compositing.trackMatte`; schema 16)
+
+**Blend modes.** A visual clip (`video`, `image`, `text`, `solid`, `shape`, `compound`) may carry `blend`: how its picture combines with what is below it in its sequence. The modes are `normal` (absent means normal), `darken`, `multiply`, `colorBurn`, `lighten`, `screen`, `colorDodge`, `add`, `overlay`, `softLight`, `hardLight`, `difference` and `exclusion`, the separable blend functions of the W3C Compositing and Blending spec (`add` is linear dodge, clamped at white). The clip's whole picture (all of its text layers, the whole compound) is blended at once, after its transform, opacity and fades, then composited over the backdrop with source-over alpha: where the clip is transparent the backdrop shows unchanged. `screen` and `add` brighten, `multiply` darkens (a paper texture), `difference` inverts under white. The manifest key `compositing.blendModes` lists the modes in the order the editor shows them.
+
+**Track mattes.** `matte: { "clipId": "...", "mode": "..." }` shows the clip only where the matte clip is opaque (`alpha`) or bright (`luma`, Rec. 709 luminance of its premultiplied color), or the opposite (`alphaInverted`, `lumaInverted`), at the same frame. The matte clip is any visual clip on a video track of the same sequence (the root timeline or the compound's), drawn with its own transform, opacity and animation. A matte clip that is not at that frame is an empty matte (`alpha` hides the clip, `alphaInverted` shows all of it). A matte clip that is gone is ignored. A clip cannot be its own matte. `matteOnly: true` on the matte clip hides it: it is drawn only as a matte. Without it the matte clip is drawn too, as any clip.
+
+**Order.** A clip draws: its content, transform, opacity and fades, then its matte, then its blend mode. In a transition the two clips' picture is matted and blended as one, with the `blend` and `matte` of the clip that dominates the frame (the outgoing one in the first half). Blend and matte apply to the clip's projected picture when it is turned in 2.5D (§5.9). A clip used as a matte draws plainly there: its own `blend` and `matte` only apply where it is drawn as a clip.
+
+```json Clip.video
+{
+  "id": "inside",
+  "trackId": "v1",
+  "kind": "video",
+  "name": "Video inside the title",
+  "start": 0,
+  "duration": 90,
+  "enabled": true,
+  "mediaId": "m1",
+  "in": 0,
+  "out": 3000000,
+  "speed": 1,
+  "transform": { "x": 0, "y": 0, "scale": 1, "rotation": 0, "anchor": { "x": 0.5, "y": 0.5 }, "flipH": false, "flipV": false },
+  "crop": { "left": 0, "top": 0, "right": 0, "bottom": 0 },
+  "opacity": 1,
+  "volume": { "gainDb": 0, "muted": false },
+  "fades": { "in": 0, "out": 0 },
+  "blend": "screen",
+  "matte": { "clipId": "title", "mode": "alpha" }
+}
+```
+
+```json TrackMatte
+{ "clipId": "title", "mode": "lumaInverted" }
+```
+
+The title clip `title` on another video track then carries `"matteOnly": true`. Schema 15 projects open unchanged (migration 15 to 16 changes nothing). `fixtures/interop/compositing` is a complete project: a test chart of the 13 modes (a gradient blended over color bars), a multiply texture over paper, a screen light leak, a video inside a text matte and an inverted luma matte, with an expected frame of each. `npm run test:render` renders them on both backends.
+
 ## 6. Captions and word timings
 
 The caption track's `captionTracks[<track id>].style` styles every cue; a cue's `styleOverride` sets only the fields it changes. A cue is a `caption` clip with `text` (`\n` for line breaks) and optional `words`: `start` and `end` are integer frames relative to the cue's start, `end` after `start`. A word may start before the cue or end after it: an in-trim keeps the words it hides (negative frames), so a trim back shows them again. With word timings the active word is highlighted as the style's `highlight` says.
@@ -1028,6 +1065,15 @@ A transition at the cut between two abutting clips: the left clip's `transitionO
 | `softness` | number | no | `0` | Wipe, iris: the soft width of the edge, 0 to 1. |
 | `center` | [FractionPoint](#fractionpoint) | no | `{"x":0.5,"y":0.5}` | Iris: the circle's center, fractions of the frame. |
 | `ease` | `"linear"` | `"easeIn"` | `"easeOut"` | `"easeInOut"` | `"hold"` | `"smooth"` | `"snap"` | `"overshoot"` | `"sineIn"` | `"sineOut"` | `"sineInOut"` | `"quadIn"` | `"quadOut"` | `"quadInOut"` | `"cubicIn"` | `"cubicOut"` | `"cubicInOut"` | `"quartIn"` | `"quartOut"` | `"quartInOut"` | `"quintIn"` | `"quintOut"` | `"quintInOut"` | `"expoIn"` | `"expoOut"` | `"expoInOut"` | `"circIn"` | `"circOut"` | `"circInOut"` | `"backIn"` | `"backOut"` | `"backInOut"` | `"elasticIn"` | `"elasticOut"` | `"elasticInOut"` | `"bounceIn"` | `"bounceOut"` | `"bounceInOut"` | `"bezier"` | `"spring"` | no |  | The progress curve. Absent = the linear mix of schema 14 and before; the motion kinds are created with easeInOut. |
+
+#### TrackMatte
+
+A track matte (Batch 72): the clip shows only where the matte clip is opaque (alpha) or bright (luma) at the frame, or the opposite (inverted).
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `clipId` | string (not empty) | yes |  | A visual clip of a video track in the same sequence (not the clip itself). While it is not at the frame the matte is empty: alpha and luma hide the clip, the inverted modes show it whole. |
+| `mode` | `"alpha"` | `"alphaInverted"` | `"luma"` | `"lumaInverted"` | yes | `"alpha"` | What of the matte clip is used. |
 
 #### FallbackOf
 
@@ -1456,7 +1502,7 @@ project.json.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `schemaVersion` | integer (>= 1) | yes | `15` | The schema version; this build writes and reads up to the current one. |
+| `schemaVersion` | integer (>= 1) | yes | `16` | The schema version; this build writes and reads up to the current one. |
 | `id` | string (not empty) | yes |  | Unique id, never changes (uuid v4 recommended). |
 | `name` | string | yes |  | Project name. |
 | `settings` | [Settings](#settings) | yes |  | Frame and time base. |
@@ -1496,6 +1542,9 @@ The fields every clip has.
 | `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
 | `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
 | `backfaceHidden` | boolean | no | `false` | 2.5D (Batch 70): not drawn while its back faces the viewer. |
+| `blend` | `"normal"` | `"darken"` | `"multiply"` | `"colorBurn"` | `"lighten"` | `"screen"` | `"colorDodge"` | `"add"` | `"overlay"` | `"softLight"` | `"hardLight"` | `"difference"` | `"exclusion"` | no | `"normal"` | Visual clips (Batch 72): how the clip blends with the picture below it (W3C formulas; `add` is linear dodge). |
+| `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
+| `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
 
 #### Clip.video
 
@@ -1517,6 +1566,9 @@ A video clip.
 | `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
 | `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
 | `backfaceHidden` | boolean | no | `false` | 2.5D (Batch 70): not drawn while its back faces the viewer. |
+| `blend` | `"normal"` | `"darken"` | `"multiply"` | `"colorBurn"` | `"lighten"` | `"screen"` | `"colorDodge"` | `"add"` | `"overlay"` | `"softLight"` | `"hardLight"` | `"difference"` | `"exclusion"` | no | `"normal"` | Visual clips (Batch 72): how the clip blends with the picture below it (W3C formulas; `add` is linear dodge). |
+| `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
+| `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
 | `mediaId` | string (not empty) | yes |  | The media item it plays; a clip whose item was removed stays as an offline clip. |
 | `in` | integer (>= 0) | yes |  | Source in point. Integer microseconds. |
 | `out` | integer (>= 1) | yes |  | Source out point; `out - in` equals `duration * speed` frame times (within one frame). Integer microseconds. |
@@ -1553,6 +1605,9 @@ A audio clip.
 | `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
 | `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
 | `backfaceHidden` | boolean | no | `false` | 2.5D (Batch 70): not drawn while its back faces the viewer. |
+| `blend` | `"normal"` | `"darken"` | `"multiply"` | `"colorBurn"` | `"lighten"` | `"screen"` | `"colorDodge"` | `"add"` | `"overlay"` | `"softLight"` | `"hardLight"` | `"difference"` | `"exclusion"` | no | `"normal"` | Visual clips (Batch 72): how the clip blends with the picture below it (W3C formulas; `add` is linear dodge). |
+| `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
+| `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
 | `mediaId` | string (not empty) | yes |  | The media item it plays; a clip whose item was removed stays as an offline clip. |
 | `in` | integer (>= 0) | yes |  | Source in point. Integer microseconds. |
 | `out` | integer (>= 1) | yes |  | Source out point; `out - in` equals `duration * speed` frame times (within one frame). Integer microseconds. |
@@ -1586,6 +1641,9 @@ A image clip.
 | `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
 | `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
 | `backfaceHidden` | boolean | no | `false` | 2.5D (Batch 70): not drawn while its back faces the viewer. |
+| `blend` | `"normal"` | `"darken"` | `"multiply"` | `"colorBurn"` | `"lighten"` | `"screen"` | `"colorDodge"` | `"add"` | `"overlay"` | `"softLight"` | `"hardLight"` | `"difference"` | `"exclusion"` | no | `"normal"` | Visual clips (Batch 72): how the clip blends with the picture below it (W3C formulas; `add` is linear dodge). |
+| `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
+| `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
 | `mediaId` | string (not empty) | yes |  | The media item it plays; a clip whose item was removed stays as an offline clip. |
 | `in` | integer (>= 0) | yes |  | Source in point. Integer microseconds. |
 | `out` | integer (>= 1) | yes |  | Source out point; `out - in` equals `duration * speed` frame times (within one frame). Integer microseconds. |
@@ -1622,6 +1680,9 @@ A text clip.
 | `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
 | `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
 | `backfaceHidden` | boolean | no | `false` | 2.5D (Batch 70): not drawn while its back faces the viewer. |
+| `blend` | `"normal"` | `"darken"` | `"multiply"` | `"colorBurn"` | `"lighten"` | `"screen"` | `"colorDodge"` | `"add"` | `"overlay"` | `"softLight"` | `"hardLight"` | `"difference"` | `"exclusion"` | no | `"normal"` | Visual clips (Batch 72): how the clip blends with the picture below it (W3C formulas; `add` is linear dodge). |
+| `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
+| `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
 | `text` | [TextContent](#textcontent) | yes |  | What it says. |
 | `style` | [TextStyle](#textstyle) | yes |  | Its look. |
 | `animIn` | [TextAnim](#textanim) | no |  | In animation. |
@@ -1733,6 +1794,9 @@ A solid or shape layer: `size` project px at scale 1.
 | `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
 | `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
 | `backfaceHidden` | boolean | no | `false` | 2.5D (Batch 70): not drawn while its back faces the viewer. |
+| `blend` | `"normal"` | `"darken"` | `"multiply"` | `"colorBurn"` | `"lighten"` | `"screen"` | `"colorDodge"` | `"add"` | `"overlay"` | `"softLight"` | `"hardLight"` | `"difference"` | `"exclusion"` | no | `"normal"` | Visual clips (Batch 72): how the clip blends with the picture below it (W3C formulas; `add` is linear dodge). |
+| `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
+| `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
 | `fill` | [RGBA](#rgba) | [Gradient](#gradient) | [GradientFill](#gradientfill) | yes |  | A color or a vertical two-stop gradient. |
 | `shape` | `"rect"` | `"roundedRect"` | `"ellipse"` | `"line"` | yes | `"rect"` | The shape. |
 | `size` | [Size](#size) | yes |  | Width and height at scale 1, project px. |
@@ -1765,6 +1829,9 @@ A nested sequence shown as one layer (Batch 62): inner frame = `offset + (frame 
 | `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
 | `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
 | `backfaceHidden` | boolean | no | `false` | 2.5D (Batch 70): not drawn while its back faces the viewer. |
+| `blend` | `"normal"` | `"darken"` | `"multiply"` | `"colorBurn"` | `"lighten"` | `"screen"` | `"colorDodge"` | `"add"` | `"overlay"` | `"softLight"` | `"hardLight"` | `"difference"` | `"exclusion"` | no | `"normal"` | Visual clips (Batch 72): how the clip blends with the picture below it (W3C formulas; `add` is linear dodge). |
+| `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
+| `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
 | `sequenceId` | string (not empty) | yes |  | The sequence it shows (a key of `Project.sequences`); instances may share one. |
 | `offset` | integer (>= 0) | yes | `0` | The sequence frame shown at the clip's first frame. Integer frames at the project frame rate. |
 | `transform` | [Transform](#transform) | yes |  | Placement. |
@@ -1793,6 +1860,9 @@ A vector graphic (Batch 65): paths drawn in order in a view box of `size` projec
 | `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
 | `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
 | `backfaceHidden` | boolean | no | `false` | 2.5D (Batch 70): not drawn while its back faces the viewer. |
+| `blend` | `"normal"` | `"darken"` | `"multiply"` | `"colorBurn"` | `"lighten"` | `"screen"` | `"colorDodge"` | `"add"` | `"overlay"` | `"softLight"` | `"hardLight"` | `"difference"` | `"exclusion"` | no | `"normal"` | Visual clips (Batch 72): how the clip blends with the picture below it (W3C formulas; `add` is linear dodge). |
+| `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
+| `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
 | `size` | [Size](#size) | yes |  | The view box: width and height at scale 1, project px. |
 | `paths` | [ShapePath](#shapepath)[] | yes | `[]` | The paths, bottom to top. |
 | `transform` | [Transform](#transform) | yes |  | Placement. |
@@ -1820,6 +1890,9 @@ An invisible controller (Batch 69): never drawn or exported, a parent for other 
 | `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
 | `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
 | `backfaceHidden` | boolean | no | `false` | 2.5D (Batch 70): not drawn while its back faces the viewer. |
+| `blend` | `"normal"` | `"darken"` | `"multiply"` | `"colorBurn"` | `"lighten"` | `"screen"` | `"colorDodge"` | `"add"` | `"overlay"` | `"softLight"` | `"hardLight"` | `"difference"` | `"exclusion"` | no | `"normal"` | Visual clips (Batch 72): how the clip blends with the picture below it (W3C formulas; `add` is linear dodge). |
+| `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
+| `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
 | `size` | [Size](#size) | yes | `{"w":100,"h":100}` | The selection outline: width and height at scale 1, project px. |
 | `transform` | [Transform](#transform) | yes |  | Placement. |
 | `keyframes` | [Keyframes](#keyframes) | no |  | Animated properties, including `transform.position`. |
@@ -1989,6 +2062,9 @@ A caption cue. Its style is its track's with `styleOverride` on top.
 | `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
 | `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
 | `backfaceHidden` | boolean | no | `false` | 2.5D (Batch 70): not drawn while its back faces the viewer. |
+| `blend` | `"normal"` | `"darken"` | `"multiply"` | `"colorBurn"` | `"lighten"` | `"screen"` | `"colorDodge"` | `"add"` | `"overlay"` | `"softLight"` | `"hardLight"` | `"difference"` | `"exclusion"` | no | `"normal"` | Visual clips (Batch 72): how the clip blends with the picture below it (W3C formulas; `add` is linear dodge). |
+| `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
+| `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
 | `text` | string | yes |  | Plain text with `\n` line breaks. |
 | `words` | [CaptionWord](#captionword)[] | no |  | Word timings (karaoke), relative to the cue start. |
 | `styleOverride` | [CaptionStyleOverride](#captionstyleoverride) | no |  | The cue's own style. |
