@@ -5,10 +5,10 @@
 // it. Hover writes a store, never React state (P1).
 import { produce } from "immer";
 import { alignedSides, type TransitionAlignment } from "../core/document/transitions.js";
-import type { Frame, Project } from "../core/document/types.js";
+import type { Frame, Project, TransitionKind } from "../core/document/types.js";
 import { createStore } from "../core/store/createStore.js";
 import { EMPTY_SELECTION, toSnapshot } from "../core/store/selection.js";
-import { transitionAt, updateTransition, type Cut } from "../timeline/edit/transitions.js";
+import { transitionAt, updateTransition, type Cut, type TransitionParams } from "../timeline/edit/transitions.js";
 
 export interface AlignmentHover {
   cut: Cut;
@@ -43,4 +43,34 @@ export function alignmentPreview(project: Project, hover: AlignmentHover | null)
   const first = cutFrame - aligned.before;
   const last = cutFrame + aligned.after - 1;
   return { project: proposed, frame: first, previewSplit: { leftFrame: first, rightFrame: Math.max(first, last) } };
+}
+
+/** The transition chip kind under the pointer (or focused), or null: the Preview row animates it (Batch 71 review, P1: a store, not React state). */
+export const kindHover = createStore<TransitionKind | null>(null);
+
+export function hoverKind(kind: TransitionKind | null): void {
+  if (kindHover.getState() !== kind) kindHover.set(kind);
+}
+
+/** A transition field scrub in progress (Angle, Softness, Center): the values it shows live, before the release commits one command (P2). */
+export interface TransitionLive {
+  cut: Cut;
+  patch: TransitionParams;
+  linked: boolean;
+}
+
+export const transitionLive = createStore<TransitionLive | null>(null);
+
+
+/**
+ * The preview override for a live field scrub (PreviewView `override`): the document with the scrub's
+ * values applied to the transition, at the frame being shown. Null when nothing is live or the cut has
+ * no transition any more.
+ */
+export function transitionLivePreview(project: Project, live: TransitionLive | null, frame: Frame): { project: Project; frame: Frame } | null {
+  if (!live || !transitionAt(project, live.cut)) return null;
+  const command = updateTransition(project, live.cut, live.patch, { linked: live.linked });
+  if (!command) return null;
+  const context = { playhead: frame, selection: toSnapshot(EMPTY_SELECTION), newId: () => crypto.randomUUID() };
+  return { project: produce(project, (draft) => command.run(draft, context)), frame };
 }

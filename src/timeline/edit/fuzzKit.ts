@@ -155,7 +155,26 @@ export function random(seed: number): Rng {
   };
   const int = (min: number, max: number) => min + Math.floor(next() * (max - min + 1));
   const pick = <T>(items: readonly T[]): T => items[int(0, items.length - 1)] as T;
-  return { next, int, pick, chance: (p) => next() < p };
+  const rng: Rng = { next, int, pick, chance: (p) => next() < p };
+  seeds.set(rng, seed);
+  return rng;
+}
+
+const seeds = new WeakMap<Rng, number>();
+const sideStreams = new WeakMap<Rng, Rng>();
+
+/**
+ * A second stream tied to `rng`'s seed, for fields added after a seed's patches were pinned (Batch 71
+ * transition parameters): drawing from it leaves `rng`'s own sequence alone, and it starts afresh with
+ * every run (every `random(seed)`), so a seed reproduces its patches when rerun alone.
+ */
+export function sideRng(rng: Rng): Rng {
+  let side = sideStreams.get(rng);
+  if (!side) {
+    side = random(((seeds.get(rng) ?? 0) ^ 0x5bd1e995) | 0);
+    sideStreams.set(rng, side);
+  }
+  return side;
 }
 
 /** One of `items`, or null when there is none. */
@@ -1265,15 +1284,14 @@ const TRANSITION_OPS: FuzzOp[] = [
     const patch: { kind?: (typeof TRANSITION_KINDS)[number]; before?: Frame; after?: Frame } & TransitionParams = {};
     if (rng.chance(0.4)) patch.kind = rng.pick(TRANSITION_KINDS);
     // Batch 71 (spec §21.16): the direction, angle, softness, center and ease, some out of range. They come from
-    // their own counter, not from `rng`, so the random streams (and the seeds of the other properties) stay as they were.
-    const roll = ++transitionParamRolls;
-    const unit = (salt: number) => (Math.sin(roll * 12.9898 + salt * 78.233) * 43758.5453) % 1;
-    const pickOf = <T,>(list: readonly T[], salt: number): T => list[Math.floor(Math.abs(unit(salt)) * list.length)] as T;
-    if (Math.abs(unit(1)) < 0.3) patch.direction = pickOf(TRANSITION_DIRECTIONS, 2);
-    if (Math.abs(unit(3)) < 0.2) patch.angle = Math.round(unit(4) * 720);
-    if (Math.abs(unit(5)) < 0.2) patch.softness = Math.round(unit(6) * 120) / 100;
-    if (Math.abs(unit(7)) < 0.2) patch.center = { x: Math.round(unit(8) * 150) / 100, y: Math.round(unit(9) * 150) / 100 };
-    if (Math.abs(unit(10)) < 0.3) patch.ease = Math.abs(unit(11)) < 0.3 ? null : pickOf(EASE_IDS, 12);
+    // a second Rng seeded from the run's seed (`sideRng`), not from `rng`, so the main stream (and the seeds of the
+    // other properties) stay as they were and a seed reproduces its patch when rerun alone.
+    const side = sideRng(rng);
+    if (side.chance(0.3)) patch.direction = side.pick(TRANSITION_DIRECTIONS);
+    if (side.chance(0.2)) patch.angle = side.int(-360, 360);
+    if (side.chance(0.2)) patch.softness = side.int(-10, 110) / 100;
+    if (side.chance(0.2)) patch.center = { x: side.int(-25, 125) / 100, y: side.int(-25, 125) / 100 };
+    if (side.chance(0.3)) patch.ease = side.chance(0.3) ? null : side.pick(EASE_IDS);
     if (rng.chance(0.6)) patch.before = rng.int(-5, 60);
     if (rng.chance(0.6)) patch.after = rng.int(-5, 60);
     return exec(store, updateTransition(p, cut, patch, { linked: rng.chance(0.7) }));
@@ -1291,8 +1309,6 @@ const TRANSITION_OPS: FuzzOp[] = [
     return cut && drag ? exec(store, updateTransition(p, cut, { before: drag.before, after: drag.after }, { linked: rng.chance(0.7) })) : false;
   }),
 ];
-
-let transitionParamRolls = 0;
 
 const randomEdge = (rng: Rng): FadeEdge => (rng.chance(0.5) ? "in" : "out");
 

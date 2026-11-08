@@ -341,8 +341,22 @@ vec2 zoomAbout(vec2 c, float s) {
   return (c - vec2(0.5)) / s + vec2(0.5);
 }
 
+// Twins of hash21 and moshOffset of core/effects/glitchGpu.ts (ported from FlashFX-v2 @ a91c675).
 float hash21(vec2 p) {
-  return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+  vec3 p3 = fract(vec3(p.x, p.y, p.x) * 0.1031);
+  p3 += dot(p3, vec3(p3.y, p3.z, p3.x) + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
+}
+
+// Datamosh block displacement: xy = offset (uv units, at most 0.15), z = gate (1 for the corrupted blocks).
+vec3 moshOffset(vec2 cell, float seed, float amount) {
+  float amt = clamp(amount, 0.0, 1.0);
+  float h1 = hash21(cell + vec2(seed));
+  float h2 = hash21(cell + vec2(seed + 19.0));
+  float hg = hash21(cell + vec2(seed + 3.0));
+  float ang = h1 * 6.28318;
+  float mag = amt * 0.15 * h2;
+  return vec3(cos(ang) * mag, sin(ang) * mag, step(1.0 - amt, hg));
 }
 
 // See DISSOLVE_WGSL in shaders.ts (Batch 71: the transition kinds, selected by L_TFX.w).
@@ -403,21 +417,20 @@ void main() {
     }
     res = sum / 9.0;
   } else if (code == 9) {
-    float band = floor(c.y * 24.0);
-    float step = floor(t * 12.0);
-    float h1 = hash21(vec2(band, step));
-    float h2 = hash21(vec2(band + 7.0, step));
+    // Datamosh blocks (FlashFX-v2 moshOffset); see DISSOLVE_WGSL.
+    vec2 cell = floor(c * vec2(12.0, 24.0));
+    float bucket = floor(t * 12.0);
     float amount = sin(3.14159265 * t);
-    float live = h1 > 0.7 ? 1.0 : 0.0;
-    float off = (h2 - 0.5) * 0.25 * amount * live;
-    float split = 0.012 * amount * live;
-    float pick = t + (h1 - 0.5) * 0.3 * amount > 0.5 ? 1.0 : 0.0;
-    vec4 ar = fromAt(pa(c + vec2(off + split, 0.0)));
-    vec4 ag = fromAt(pa(c + vec2(off, 0.0)));
-    vec4 ab = fromAt(pa(c + vec2(off - split, 0.0)));
-    vec4 br = toAt(pb(c + vec2(off + split, 0.0)));
-    vec4 bg = toAt(pb(c + vec2(off, 0.0)));
-    vec4 bb = toAt(pb(c + vec2(off - split, 0.0)));
+    vec3 mosh = moshOffset(cell, bucket, amount);
+    vec2 off = mosh.xy * mosh.z;
+    vec2 split = vec2(0.012 * amount * mosh.z, 0.0);
+    float pick = t + (hash21(cell + vec2(bucket)) - 0.5) * 0.3 * amount > 0.5 ? 1.0 : 0.0;
+    vec4 ar = fromAt(pa(c + off + split));
+    vec4 ag = fromAt(pa(c + off));
+    vec4 ab = fromAt(pa(c + off - split));
+    vec4 br = toAt(pb(c + off + split));
+    vec4 bg = toAt(pb(c + off));
+    vec4 bb = toAt(pb(c + off - split));
     res = mix(vec4(ar.r, ag.g, ab.b, ag.a), vec4(br.r, bg.g, bb.b, bg.a), pick);
   } else {
     vec4 base = mix(from, to, t >= 0.5 ? 1.0 : 0.0);

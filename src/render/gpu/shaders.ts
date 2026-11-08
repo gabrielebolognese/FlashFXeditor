@@ -286,8 +286,22 @@ fn zoomAbout(c: vec2f, s: f32) -> vec2f {
   return (c - vec2f(0.5)) / s + vec2f(0.5);
 }
 
+// Twins of hash21 and moshOffset of core/effects/glitchGpu.ts (ported from FlashFX-v2 @ a91c675).
 fn hash21(p: vec2f) -> f32 {
-  return fract(sin(dot(p, vec2f(12.9898, 78.233))) * 43758.5453);
+  var p3 = fract(vec3f(p.x, p.y, p.x) * 0.1031);
+  p3 += dot(p3, vec3f(p3.y, p3.z, p3.x) + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
+}
+
+// Datamosh block displacement: xy = offset (uv units, at most 0.15), z = gate (1 for the corrupted blocks).
+fn moshOffset(cell: vec2f, seed: f32, amount: f32) -> vec3f {
+  let amt = clamp(amount, 0.0, 1.0);
+  let h1 = hash21(cell + vec2f(seed));
+  let h2 = hash21(cell + vec2f(seed + 19.0));
+  let hg = hash21(cell + vec2f(seed + 3.0));
+  let ang = h1 * 6.28318;
+  let mag = amt * 0.15 * h2;
+  return vec3f(cos(ang) * mag, sin(ang) * mag, step(1.0 - amt, hg));
 }
 
 @fragment
@@ -329,6 +343,7 @@ fn fs(in: DissolveOut) -> @location(0) vec4f {
   } else if (code == 6) {
     res = mix(fromAt(pa(zoomAbout(c, 1.0 - 0.5 * t))), toAt(pb(zoomAbout(c, 2.0 - t))), t);
   } else if (code == 7) {
+    // The directional blur of FlashFX-v2 (core/effects/directionalBlur.ts): 2 * 4 + 1 taps at offsets k / 4 along the direction.
     let spread = sin(3.14159265 * t) * 0.08;
     var sum = vec4f(0.0);
     for (var k = -4; k <= 4; k++) {
@@ -347,21 +362,21 @@ fn fs(in: DissolveOut) -> @location(0) vec4f {
     }
     res = sum / 9.0;
   } else if (code == 9) {
-    let band = floor(c.y * 24.0);
-    let step = floor(t * 12.0);
-    let h1 = hash21(vec2f(band, step));
-    let h2 = hash21(vec2f(band + 7.0, step));
+    // Datamosh blocks (FlashFX-v2 moshOffset): a block is a cell of 12 x 24 of the frame, redrawn 12 times over the
+    // transition; a corrupted block moves by its own offset, splits RGB, and may already show the other picture.
+    let cell = floor(c * vec2f(12.0, 24.0));
+    let bucket = floor(t * 12.0);
     let amount = sin(3.14159265 * t);
-    let live = select(0.0, 1.0, h1 > 0.7);
-    let off = (h2 - 0.5) * 0.25 * amount * live;
-    let split = 0.012 * amount * live;
-    let pick = select(0.0, 1.0, t + (h1 - 0.5) * 0.3 * amount > 0.5);
-    let ar = fromAt(pa(c + vec2f(off + split, 0.0)));
-    let ag = fromAt(pa(c + vec2f(off, 0.0)));
-    let ab = fromAt(pa(c + vec2f(off - split, 0.0)));
-    let br = toAt(pb(c + vec2f(off + split, 0.0)));
-    let bg = toAt(pb(c + vec2f(off, 0.0)));
-    let bb = toAt(pb(c + vec2f(off - split, 0.0)));
+    let mosh = moshOffset(cell, bucket, amount);
+    let off = mosh.xy * mosh.z;
+    let split = vec2f(0.012 * amount * mosh.z, 0.0);
+    let pick = select(0.0, 1.0, t + (hash21(cell + vec2f(bucket)) - 0.5) * 0.3 * amount > 0.5);
+    let ar = fromAt(pa(c + off + split));
+    let ag = fromAt(pa(c + off));
+    let ab = fromAt(pa(c + off - split));
+    let br = toAt(pb(c + off + split));
+    let bg = toAt(pb(c + off));
+    let bb = toAt(pb(c + off - split));
     res = mix(vec4f(ar.r, ag.g, ab.b, ag.a), vec4f(br.r, bg.g, bb.b, bg.a), pick);
   } else {
     let base = mix(picA, picB, select(0.0, 1.0, t >= 0.5));
