@@ -194,7 +194,7 @@ The tools are dimmed while nothing is selected. Pressing a style again turns it 
 - Styled words show in the preview, in the export and in text animations: with **Word Pop**-style animations, each word moves with its own style.
 - Applying a text preset keeps the styled words: presets change the look of the clip, not these styles.
 
-> **Note:** If you change the **Case** of a text so its length changes, the styles are not shown. A word style has one gradient only when the clip has one: a gradient fill spreads over the whole text box, not over each word. Kerning between a styled and a plain word is not applied.
+> **Note:** If you change the **Case** of a text so its length changes, the styles are not shown. A gradient fill spreads over the whole text box, not over each word. Kerning between a styled and a plain word is not applied.
 
 ## Select and move text in the preview
 
