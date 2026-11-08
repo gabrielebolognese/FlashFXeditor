@@ -54,7 +54,8 @@ export async function importAsShapes(ids: readonly MediaId[] = selectedMedia()):
       continue;
     }
     showToast({ tone: "warning", message: `${item.name} stays an image`, detail: `Not supported as shapes: ${parsed.unsupported.join(", ")}.` });
-    dropMediaOnCanvas([id], null);
+    // The image fallback offers no "Make shapes": the subset just refused this SVG.
+    dropMediaOnCanvas([id], null, { offer: false });
   }
 }
 

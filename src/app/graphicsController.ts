@@ -70,12 +70,15 @@ export function addSolidClip(): ClipId {
   return result.clipId;
 }
 
-/** `+ Image` (spec §6.1): the image picker, then the picked images imported and placed at the playhead. Must run inside a user gesture. */
+/**
+ * `+ Image` (spec §6.1): the image picker, then the picked images imported and placed at the playhead. Must run inside a user gesture.
+ * No "Make shapes" offer for an SVG: the placement shares its undo step with the import (as for OS file drops).
+ */
 export function addImageClips(): Promise<void> {
   return importFromPicker({
     types: IMAGE_PICKER_TYPES,
     id: "shorts-editor-images",
-    placement: { label: "Add image", place: (added) => dropMediaOnCanvas(added.filter((item) => item.kind === "image").map((item) => item.id), null) },
+    placement: { label: "Add image", place: (added) => dropMediaOnCanvas(added.filter((item) => item.kind === "image").map((item) => item.id), null, { offer: false }) },
   });
 }
 

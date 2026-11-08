@@ -54,7 +54,6 @@ export function dropCompoundOnCanvas(id: SequenceId, point: { x: number; y: numb
   if (plan.clips.length > 0) commit(commitPlan(project, plan, "overwrite", "Add compound clip", newId), plan);
 }
 
-/** Dispatches a placement (one undo step), selecting its clips; a refusal gets a toast. True when it landed. */
 /**
  * The drop choice for an SVG (spec §21.12): a dropped SVG lands as an image clip, and its toast offers
  * "Make shapes". Set by the shape controller (it imports this module, so the call goes the other way).
@@ -65,7 +64,11 @@ export function setSvgDropChoice(choose: ((mediaId: MediaId) => void) | null): v
   svgDropChoice = choose;
 }
 
-/** `offer`: false when the drop also imported its media (undoing it would remove the media the choice needs). */
+/**
+ * Dispatches a placement (one undo step), selecting its clips; a refusal gets a toast. True when it landed.
+ * `offer`: false when the drop also imported its media (undoing it would remove the media the choice needs)
+ * or when it is the shape import's own image fallback (the SVG was just refused as shapes).
+ */
 function commit(result: MoveResult, plan: DropPlan, offer = true): boolean {
   if (result.kind === "refused") reportMoveRefusal(result.refusal);
   if (result.kind !== "ok") return false;
@@ -134,9 +137,9 @@ export function dropMediaOnTimeline(request: MediaDropRequest): void {
 /**
  * Media dropped on the preview canvas, or Add to canvas (spec §6.14): at the playhead on the topmost
  * video track (a new one when it is taken), each picture centered on `point` (project px; null: the
- * frame center).
+ * frame center). `offer: false`: no "Make shapes" choice for a dropped SVG (the shape import's image fallback).
  */
-export function dropMediaOnCanvas(ids: readonly MediaId[], point: { x: number; y: number } | null): void {
+export function dropMediaOnCanvas(ids: readonly MediaId[], point: { x: number; y: number } | null, options: { offer?: boolean } = {}): void {
   const project = documentStore.getState();
   const items = itemsOf(project, ids);
   if (items.length === 0) return;
@@ -145,7 +148,7 @@ export function dropMediaOnCanvas(ids: readonly MediaId[], point: { x: number; y
     noDuration(items);
     return;
   }
-  commit(commitPlan(project, plan, "overwrite", items.length === 1 ? "Add to canvas" : "Add clips to canvas", newId), plan);
+  commit(commitPlan(project, plan, "overwrite", items.length === 1 ? "Add to canvas" : "Add clips to canvas", newId), plan, options.offer ?? true);
 }
 
 /**
