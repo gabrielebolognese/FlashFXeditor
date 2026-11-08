@@ -10,7 +10,7 @@ import { Select } from "../../ui/Select.js";
 import { Toggle } from "../../ui/Toggle.js";
 import { primaryText } from "./animatorBinding.js";
 import { Row } from "./Section.js";
-import { MIXED, SKIP, useClipsShared } from "./useShared.js";
+import { MIXED, NONE, SKIP, useClipsShared } from "./useShared.js";
 import text from "./TextSection.module.css";
 
 // The Counter rows of the Text section (spec §21.13, Batch 68): turns the text into a number that counts
@@ -20,8 +20,13 @@ import text from "./TextSection.module.css";
 const SEPARATOR_LABELS: Record<CounterSeparator, string> = { "": "None", ",": "Comma", ".": "Dot", " ": "Space", "'": "Apostrophe" };
 const hasCounter = (clip: Clip) => (clip.kind === "text" ? clip.counter !== undefined : SKIP);
 
-const run = (ids: readonly ClipId[], label: string, change: (counter: TextCounter) => Partial<TextCounter>) => {
-  const command = editTextClips(documentStore.getState(), ids, (clip) => setCounterField(clip, change(clip.counter as TextCounter)), { label, at: sessionStore.state.getState().playhead });
+const getPrefix = (clip: Clip) => (clip.kind === "text" && clip.counter ? clip.counter.prefix : SKIP);
+const getSuffix = (clip: Clip) => (clip.kind === "text" && clip.counter ? clip.counter.suffix : SKIP);
+const getSeparator = (clip: Clip) => (clip.kind === "text" && clip.counter ? clip.counter.separator : SKIP);
+const getEase = (clip: Clip) => (clip.kind === "text" && clip.counter ? clip.counter.ease : SKIP);
+
+const run = (ids: readonly ClipId[], label: string, change: (counter: TextCounter) => Partial<TextCounter>, coalesceKey?: string) => {
+  const command = editTextClips(documentStore.getState(), ids, (clip) => setCounterField(clip, change(clip.counter as TextCounter)), { label, at: sessionStore.state.getState().playhead, ...(coalesceKey !== undefined && { coalesceKey }) });
   if (command) documentStore.dispatch(command);
 };
 
@@ -35,7 +40,11 @@ export function CounterRows({ ids }: { ids: readonly ClipId[] }) {
   const from = useMemo(() => numberBinding(ids, "from", "Change counter start", -1e9, 1e9), [ids]);
   const to = useMemo(() => numberBinding(ids, "to", "Change counter end", -1e9, 1e9), [ids]);
   const decimals = useMemo(() => numberBinding(ids, "decimals", "Change counter decimals", 0, MAX_COUNTER_DECIMALS), [ids]);
-  const counter = primaryText(documentStore.getState(), ids)?.counter;
+  const prefix = useClipsShared(ids, getPrefix);
+  const suffix = useClipsShared(ids, getSuffix);
+  const separator = useClipsShared(ids, getSeparator);
+  const ease = useClipsShared(ids, getEase);
+  const shown = (value: string | typeof MIXED | typeof NONE, fallback: string) => (typeof value === "string" ? value : fallback);
   const enabled = on === true;
   return (
     <>
@@ -60,18 +69,18 @@ export function CounterRows({ ids }: { ids: readonly ClipId[] }) {
         <NumberField label="." binding={decimals} precision={0} min={0} max={MAX_COUNTER_DECIMALS} disabled={!enabled} ariaLabel="Counter decimals" />
       </Row>
       <Row label="Prefix">
-        <input className={text.counterText} aria-label="Counter prefix" disabled={!enabled} value={counter?.prefix ?? ""} onChange={(e) => run(ids, "Change counter prefix", () => ({ prefix: e.target.value }))} />
+        <input className={text.counterText} aria-label="Counter prefix" disabled={!enabled} value={shown(prefix, "")} onChange={(e) => run(ids, "Change counter prefix", () => ({ prefix: e.target.value }), "properties.counter.prefix")} />
       </Row>
       <Row label="Suffix">
-        <input className={text.counterText} aria-label="Counter suffix" disabled={!enabled} value={counter?.suffix ?? ""} onChange={(e) => run(ids, "Change counter suffix", () => ({ suffix: e.target.value }))} />
+        <input className={text.counterText} aria-label="Counter suffix" disabled={!enabled} value={shown(suffix, "")} onChange={(e) => run(ids, "Change counter suffix", () => ({ suffix: e.target.value }), "properties.counter.suffix")} />
       </Row>
       <Row label="Thousands">
-        <Select label="Counter thousands separator" value={counter?.separator ?? ""} disabled={!enabled} options={COUNTER_SEPARATORS.map((value) => ({ value, label: SEPARATOR_LABELS[value] }))} onChange={(separator) => run(ids, "Change counter separator", () => ({ separator }))} />
+        <Select label="Counter thousands separator" value={shown(separator, "") as CounterSeparator} disabled={!enabled} options={COUNTER_SEPARATORS.map((value) => ({ value, label: SEPARATOR_LABELS[value] }))} onChange={(separator) => run(ids, "Change counter separator", () => ({ separator }))} />
       </Row>
       <Row label="Easing">
         <Select
           label="Counter easing"
-          value={counter?.ease ?? "easeOut"}
+          value={shown(ease, "easeOut")}
           disabled={!enabled}
           options={TEXT_EASES.map((value) => ({ value, label: EASE_LABELS[value] }))}
           onChange={(ease) => isEaseId(ease) && run(ids, "Change counter easing", () => ({ ease }))}

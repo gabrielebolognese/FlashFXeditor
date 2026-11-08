@@ -461,6 +461,9 @@ export const COMMANDS: readonly CommandInfo[] = [
   text("text.italic", "Italic", { icon: Italic, keywords: "slant emphasis span format selection" }),
   text("text.underline", "Underline", { icon: Underline, keywords: "line span format selection" }),
   text("text.strike", "Strikethrough", { icon: Strikethrough, keywords: "cross out line through span format selection" }),
+  // Animators and counters (Batch 68): act on the selected text clips, decline without one.
+  text("text.addAnimator", "Add text animator", { keywords: "range selector character word line reveal kinetic typography" }),
+  text("text.counterToggle", "Toggle number counter", { keywords: "count up down numbers from to percent kinetic" }),
   text("text.clearFormat", "Clear formatting", { icon: RemoveFormatting, keywords: "plain remove span color highlight selection" }),
   // The font browser (spec §20.1, Batch 51)
   text("text.fontBrowser", "Open font browser", { icon: TypeOutline, keywords: "fonts typeface family weight library luxury bold handwritten picker" }),

@@ -54,7 +54,7 @@ const run = (ids: readonly ClipId[], label: string, edit: Parameters<typeof edit
   if (command) documentStore.dispatch(command);
 };
 
-const KEYABLE = ["selector.start", "selector.end", "selector.offset"];
+const KEYABLE = ["selector.start", "selector.end", "selector.offset", "props.x", "props.y", "props.scale", "props.rotation", "props.opacity", "props.blur", "props.tracking"];
 
 /** The animators of the first text clip as one string, so the list renders again only when they change (ids, choices, keys, tint). */
 const listKey = (project: Project, ids: readonly ClipId[]): string => {
@@ -64,7 +64,7 @@ const listKey = (project: Project, ids: readonly ClipId[]): string => {
 };
 
 function KeyButtons({ ids, animatorId, field, keyed }: { ids: readonly ClipId[]; animatorId: string; field: AnimatorNumberField; keyed: boolean }) {
-  const name = field.replace("selector.", "selector ");
+  const name = field.replace(/^(selector|props)\./, "$1 ");
   return (
     <>
       <IconButton control icon={Diamond} label={`Add or remove a ${name} keyframe at the playhead`} disabled={!keyed} onClick={() => run(ids, "Toggle animator keyframe", (clip, rel) => toggleAnimatorKey(clip, animatorId, field, rel))} />
@@ -117,7 +117,7 @@ function AnimatorBlock({ ids, animatorId, index }: { ids: readonly ClipId[]; ani
         <NumberRow key={r.prop.field} ids={ids} animator={animator} prop={r.prop} row={r.row} unit={r.unit} keyable={r.keyable} keyed={animatorKeyed(clip, animatorId, r.prop.field)} />
       ))}
       {PROP_ROWS.map((r) => (
-        <NumberRow key={r.prop.field} ids={ids} animator={animator} prop={r.prop} row={r.row} unit={r.unit} keyable={false} keyed={false} />
+        <NumberRow key={r.prop.field} ids={ids} animator={animator} prop={r.prop} row={r.row} unit={r.unit} keyable keyed={animatorKeyed(clip, animatorId, r.prop.field)} />
       ))}
       <Row label="Tint">
         <ColorField

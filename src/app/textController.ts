@@ -14,6 +14,7 @@
 //   and `text.cancel` (Esc) commit and exit (§7.7: Esc keeps what was typed).
 // - Dev builds: `dev.addText` adds a plain text clip at the playhead, and `__editor.text` exposes the
 //   engine to the acceptance scripts.
+import type { Draft } from "immer";
 import type { ClipId, Project, TextClip, Transform } from "../core/document/types.js";
 import { lookAtFrame } from "../core/document/keyProps.js";
 import { secondsToFrames } from "../core/document/time.js";
@@ -27,6 +28,8 @@ import { addTextClip, addTitle, setTexts, textEdit, type TextEdit, type TitleLoo
 import { editedTransform } from "../timeline/edit/transform.js";
 import { isClipLocked } from "../timeline/model/queries.js";
 import { patchLiveEdit } from "./liveEdit.js";
+import { newCounter } from "../text/counter.js";
+import { addAnimator, editTextClips, setCounterOn } from "../timeline/edit/animators.js";
 import { playbackEngine, textEditor, textRasters } from "./previewController.js";
 import { openSelectedCompound } from "./compoundController.js";
 import { actions, appSettings, documentStore, fontLibrary, scheduler, sessionStore, themeBridge } from "./services.js";
@@ -150,6 +153,24 @@ function editSelectedText(): boolean {
   return textEditor.begin(id, "all");
 }
 
+/** The selected text clips: add an animator, or toggle the counter (spec §21.1, Batch 68). Declined without one. */
+function editSelectedAnimation(label: string, edit: (clip: Draft<TextClip>) => void): boolean {
+  const project = documentStore.getState();
+  const ids = [...sessionStore.selection.getState().clipIds].filter((id) => project.clips[id]?.kind === "text");
+  const command = editTextClips(project, ids, (clip) => edit(clip), { label, at: sessionStore.state.getState().playhead });
+  if (!command) return false;
+  documentStore.dispatch(command);
+  return true;
+}
+
+/** Turns the counter of the selected text clips off when the first has one, else on. */
+function toggleSelectedCounter(): boolean {
+  const project = documentStore.getState();
+  const first = [...sessionStore.selection.getState().clipIds].map((id) => project.clips[id]).find((clip) => clip?.kind === "text");
+  const on = first?.kind === "text" ? first.counter === undefined : true;
+  return editSelectedAnimation(on ? "Turn text into a counter" : "Turn counter off", (clip) => setCounterOn(clip, on, newCounter));
+}
+
 /** Starts the text engine's app wiring. Returns a stop function. */
 export function installTextController(): () => void {
   setTextFallback(themeBridge.theme.font.ui);
@@ -180,6 +201,9 @@ export function installTextController(): () => void {
     actions.register("text.underline", () => textEditor.formatToggle("underline")),
     actions.register("text.strike", () => textEditor.formatToggle("strike")),
     actions.register("text.clearFormat", () => textEditor.formatClear()),
+    // Batch 68: animators and counters on the selected text clips (palette entries).
+    actions.register("text.addAnimator", () => editSelectedAnimation("Add animator", (clip) => void addAnimator(clip))),
+    actions.register("text.counterToggle", toggleSelectedCounter),
   ];
   if (import.meta.env.DEV) {
     stops.push(actions.register("dev.addText", () => void addDevText()));
