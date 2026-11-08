@@ -45,14 +45,23 @@ export function normalizeSpans(spans: readonly TextSpan[] | undefined, length: n
  * The spans after `before` became `after`, found as one replaced region (common prefix and suffix).
  * Typing inside a span, or right after its last character, extends it; a replacement inside a span keeps
  * it; deleting shrinks it and drops it once empty; text typed elsewhere is plain.
+ * `caret` (optional) is the offset in `after` where the edit ended: the text after it is the unchanged tail,
+ * so a typed character equal to its neighbor is placed at the caret, not at the first matching character.
  */
-export function editSpans(spans: readonly TextSpan[] | undefined, before: string, after: string): TextSpan[] | undefined {
+export function editSpans(spans: readonly TextSpan[] | undefined, before: string, after: string, caret?: number): TextSpan[] | undefined {
   if (!spans || spans.length === 0 || before === after) return spans as TextSpan[] | undefined;
-  let p = 0;
   const max = Math.min(before.length, after.length);
-  while (p < max && before.charCodeAt(p) === after.charCodeAt(p)) p++;
-  let tail = 0;
-  while (tail < max - p && before.charCodeAt(before.length - 1 - tail) === after.charCodeAt(after.length - 1 - tail)) tail++;
+  let tail = -1;
+  if (caret !== undefined && caret >= 0 && caret <= after.length) {
+    const t = after.length - caret;
+    if (t <= max && before.endsWith(after.slice(caret))) tail = t;
+  }
+  let p = 0;
+  while (p < max - Math.max(tail, 0) && before.charCodeAt(p) === after.charCodeAt(p)) p++;
+  if (tail < 0) {
+    tail = 0;
+    while (tail < max - p && before.charCodeAt(before.length - 1 - tail) === after.charCodeAt(after.length - 1 - tail)) tail++;
+  }
   const oldEnd = before.length - tail;
   const added = after.length - tail - p;
   const delta = after.length - before.length;

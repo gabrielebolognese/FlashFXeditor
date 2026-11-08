@@ -31,6 +31,14 @@ describe("editSpans", () => {
   it("does not extend it when typing at its start", () => {
     expect(editSpans(spans, before, "SAVE X3 HOURS")).toEqual([span(6, 13)]);
   });
+  it("places an edit at the caret when the typed character equals its neighbor", () => {
+    // Caret before "3", type "3": the new character is plain, the span stays on the old words.
+    expect(editSpans(spans, before, "SAVE 33 HOURS", 6)).toEqual([span(6, 13)]);
+    // Underlined "SAVE" (0..4) in "SAVE EVERY", a space typed right after it extends the span.
+    expect(editSpans([span(0, 4, { underline: true })], "SAVE EVERY", "SAVE  EVERY", 5)).toEqual([span(0, 5, { underline: true })]);
+    // A deletion with a caret behaves as without one.
+    expect(editSpans(spans, before, "SAVE 3 HOUS", 10)).toEqual([span(5, 11)]);
+  });
   it("shrinks it on a deletion inside and drops it when emptied", () => {
     expect(editSpans(spans, before, "SAVE 3 HOUS")).toEqual([span(5, 11)]);
     expect(editSpans(spans, before, "SAVE ")).toBeUndefined();

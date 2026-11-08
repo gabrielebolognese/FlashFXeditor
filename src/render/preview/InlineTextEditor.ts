@@ -550,7 +550,7 @@ export class InlineTextEditor implements RenderView {
       s.upstream = false;
       s.own = null;
     }
-    if (value !== s.value) s.spans = editSpans(s.spans, s.value, value);
+    if (value !== s.value) s.spans = editSpans(s.spans, s.value, value, end);
     s.value = value;
     s.start = start;
     s.end = end;

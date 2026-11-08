@@ -49,6 +49,8 @@ import {
   type RGBA,
   type ShapeClip,
   type ShapePath,
+  type TextSpan,
+  type TextSpanStyle,
   type TextStyle,
   type Track,
   type TrackId,
@@ -107,6 +109,7 @@ import { applyMoveRequest, dropClips, moveToAdjacentLane, NO_LANE_DELTA, nudgeCl
 import { ATTRIBUTE_GROUPS, attributeTargets, pasteAttributes, pastedSpeed, type AttributeGroup } from "./pasteAttributes.js";
 import { closeSilences, cutSilences, REMOVE_SILENCE_LABEL, silencePlan, silenceTargets, spanFrames, type SilenceGroup } from "./silence.js";
 import { addSolid, newSolidClip, setSolids, type SolidEdit, type SolidLook } from "./solid.js";
+import { normalizeSpans } from "../../text/spans.js";
 import { setSpeedDurations, setSpeeds } from "./speed.js";
 import { clipsToSplit, splitClips, type SplitScope } from "./split.js";
 import { addTextClip, addTitle, applyPreset, linkPreset, newTextClip, setTexts, type PresetApply, type TextEditInput, type TitleLook } from "./text.js";
@@ -434,6 +437,29 @@ function hashOf(text: string): number {
   return (hash >>> 0) + 1;
 }
 
+/** Random styled spans (Batch 67) for `value`, from a generator seeded by the text so the run's stream stays what it was. Undefined for none. */
+function randomSpans(value: string, salt: string): TextSpan[] | undefined {
+  const extra = random(hashOf(`spans|${salt}|${value}`));
+  if (value.length === 0 || !extra.chance(0.5)) return undefined;
+  const spans: TextSpan[] = [];
+  let at = extra.int(0, value.length);
+  for (let i = extra.int(1, 3); i > 0 && at < value.length; i--) {
+    const end = Math.min(value.length, at + extra.int(1, 8));
+    const style: TextSpanStyle = {
+      ...(extra.chance(0.5) && { fill: randomColor(extra) }),
+      ...(extra.chance(0.3) && { fontWeight: extra.pick([400, 700, 900]) }),
+      ...(extra.chance(0.3) && { italic: true }),
+      ...(extra.chance(0.3) && { underline: true }),
+      ...(extra.chance(0.2) && { strike: true }),
+      ...(extra.chance(0.3) && { highlight: randomColor(extra) }),
+    };
+    if (Object.keys(style).length === 0) style.italic = true;
+    spans.push({ start: at, end, style });
+    at = end + extra.int(0, 4);
+  }
+  return normalizeSpans(spans, value.length);
+}
+
 function randomCaptionStyle(rng: Rng, base: CaptionStyle): CaptionStyle {
   // The Captions v2 fields (Batch 59) come from a generator of their own, seeded by the base style, so the run's stream (and every seed's documents before them) stays what it was.
   const extra = random(hashOf(JSON.stringify([base.highlight, base.anim, base.y, base.maxWidth, base.text.fontSize])));
@@ -568,7 +594,9 @@ export function randomProject(rng: Rng, options: RandomProjectOptions = {}): Pro
       } else if (roll < 0.72) {
         placed = mediaClips(image, null, cursor, { video: track.id, audio: null }, state().settings, newId);
       } else if (roll < 0.86) {
-        placed = [newTextClip({ id: newId(), trackId: track.id, start: cursor, duration: frames, value: randomText(rng) || "Title", style: randomStyle(rng) })];
+        const textClip = newTextClip({ id: newId(), trackId: track.id, start: cursor, duration: frames, value: randomText(rng) || "Title", style: randomStyle(rng) });
+        const spans = randomSpans(textClip.text.value, textClip.id);
+        placed = [spans ? { ...textClip, spans } : textClip];
       } else if (roll < 0.93) {
         placed = [newSolidClip({ id: newId(), trackId: track.id, start: cursor, duration: frames, look: randomLook(rng), transform: randomTransform(rng) })];
       } else {
@@ -1566,6 +1594,9 @@ const TEXT_OPS: FuzzOp[] = [
       if (rng.chance(0.6)) edit.text = textContent(randomText(rng), rng.chance(0.3) ? { mode: "fixed", width: rng.int(10, 1200) } : clip.text.box);
       if (rng.chance(0.6)) edit.style = randomStyle(rng, clip.style);
       if (rng.chance(0.15)) edit.transform = randomTransform(rng, clip.transform);
+      // Spans (Batch 67) from a derived generator: set, cleared, or kept on their words through the text change.
+      const spanRoll = random(hashOf(`span-edit|${clip.id}|${edit.text?.value ?? clip.text.value}|${clip.spans?.length ?? 0}`));
+      if (spanRoll.chance(0.3)) edit.spans = randomSpans(edit.text?.value ?? clip.text.value, clip.id + "e") ?? null;
       return exec(store, setTexts(p, new Map([[clip.id, edit]]), { label: "Text", ...(rng.chance(0.4) && { at: frameIn(clip, rng) }) }));
     },
     { weight: 2 },
