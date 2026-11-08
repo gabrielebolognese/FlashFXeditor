@@ -35,11 +35,11 @@ describe("capabilities.json (spec §21.2)", () => {
   });
 
   it("has schemaVersion 9 and the Batch 54 to 64 keys true, the keys of later batches false", () => {
-    expect(manifest.schemaVersion).toBe(11);
+    expect(manifest.schemaVersion).toBe(12);
     expect(manifest.manifestVersion).toBe(MANIFEST_VERSION);
     expect(manifest.lastBatch).toBe(LAST_BATCH);
     expect(manifest.cli).toEqual({ validate: true, normalize: true, info: true, render: true, compare: true });
-    expect(manifest.text).toMatchObject({ spans: true, counter: false, animators: false });
+    expect(manifest.text).toMatchObject({ spans: true, counter: true, animators: true });
     expect(manifest.interop).toEqual({ openLink: true, externalReload: true, repairOnOpen: true, fallbackOf: true, generatorMeta: true });
     expect(FEATURES.templates).toBe(false);
   });

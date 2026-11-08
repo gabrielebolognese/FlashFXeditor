@@ -10,6 +10,7 @@ import type { UnitState } from "../../text/anim.js";
 import type { Mat3 } from "../mat3.js";
 import type { TextureHandle } from "../gpu/renderer.js";
 import type { AtlasUnitKind } from "../text/atlas.js";
+import type { Rect } from "../text/layout.js";
 import type { TextHighlight } from "../text/raster.js";
 
 /** A region of a texture in UV space (0..1), left/top to right/bottom. */
@@ -165,9 +166,27 @@ export interface MediaLayer extends LayerBase {
  * with its own state, over the background boxes at `background` opacity.
  */
 export interface TextAnimFrame {
-  atlas: "block" | AtlasUnitKind;
+  /** `glyphs` (Batch 68): the units are `glyphs.draws`, drawn from the glyph atlas (a counter's characters). */
+  atlas: "block" | AtlasUnitKind | "glyphs";
   units: readonly UnitState[];
   background: number;
+  /** Animator fill (Batch 68): each unit is drawn again from the atlas of `style` (slot `clipId + slot`) at its `tint` opacity. */
+  tint?: { style: TextStyle; slot: string } | null;
+  /**
+   * The glyph atlas of a counter or a decode (Batch 68): `text` holds the characters (laid out in the layer's
+   * style, atlas of characters, slot `clipId + slot`); `draws[i]` says what unit i draws: the glyph `glyph`
+   * (an atlas unit, < 0: the layer's own atlas), moved by `dx`, `dy` (glyph space to the unit's place; the unit
+   * state's `ox`, `oy` are in the unit's place).
+   */
+  glyphs?: { text: TextContent; slot: string; draws: readonly TextGlyphDraw[] } | null;
+  /** Boxes growing behind the words (highlight sweep, Batch 68): content px rects, widths already times their amount. */
+  sweep?: { color: RGBA; rects: readonly Rect[]; count: number } | null;
+}
+
+export interface TextGlyphDraw {
+  glyph: number;
+  dx: number;
+  dy: number;
 }
 
 /**

@@ -35,7 +35,9 @@ export const EXTRA_KEYFRAME_PROPS = [
   "shadow.x", "shadow.y", "shadow.blur", "shadow.spread", "shadow.color",
   "style.fontSize", "style.letterSpacing", "style.fill",
 ] as const;
-export const KEYFRAME_PROPS = [...SECTION_KEYFRAME_PROPS, ...EXTRA_KEYFRAME_PROPS] as const;
+/** The properties added in Batch 68 (spec §21.13): the counter's value (the animators' are `ANIMATOR_PROP_PATTERN`). */
+export const TEXT_KEYFRAME_PROPS = ["text.counter.value"] as const;
+export const KEYFRAME_PROPS = [...SECTION_KEYFRAME_PROPS, ...EXTRA_KEYFRAME_PROPS, ...TEXT_KEYFRAME_PROPS] as const;
 export type KeyframeProp = (typeof KEYFRAME_PROPS)[number];
 /** The properties of the Transform, Opacity and Volume sections (the ones the panel's stopwatches key). */
 export type SectionKeyframeProp = (typeof SECTION_KEYFRAME_PROPS)[number];
@@ -44,7 +46,7 @@ export type SectionKeyframeProp = (typeof SECTION_KEYFRAME_PROPS)[number];
 export const COLOR_PROPS: readonly KeyframeProp[] = ["fill", "stroke.color", "shadow.color", "style.fill"];
 
 export function isColorProp(prop: string): boolean {
-  return (COLOR_PROPS as readonly string[]).includes(prop) || (prop.startsWith("paths.") && (prop.endsWith(".stroke.color") || prop.endsWith(".fill")));
+  return (COLOR_PROPS as readonly string[]).includes(prop) || (prop.startsWith("paths.") && (prop.endsWith(".stroke.color") || prop.endsWith(".fill"))) || (prop.startsWith("animators.") && prop.endsWith(".props.fill"));
 }
 
 /**
@@ -62,6 +64,22 @@ export const SHAPE_KEYFRAME_PROPS = [
 
 export function isShapeProp(prop: string): boolean {
   return SHAPE_PROP_PATTERN.test(prop);
+}
+
+/**
+ * The keyframe properties of a text clip's animators (spec §21.13, Batch 68): `animators.<id>.selector.start|end|offset`
+ * and `animators.<id>.props.<name>` (`fill` is a color). Groups: 1 the animator id, 2 the field path.
+ */
+export const ANIMATOR_PROP_PATTERN = /^animators\.([A-Za-z0-9_-]+)\.(selector\.(?:start|end|offset)|props\.(?:x|y|scale|rotation|opacity|blur|tracking|fill))$/;
+/** The same, as the template ids listed in the manifest and INTEROP.md. */
+export const ANIMATOR_KEYFRAME_PROPS = [
+  "animators.<id>.selector.start", "animators.<id>.selector.end", "animators.<id>.selector.offset",
+  "animators.<id>.props.x", "animators.<id>.props.y", "animators.<id>.props.scale", "animators.<id>.props.rotation",
+  "animators.<id>.props.opacity", "animators.<id>.props.blur", "animators.<id>.props.tracking", "animators.<id>.props.fill",
+] as const;
+
+export function isAnimatorProp(prop: string): boolean {
+  return ANIMATOR_PROP_PATTERN.test(prop);
 }
 
 /** The clip kinds each new property is valid on (the section properties are valid on any clip with them). */
@@ -87,11 +105,13 @@ const PROP_KINDS: Readonly<Record<string, readonly string[]>> = {
   "style.fontSize": ["text"],
   "style.letterSpacing": ["text"],
   "style.fill": ["text"],
+  "text.counter.value": ["text"],
 };
 
 /** Whether keys of `prop` make sense on a clip of `kind`. */
 export function propValidFor(prop: string, kind: string): boolean {
   if (prop.startsWith("paths.")) return kind === "shape";
+  if (prop.startsWith("animators.")) return kind === "text";
   const kinds = PROP_KINDS[prop];
   return kinds === undefined || kinds.includes(kind);
 }
@@ -139,6 +159,7 @@ export function isEaseId(value: unknown): value is EaseId {
 
 export function sectionOf(prop: KeyframeProp): KeyframeSection {
   if ((EXTRA_KEYFRAME_PROPS as readonly string[]).includes(prop)) return "look";
+  if (prop === "text.counter.value") return "text";
   return prop === "opacity" ? "opacity" : prop === "volume.gainDb" ? "volume" : "transform";
 }
 
@@ -710,16 +731,31 @@ export function shapePropIssue(prop: string, paths: unknown): string | null {
   return null;
 }
 
+/** What a text clip lacks for keys of the animator property `prop` (its animator); null when it has it. */
+export function animatorPropIssue(prop: string, animators: unknown): string | null {
+  const match = ANIMATOR_PROP_PATTERN.exec(prop);
+  if (!match) return "not an animator property";
+  const list = Array.isArray(animators) ? (animators as { id?: unknown }[]) : [];
+  if (!list.some((candidate) => candidate?.id === match[1])) return `the text has no animator "${match[1]}"`;
+  return null;
+}
+
 /** Whether a solid's `fill` is a plain color (the only fill `fill` keys can animate). */
 export function isColorFill(fill: unknown): boolean {
   return typeof fill === "object" && fill !== null && "r" in fill;
 }
 
 /** What is wrong with a clip's keyframes (spec §5.2 invariants, Batch 35): known properties, sorted integer frames, finite values, known eases, no empty list. */
-export function keyframeIssues(keyframes: Keyframes, clip?: { kind: string; fill?: unknown; paths?: unknown }): string[] {
+export function keyframeIssues(keyframes: Keyframes, clip?: { kind: string; fill?: unknown; paths?: unknown; animators?: unknown }): string[] {
   const issues: string[] = [];
   for (const [prop, keys] of Object.entries(keyframes)) {
-    if (isShapeProp(prop)) {
+    if (isAnimatorProp(prop)) {
+      if (clip && clip.kind !== "text") issues.push(`keyframes.${prop}: not a property of a ${clip.kind} clip`);
+      else if (clip) {
+        const issue = animatorPropIssue(prop, clip.animators);
+        if (issue) issues.push(`keyframes.${prop}: ${issue}`);
+      }
+    } else if (isShapeProp(prop)) {
       if (clip && clip.kind !== "shape") issues.push(`keyframes.${prop}: not a property of a ${clip.kind} clip`);
       else if (clip) {
         const issue = shapePropIssue(prop, clip.paths);

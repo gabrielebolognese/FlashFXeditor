@@ -57,7 +57,7 @@ import { mediaTimePosition } from "../../media/demux/sampleIndex.js";
 import { isAbortError, isWorkerCrash, type FramePriority } from "../../media/workers/protocol.js";
 import { newUnitState, type UnitState } from "../../text/anim.js";
 import type { NeighborFrame, UpcomingText } from "../compositor/Compositor.js";
-import { type CaptionHighlightFrame, type Composite, type CompoundCompositeLayer, type DissolveLayer, type DrawList, type Layer, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextCompositeLayer, type TextureLayer, type TransitionCompositeLayer, type UvRect } from "../compositor/drawList.js";
+import { type CaptionHighlightFrame, type Composite, type CompoundCompositeLayer, type DissolveLayer, type DrawList, type Layer, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextGlyphDraw, type TextCompositeLayer, type TextureLayer, type TransitionCompositeLayer, type UvRect } from "../compositor/drawList.js";
 import type { TextureHandle } from "../gpu/renderer.js";
 import { multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import type { Rect } from "../text/layout.js";
@@ -396,6 +396,7 @@ export class LayerTextures {
     const scale = this.textScale * layer.scale;
     if (layer.karaoke) return this.resolveKaraoke(pane, layers, layer, layer.karaoke, scale);
     const anim = layer.anim;
+    if (anim?.sweep) this.pushSweep(pane, layers, layer.model, anim.sweep, layer.opacity);
     if (!anim || anim.atlas === "block") {
       const resolved = text.resolve(layer.clipId, layer.text, layer.style, scale, layer.highlight);
       if (!resolved) return false;
@@ -408,14 +409,40 @@ export class LayerTextures {
       const boxes = text.resolveBackground(layer.clipId, layer.text, layer.style, scale);
       if (boxes) this.pushText(pane, layers, layer.model, boxes, boxes.crop, boxes.rect, null, layer.opacity * anim.background);
     }
+    // Glyph atlas (counter, decode) and tint atlas (animator fill), Batch 68.
+    const glyphFrame = anim.glyphs;
+    const glyphs = glyphFrame ? text.resolveAtlas(layer.clipId + glyphFrame.slot, glyphFrame.text, layer.style, scale, "char") : null;
+    const gcells = glyphs?.units ?? null;
+    if (anim.atlas === "glyphs") {
+      if (!glyphFrame || !gcells || !glyphs) return false;
+      const count = Math.min(glyphFrame.draws.length, anim.units.length);
+      for (let i = 0; i < count; i++) {
+        const state = anim.units[i] as UnitState;
+        const draw = glyphFrame.draws[i] as TextGlyphDraw;
+        const cell = gcells[draw.glyph] as ResolvedUnit | undefined;
+        if (cell && state.opacity > 0) this.pushText(pane, layers, layer.model, glyphs, cell.crop, cell.rect, movedState(this.swapState, state, draw), layer.opacity * state.opacity);
+      }
+      return true;
+    }
     const atlas = text.resolveAtlas(layer.clipId, layer.text, layer.style, scale, anim.atlas);
     const cells = atlas?.units;
     if (!atlas || !cells) return false;
+    const tint = anim.tint ? text.resolveAtlas(layer.clipId + anim.tint.slot, layer.text, anim.tint.style, scale, anim.atlas) : null;
+    const tcells = tint?.units ?? null;
     const count = Math.min(cells.length, anim.units.length);
     for (let i = 0; i < count; i++) {
       const state = anim.units[i] as UnitState;
+      if (!(state.opacity > 0)) continue;
+      const draw = glyphFrame?.draws[i];
+      const swapped = draw !== undefined && draw.glyph >= 0 ? (gcells?.[draw.glyph] as ResolvedUnit | undefined) : undefined;
+      if (swapped && glyphs && draw) {
+        this.pushText(pane, layers, layer.model, glyphs, swapped.crop, swapped.rect, movedState(this.swapState, state, draw), layer.opacity * state.opacity);
+        continue;
+      }
       const cell = cells[i] as ResolvedUnit;
-      if (state.opacity > 0) this.pushText(pane, layers, layer.model, atlas, cell.crop, cell.rect, state, layer.opacity * state.opacity);
+      this.pushText(pane, layers, layer.model, atlas, cell.crop, cell.rect, state, layer.opacity * state.opacity);
+      const over = tcells?.[i];
+      if (tint && over && state.tint > 0) this.pushText(pane, layers, layer.model, tint, over.crop, over.rect, state, layer.opacity * state.opacity * state.tint);
     }
     return true;
   }
@@ -466,6 +493,17 @@ export class LayerTextures {
     }
     return true;
   }
+
+  /** The highlight sweep boxes (Batch 68): a pooled solid per word that has grown. */
+  private pushSweep(pane: 0 | 1, layers: Layer[], model: Mat3, sweep: NonNullable<TextAnimFrame["sweep"]>, opacity: number): void {
+    for (let i = 0; i < sweep.count; i++) {
+      const rect = sweep.rects[i];
+      if (rect && rect.width >= 0.5) this.pushBox(pane, layers, model, rect, sweep.color, Math.min(rect.height / 4, rect.width / 2), opacity);
+    }
+  }
+
+  /** Scratch state of a glyph drawn in a unit place. */
+  private readonly swapState = newUnitState();
 
   /** Adds a pooled solid layer filling `rect` (content px of `model`) with `color`, its corners rounded by `radius`. */
   private pushBox(pane: 0 | 1, layers: Layer[], model: Mat3, rect: Rect, color: SolidLayer["color"], radius: number, opacity: number, style: TextStyle["background"] | null = null): void {
@@ -706,7 +744,14 @@ export class LayerTextures {
     const model = [...layer.model] as unknown as Mat3;
     const { opacity, style, scale } = layer;
     const content = layer.text;
-    const anim: TextAnimFrame | null = layer.anim && { atlas: layer.anim.atlas, background: layer.anim.background, units: layer.anim.units.map((unit) => ({ ...unit })) };
+    const anim: TextAnimFrame | null = layer.anim && {
+      atlas: layer.anim.atlas,
+      background: layer.anim.background,
+      units: layer.anim.units.map((unit) => ({ ...unit })),
+      tint: layer.anim.tint ? { ...layer.anim.tint } : null,
+      glyphs: layer.anim.glyphs ? { ...layer.anim.glyphs, draws: layer.anim.glyphs.draws.map((draw) => ({ ...draw })) } : null,
+      sweep: layer.anim.sweep ? { color: { ...layer.anim.sweep.color }, rects: layer.anim.sweep.rects.slice(0, layer.anim.sweep.count).map((rect) => ({ ...rect })), count: layer.anim.sweep.count } : null,
+    };
     const push = (resolved: ResolvedText, crop: UvRect, rect: Rect, state: UnitState | null, alpha: number) => {
       const out = newTextureLayer();
       if (writeTextQuad(out, model, resolved.texture, crop, rect, resolved.scale, state, alpha)) layers.push(out);
@@ -764,6 +809,15 @@ export class LayerTextures {
       }
       return;
     }
+    if (anim?.sweep) {
+      for (let i = 0; i < anim.sweep.count; i++) {
+        const rect = anim.sweep.rects[i];
+        if (!rect || rect.width < 0.5) continue;
+        const box = newSolidLayer();
+        writeBox(box, model, rect, anim.sweep.color, Math.min(rect.height / 4, rect.width / 2), opacity);
+        layers.push(box);
+      }
+    }
     if (!anim || anim.atlas === "block") {
       const exact = await text.exact(content, style, scale);
       if (!exact) return;
@@ -780,15 +834,43 @@ export class LayerTextures {
         push(boxes, boxes.crop, boxes.rect, null, opacity * anim.background);
       }
     }
+    const glyphFrame = anim.glyphs;
+    const glyphs = glyphFrame ? await text.exact(glyphFrame.text, style, scale, "char") : null;
+    if (glyphs) unpins.push(glyphs.release);
+    const gcells = glyphs?.units ?? null;
+    const moved = newUnitState();
+    if (anim.atlas === "glyphs") {
+      if (!glyphFrame || !glyphs || !gcells) return;
+      const count = Math.min(glyphFrame.draws.length, anim.units.length);
+      for (let i = 0; i < count; i++) {
+        const state = anim.units[i] as UnitState;
+        const draw = glyphFrame.draws[i] as TextGlyphDraw;
+        const cell = gcells[draw.glyph] as ResolvedUnit | undefined;
+        if (cell && state.opacity > 0) push(glyphs, cell.crop, cell.rect, movedState(moved, state, draw), opacity * state.opacity);
+      }
+      return;
+    }
     const atlas = await text.exact(content, style, scale, anim.atlas);
     if (!atlas?.units) return;
     unpins.push(atlas.release);
     const cells = atlas.units;
+    const tint = anim.tint ? await text.exact(content, anim.tint.style, scale, anim.atlas) : null;
+    if (tint) unpins.push(tint.release);
+    const tcells = tint?.units ?? null;
     const count = Math.min(cells.length, anim.units.length);
     for (let i = 0; i < count; i++) {
       const state = anim.units[i] as UnitState;
+      if (!(state.opacity > 0)) continue;
+      const draw = glyphFrame?.draws[i];
+      const swapped = draw !== undefined && draw.glyph >= 0 ? (gcells?.[draw.glyph] as ResolvedUnit | undefined) : undefined;
+      if (swapped && glyphs && draw) {
+        push(glyphs, swapped.crop, swapped.rect, movedState(moved, state, draw), opacity * state.opacity);
+        continue;
+      }
       const cell = cells[i] as ResolvedUnit;
-      if (state.opacity > 0) push(atlas, cell.crop, cell.rect, state, opacity * state.opacity);
+      push(atlas, cell.crop, cell.rect, state, opacity * state.opacity);
+      const over = tcells?.[i];
+      if (tint && over && state.tint > 0) push(tint, over.crop, over.rect, state, opacity * state.opacity * state.tint);
     }
   }
 
@@ -1186,6 +1268,16 @@ function highlightMove(out: UnitState, karaoke: CaptionHighlightFrame): UnitStat
   return out;
 }
 
+/** `out` as `state` for a glyph drawn in a unit place: moved by the draw shift, turning and scaling about the unit middle. */
+function movedState(out: UnitState, state: UnitState, draw: TextGlyphDraw): UnitState {
+  Object.assign(out, state);
+  out.x = state.x + draw.dx;
+  out.y = state.y + draw.dy;
+  out.ox = state.ox - draw.dx;
+  out.oy = state.oy - draw.dy;
+  return out;
+}
+
 /** Scratch matrix of a unit's own move. */
 const unitMove = mutableIdentity();
 
@@ -1218,9 +1310,16 @@ function writeTextQuad(out: WritableTextureLayer, model: Mat3, texture: TextureH
     }
   }
   const m = setMat(out.transform, width, 0, 0, height, x, y);
-  if (state && !state.masked && (state.scale !== 1 || state.x !== 0 || state.y !== 0)) {
+  if (state && !state.masked && (state.scale !== 1 || state.x !== 0 || state.y !== 0 || state.rotation !== 0)) {
     const s = state.scale;
-    multiplyInto(m, setMat(unitMove, s, 0, 0, s, state.ox * (1 - s) + state.x, state.oy * (1 - s) + state.y), m);
+    if (state.rotation === 0) multiplyInto(m, setMat(unitMove, s, 0, 0, s, state.ox * (1 - s) + state.x, state.oy * (1 - s) + state.y), m);
+    else {
+      // Scale and rotate about the unit middle, then move.
+      const r = state.rotation * (Math.PI / 180);
+      const c = Math.cos(r) * s;
+      const n = Math.sin(r) * s;
+      multiplyInto(m, setMat(unitMove, c, n, -n, c, state.ox - (c * state.ox - n * state.oy) + state.x, state.oy - (n * state.ox + c * state.oy) + state.y), m);
+    }
   }
   multiplyInto(m, model, m);
   out.texture = texture;

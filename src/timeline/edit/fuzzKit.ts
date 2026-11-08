@@ -32,7 +32,11 @@ import {
   PRIMITIVE_KINDS,
   SOLID_SHAPE_IDS,
   STROKE_ALIGNS,
+  COUNTER_SEPARATORS,
+  SELECTOR_ORDERS,
+  SELECTOR_SHAPES,
   TEXT_ANIM_IDS,
+  TEXT_ANIM_UNITS,
   TRANSITION_KINDS,
   type CaptionClip,
   type CaptionStyle,
@@ -49,6 +53,9 @@ import {
   type RGBA,
   type ShapeClip,
   type ShapePath,
+  type TextAnimator,
+  type TextClip,
+  type TextCounter,
   type TextSpan,
   type TextSpanStyle,
   type TextStyle,
@@ -105,6 +112,7 @@ import { mediaClips, type SourceRange } from "./insertMedia.js";
 import { addKeyAt, copyKeys, deleteKeys, keyable, moveKeys, pasteKeys, setKeysEase, setStopwatch, toggleKeyAt } from "./keyframes.js";
 import { closeExtracted, liftRange, rangeTracks } from "./liftExtract.js";
 import { groupClips, moveIntoSync, toggleLink, ungroupClips } from "./links.js";
+import { counterText } from "../../text/counter.js";
 import { applyMoveRequest, dropClips, moveToAdjacentLane, NO_LANE_DELTA, nudgeClips, type MoveMode, type MoveResult } from "./move.js";
 import { ATTRIBUTE_GROUPS, attributeTargets, pasteAttributes, pastedSpeed, type AttributeGroup } from "./pasteAttributes.js";
 import { closeSilences, cutSilences, REMOVE_SILENCE_LABEL, silencePlan, silenceTargets, spanFrames, type SilenceGroup } from "./silence.js";
@@ -460,6 +468,34 @@ function randomSpans(value: string, salt: string): TextSpan[] | undefined {
   return normalizeSpans(spans, value.length);
 }
 
+/** A counter and animators (Batch 68) for a generated text clip, from a generator seeded by the clip, so the run stream stays what it was. Empty for none. */
+function randomKinetic(clip: TextClip): Partial<TextClip> {
+  const extra = random(hashOf(`kinetic|${clip.id}|${clip.text.value}`));
+  const patch: Partial<TextClip> = {};
+  if (extra.chance(0.25)) {
+    const counter: TextCounter = { from: extra.int(-50, 50), to: extra.int(0, 5000), decimals: extra.int(0, 3), prefix: extra.pick(["", "$", "~"]), suffix: extra.pick(["", "%", "x"]), separator: extra.pick(COUNTER_SEPARATORS), ease: extra.pick(["linear", "easeOut", "easeInOut"] as const) };
+    patch.counter = counter;
+    patch.text = { ...clip.text, value: counterText(counter, counter.to) };
+  }
+  if (extra.chance(0.35)) {
+    const animators: TextAnimator[] = [];
+    const keyframes: Keyframes = { ...clip.keyframes };
+    for (let i = extra.int(1, 2); i > 0; i--) {
+      const id = `a${animators.length + 1}`;
+      animators.push({
+        id,
+        unit: extra.pick(TEXT_ANIM_UNITS),
+        selector: { start: extra.int(-50, 50) / 100, end: extra.int(50, 150) / 100, offset: extra.int(-100, 100) / 100, shape: extra.pick(SELECTOR_SHAPES), ease: extra.int(-100, 100) / 100, order: extra.pick(SELECTOR_ORDERS), seed: extra.int(0, 999) },
+        props: { ...(extra.chance(0.6) && { y: extra.int(-80, 80) }), ...(extra.chance(0.4) && { x: extra.int(-80, 80) }), ...(extra.chance(0.4) && { opacity: extra.int(0, 100) / 100 }), ...(extra.chance(0.3) && { rotation: extra.int(-90, 90) }), ...(extra.chance(0.3) && { scale: extra.int(0, 200) / 100 }), ...(extra.chance(0.3) && { blur: extra.int(0, 8) }), ...(extra.chance(0.2) && { fill: randomColor(extra) }) },
+      });
+      if (extra.chance(0.5) && clip.duration > 1) keyframes[`animators.${id}.selector.offset`] = [{ frame: 0, value: 1, ease: "linear" }, { frame: clip.duration - 1, value: -1, ease: "linear" }];
+    }
+    patch.animators = animators;
+    if (Object.keys(keyframes).length > 0) patch.keyframes = keyframes;
+  }
+  return patch;
+}
+
 function randomCaptionStyle(rng: Rng, base: CaptionStyle): CaptionStyle {
   // The Captions v2 fields (Batch 59) come from a generator of their own, seeded by the base style, so the run's stream (and every seed's documents before them) stays what it was.
   const extra = random(hashOf(JSON.stringify([base.highlight, base.anim, base.y, base.maxWidth, base.text.fontSize])));
@@ -596,7 +632,9 @@ export function randomProject(rng: Rng, options: RandomProjectOptions = {}): Pro
       } else if (roll < 0.86) {
         const textClip = newTextClip({ id: newId(), trackId: track.id, start: cursor, duration: frames, value: randomText(rng) || "Title", style: randomStyle(rng) });
         const spans = randomSpans(textClip.text.value, textClip.id);
-        placed = [spans ? { ...textClip, spans } : textClip];
+        const kinetic = randomKinetic(textClip);
+        // A counter rewrites the text, so the spans (of the old text) go.
+        placed = [{ ...textClip, ...(spans && !kinetic.text && { spans }), ...kinetic }];
       } else if (roll < 0.93) {
         placed = [newSolidClip({ id: newId(), trackId: track.id, start: cursor, duration: frames, look: randomLook(rng), transform: randomTransform(rng) })];
       } else {

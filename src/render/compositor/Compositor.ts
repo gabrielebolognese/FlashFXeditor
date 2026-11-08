@@ -86,6 +86,9 @@ import { drawnRadii, drawnRadius, type SolidLook } from "../../timeline/edit/sol
 import { animatedCrop, animatedRadius, animatedSolidLook, newSolidScratch } from "./animatedLook.js";
 import { keyedFillColors, maxKeyedFontSize, newTextMotion, styleVariant, textMotion, type TextMotion } from "./animatedText.js";
 import { hasTextKeys } from "./animatedText.js";
+import { GLYPH_SLOT, TINT_SLOT, decodeGlyphChars, isKinetic, newKineticScratch, writeKineticFrame, type KineticDeps, type KineticScratch } from "./kineticText.js";
+import { counterGlyphs } from "../../text/counter.js";
+import { finestUnit } from "../text/animUnits.js";
 import { isGradientFill } from "../../core/document/fill.js";
 import { HIGHLIGHT_SLOT, TRANSITION_SLOT, type CaptionHighlightFrame, type CompoundCompositeLayer, type CaptionWordBoxes, type Composite, type CompositeLayer, type ShapeCompositeLayer, type ShapePathFrame, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextCompositeLayer, type TransitionCompositeLayer } from "./drawList.js";
 
@@ -144,6 +147,8 @@ type WritableTextLayer = Omit<TextCompositeLayer, "model" | "anim" | "karaoke"> 
   animFrame: WritableAnimFrame;
   karaoke: CaptionHighlightFrame | null;
   karaokeFrame: WritableKaraoke;
+  /** Counters, animators, decode and highlight sweep (Batch 68). */
+  kinetic: KineticScratch;
 };
 
 /** A text clip's ephemeral content and style (a Text field scrub, spec §11, P2; inline editing, §7.7). */
@@ -283,6 +288,9 @@ export class Compositor {
   private readonly scaledTransform: Transform = { x: 0, y: 0, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false };
   /** Slate labels by clip (made again only when the name, reason, size or color changes, never per frame). */
   private readonly slateTexts = new Map<ClipId, SlateText>();
+  /** The glyph atlas contents of counters and decodes, by clip and characters (stable objects: layouts cache per content). */
+  private readonly glyphTexts = new Map<string, TextContent>();
+  private readonly kineticDeps: KineticDeps = { glyphContent: (clip, chars) => this.glyphText(clip.id, chars) };
 
   /** `offline`: what offline media show; without it every media clip is drawn as online. */
   constructor(private readonly offline: OfflineSlates | null = null) {}
@@ -551,6 +559,7 @@ export class Compositor {
           if (spaced && !item.parts.includes("char")) item.parts.push("char");
           if (item.parts.length > 1 && clip.style.background.enabled) item.parts.push("backgrounds");
           list.push(item);
+          if (v === 0) this.upcomingKinetic(clip, item);
         }
       }
     }
@@ -582,6 +591,44 @@ export class Compositor {
   }
 
   /** A pooled upcoming entry drawing `text` in `style` at scale 1, its parts `all` only for now. */
+  private glyphText(clipId: ClipId, chars: string): TextContent {
+    const key = `${clipId}|${chars}`;
+    let found = this.glyphTexts.get(key);
+    if (!found) {
+      if (this.glyphTexts.size > 64) this.glyphTexts.clear();
+      found = textContent(chars);
+      this.glyphTexts.set(key, found);
+    }
+    return found;
+  }
+
+  /** What a kinetic clip also draws (Batch 68): the finest unit atlas of its animators, the tint atlas, the glyph atlas of a counter or a decode. */
+  private upcomingKinetic(clip: TextClip, item: UpcomingText): void {
+    const animators = clip.animators ?? [];
+    const decode = clip.animIn?.id === "decode" || clip.animOut?.id === "decode";
+    if (!isKineticClip(clip) && !decode) return;
+    const kinds = animators.map((a) => a.unit);
+    if (decode) kinds.push("char");
+    if (kinds.length > 0) {
+      const finest = finestUnit(kinds);
+      if (!item.parts.includes(finest)) item.parts.push(finest);
+      const fill = animators.find((a) => a.props.fill !== undefined)?.props.fill;
+      if (fill) {
+        const tint = this.upcomingItem(`${clip.id}${TINT_SLOT}`, item.text, styleVariant(item.style, item.style.fontSize, [fill.r, fill.g, fill.b, fill.a]));
+        tint.scale = item.scale;
+        tint.parts.length = 0;
+        tint.parts.push(finest);
+      }
+    }
+    if (clip.counter || decode) {
+      const chars = clip.counter ? [...counterGlyphs(clip.counter)].filter((ch) => ch.trim() !== "").join("") : decodeGlyphChars(textLayout(item.text, item.style), item.style);
+      const glyphs = this.upcomingItem(`${clip.id}${GLYPH_SLOT}`, this.glyphText(clip.id, chars), item.style);
+      glyphs.scale = item.scale;
+      glyphs.parts.length = 0;
+      glyphs.parts.push("char");
+    }
+  }
+
   private upcomingItem(clipId: ClipId, text: TextContent, style: TextStyle): UpcomingText {
     const list = this.upcomingList;
     const item = (this.upcomingPool[list.length] ??= { clipId: "", text, style, scale: 1, parts: [] });
@@ -773,7 +820,8 @@ export class Compositor {
     layer.detail = scale > 0 ? Math.min(MAX_TEXT_SCALE, TEXT_RASTER_MAX / Math.max(raster.width, raster.height)) / scale : 0;
     layer.opacity = clamp01(opacity) * fadeFactor(clip, frame) * (pass === 1 && motion ? motion.mix : 1);
     const active = shown.editing ? null : activeAnim({ duration: clip.duration, animIn: anims.animIn, animOut: anims.animOut }, frame - clip.start, this.active);
-    layer.anim = active ? writeAnimFrame(layer.animFrame, active, layout, style) : null;
+    const kinetic = shown.editing ? null : writeKineticFrame(layer.kinetic, this.kineticDeps, clip, frame - clip.start, layout, style, active);
+    layer.anim = kinetic ?? (active ? writeAnimFrame(layer.animFrame, active, layout, style) : null);
     // Keyed letter spacing: the characters move apart or together (an in or out animation playing wins).
     if (!layer.anim && motion && motion.spacing !== 0) layer.anim = writeSpacingFrame(layer.animFrame, layout, style, motion.spacing);
     layer.karaoke = null;
@@ -1014,6 +1062,7 @@ function newTextLayer(): WritableTextLayer {
     highlight: null,
     anim: null,
     animFrame: { atlas: "block", units: [], background: 1 },
+    kinetic: newKineticScratch(textContent(""), DEFAULT_TEXT_STYLE),
     karaoke: null,
     karaokeFrame: {
       style: DEFAULT_TEXT_STYLE,
@@ -1126,6 +1175,10 @@ function writeKaraoke(out: WritableKaraoke, look: CaptionLook, layout: TextLayou
 export function animAtlas(anim: TextAnim): "block" | AtlasUnitKind {
   const unit = animUnit(anim);
   return anim.id === "typewriter" && unit === "char" ? "line" : unit;
+}
+
+function isKineticClip(clip: TextClip): boolean {
+  return isKinetic(clip, null);
 }
 
 function addAnimParts(parts: TextPart[], anim: TextAnim | undefined): void {

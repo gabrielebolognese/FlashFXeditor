@@ -53,6 +53,16 @@ export const TEXT_ANIMS: Record<TextAnimId, AnimInfo> = {
   lineReveal: { label: "Line reveal", unit: "line", ease: "easeOut", seconds: 0.6 },
   blurIn: { label: "Blur", unit: "block", ease: "easeOut", seconds: 0.6 },
   scaleBounce: { label: "Bounce", unit: "block", ease: "linear", seconds: 0.8 },
+  // Batch 68 (spec §21.13): kinetic presets, one unit after another.
+  typeOn: { label: "Type on", unit: "char", ease: "linear", seconds: 1 },
+  decode: { label: "Decode", unit: "char", ease: "linear", seconds: 1 },
+  tumbleIn: { label: "Tumble", unit: "char", ease: "easeOut", seconds: 0.8 },
+  cascadeUp: { label: "Cascade up", unit: "char", ease: "easeOut", seconds: 0.8 },
+  riseByLine: { label: "Rise by line", unit: "line", ease: "easeOut", seconds: 0.7 },
+  popInByChar: { label: "Pop by char", unit: "char", ease: "linear", seconds: 0.8 },
+  blurInByChar: { label: "Blur by char", unit: "char", ease: "easeOut", seconds: 0.8 },
+  fadeInByChar: { label: "Fade by char", unit: "char", ease: "easeOut", seconds: 0.8 },
+  highlightSweep: { label: "Highlight sweep", unit: "word", ease: "easeOut", seconds: 0.8 },
 };
 
 
@@ -183,10 +193,14 @@ export interface UnitState {
   masked: boolean;
   /** Shown only left of this x (typewriter characters); Infinity: whole. */
   cut: number;
+  /** Degrees about (`ox`, `oy`) (Batch 68). */
+  rotation: number;
+  /** How far the unit shows its tint color, 0..1 (animator fill, Batch 68). */
+  tint: number;
 }
 
 export function newUnitState(): UnitState {
-  return { x: 0, y: 0, scale: 1, ox: 0, oy: 0, opacity: 1, blur: 0, masked: false, cut: Infinity };
+  return { x: 0, y: 0, scale: 1, ox: 0, oy: 0, opacity: 1, blur: 0, masked: false, cut: Infinity, rotation: 0, tint: 0 };
 }
 
 /** At rest: no offset, scale, blur or cut, opaque. */
@@ -198,6 +212,8 @@ export function resetUnitState(out: UnitState): UnitState {
   out.blur = 0;
   out.masked = false;
   out.cut = Infinity;
+  out.rotation = 0;
+  out.tint = 0;
   return out;
 }
 
@@ -242,6 +258,8 @@ export function writeUnitShape(out: UnitState, id: TextAnimId, phase: AnimPhase,
   out.scale = 1;
   out.blur = 0;
   out.masked = false;
+  out.rotation = 0;
+  out.tint = 0;
   out.opacity = p;
   switch (id) {
     case "fade":
@@ -276,6 +294,41 @@ export function writeUnitShape(out: UnitState, id: TextAnimId, phase: AnimPhase,
       break;
     case "typewriter":
       out.opacity = p > 0 ? 1 : 0;
+      break;
+    case "typeOn":
+      out.scale = 0.7 + 0.3 * backOut(p);
+      out.opacity = p > 0 ? 1 : 0;
+      break;
+    case "decode":
+      // The glyph swap is the compositor's; what is left is the fade of a decoded text leaving.
+      out.opacity = phase === "out" ? clamp01(p * 5) : 1;
+      break;
+    case "tumbleIn":
+      out.y = -(1 - p) * 0.8 * em * (phase === "in" ? 1 : -1);
+      out.rotation = (phase === "in" ? -1 : 1) * (1 - p) * 90;
+      out.opacity = clamp01(p * 2);
+      break;
+    case "cascadeUp":
+      out.y = (phase === "in" ? 1 : -1) * (1 - p) * SLIDE_EM * em;
+      out.opacity = p;
+      break;
+    case "riseByLine":
+      out.y = (phase === "in" ? 1 : -1) * (1 - p) * height * 0.8;
+      out.opacity = p;
+      break;
+    case "popInByChar":
+      out.scale = Math.max(0, backOut(p));
+      out.opacity = clamp01(p * 3);
+      break;
+    case "blurInByChar":
+      out.blur = (1 - p) * BLUR_EM * em;
+      out.opacity = p;
+      break;
+    case "fadeInByChar":
+      break;
+    case "highlightSweep":
+      // The text stays; the compositor sweeps the boxes behind its words with `p`.
+      out.opacity = 1;
       break;
   }
   return out;

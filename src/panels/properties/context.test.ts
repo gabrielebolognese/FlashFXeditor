@@ -62,7 +62,7 @@ describe("properties context (spec §11)", () => {
     const p = project();
     const text = propertiesContext(selectClips(["t", "s"]), null, p);
     expect(text).toMatchObject({ layerIds: ["t", "s"], textIds: ["t"], solidIds: ["s"], mediaIds: [] });
-    expect(sectionIds(text)).toEqual(["clip", "text", "animation", "solid", "transform", "frame", "opacity"]);
+    expect(sectionIds(text)).toEqual(["clip", "text", "animation", "animators", "solid", "transform", "frame", "opacity"]);
   });
 
   it("adds Caption style for cues and for the caption track (Batch 32)", () => {
@@ -71,7 +71,7 @@ describe("properties context (spec §11)", () => {
     const cue = propertiesContext(selectClips(["q"]), null, p);
     expect(cue).toMatchObject({ kind: "clips", captionTrackId: "cc", layerIds: [], textIds: [] });
     expect(sectionIds(cue)).toEqual(["clip", "captionStyle"]);
-    expect(sectionIds(propertiesContext(selectClips(["q", "t"]), null, p))).toEqual(["clip", "text", "animation", "captionStyle", "transform", "opacity"]);
+    expect(sectionIds(propertiesContext(selectClips(["q", "t"]), null, p))).toEqual(["clip", "text", "animation", "animators", "captionStyle", "transform", "opacity"]);
     const track = propertiesContext(selectTracks(["cc"]), null, p);
     expect(track).toEqual({ kind: "track", trackIds: ["cc"], captionTrackId: "cc" });
     expect(sectionIds(track)).toEqual(["track", "captionStyle"]);

@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 67
+last_completed_batch: 68
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -25,6 +25,7 @@ What release 1.1.0 does not do, or does not do well. Next steps for each are in 
 
 ## Design system gaps
 Items the design system did not define and the functional default that was used instead.
+- The Animators section and the Counter rows have no DESIGN_SYSTEM.md definition; they reuse the Shape section's rows, stopwatch and navigator buttons, Select, NumberField and ColorField. (Batch 68)
 - External-change banner reuses the read-only notice look; the stand-in notice and generator-notes block have no DS definition and use tokens. (Batch 56)
 - Spacing scale: DS uses Tailwind steps without tokens. Added `--space-0..6` = 2/4/6/8/12/16/24px. (Batch 01)
 - Type tracking unit: DS gives unitless values (+0.4, −0.1); used px. (Batch 01)
@@ -512,6 +513,9 @@ Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also 
 
 ## Follow-ups
 Small things discovered during a batch that belong to a later batch. Format: `- [from Batch NN -> Batch MM] description`.
+- [from Batch 68 -> Batch 69] Counter, animator and kinetic fields commit on release (no `LiveEdit` channel): a label scrub shows on release. A `LiveEdit.animators` channel through the Compositor would show scrubbing live.
+- [from Batch 68 -> Batch 69] No palette commands for Add animator / Counter on-off (panel only). The registry entries and keys can follow with the parenting commands.
+- [from Batch 68 -> Batch 69] A keyed animator `fill` has no stopwatch in the Animators section (the engine reads keys of `animators.<id>.props.fill`; the tint atlas uses the base color or the last key).
 - [from Batch 56 -> Batch 57] The headless `render` can reuse `validateProjectFolder` and the stand-in report; stand-ins render as their baked layer. (Batch 57: stand-ins render as their baked layer; the page loads projects with the app's own `openProjectFolder`, so the CLI does not call `validateProjectFolder`.)
 - [from Batch 58 -> Batch 61] The Frame section's fields are commit-only (no `liveEdit` preview, unlike the Solid section's number fields): a scrub shows on release. Add a live path with the keyframe work if wanted.
 - [from Batch 58 -> Batch 65] Shape clips can reuse the solid shader's stroke, dash and shadow code (`STYLE` blocks in `shaders.ts` and `glShaders.ts`) for rounded boxes; paths need the tessellated stroke of Batch 65.
@@ -6907,3 +6911,34 @@ Why each dependency exists (Batch rule 8).
   2. `editSpans` places an edit by common prefix and suffix only (`src/text/spans.ts:49-56`). The inline editor calls it without the caret position it knows (`src/render/preview/InlineTextEditor.ts:553`). When the typed character equals its neighbour at a span edge, the span ends up on the wrong characters, which breaks acceptance 1 ("editing text before the span keeps it on the same words"). Reproduced with the module under Node: span `3 HOURS` = [5,12) in `SAVE 3 HOURS`, caret before `3`, type `3` → [5,13): the new `3` turns coral (expected [6,13), the typed `3` plain, as `spans.test.ts` "does not extend it when typing at its start" asks). The batch's own rule also fails: span [0,4) underlined in `SAVE EVERY`, type a space right after `SAVE` → [0,4), not extended (expected [0,5)). Fix: let the inline editor pass the edit position (the selection before the input), clamp the common prefix to it, and add these two cases to `spans.test.ts`.
 - fix-attempt: done (2026-11-08). (1) Fuzz kit: `randomSpans` (derived generator, existing seeds keep their streams) puts random spans on generated text clips and on `text.set` edits (set, cleared or kept through a text change); the fuzz run asserts validity, round trip and undo. (2) `editSpans` takes the edit's caret (`InlineTextEditor.sync` passes `selectionEnd`), so a typed character equal to its neighbour lands at the caret; two cases added to `spans.test.ts`. `npm run check` green (the one red CLI spawn test of the first run was a load flake, passes alone and in the second full run).
 - review: accepted (second independent review, 2026-11-08). `npm run check` green: typecheck, lint with the CSS color and token checks, 2994 unit tests in 293 files (plus the 4 perf tests) and the build. I read `git show df08b2c` file by file. Rejection 1 is fixed: `src/timeline/edit/fuzzKit.ts:440-461` `randomSpans` draws from a generator seeded by hashOf(text and clip id), so the main stream and existing seeds are unchanged. It puts random spans (fill, weight, italic, underline, strike, highlight) on generated text clips (`:597-599`) and sets, clears or keeps them on `text.set` edits (`:1597-1599`). Every dispatch passes through validateProject, and the fuzz test covers undo/redo and the round trip. Rejection 2 is fixed: `editSpans` takes the caret (`src/text/spans.ts:51-64`) and uses the unchanged tail after it when `before` ends with it, falling back to prefix and suffix matching otherwise. `InlineTextEditor.sync` passes `selectionEnd` (`src/render/preview/InlineTextEditor.ts:553`). `spans.test.ts` now covers both reported cases (`SAVE 33 HOURS` -> [6,13), and a space after the underlined `SAVE` -> [0,5)) plus a deletion with a caret. The fix adds no TODOs and builds nothing from Batch 68. The acceptance coverage from the first review still holds, and pending manual checks 1-2 stay as written.
+
+### Batch 68: Text v2 II: number counters and range-selector animators
+- status: done
+- date: 2026-11-08
+- notes:
+  - Built in auto mode (lean run, resumed after a context compaction).
+  - Model: `TextClip.counter` (from, to, decimals, prefix, suffix, separator, ease) and `TextClip.animators` (unit char/word/line, selector start/end/offset/shape/ease/order/seed, props x/y/scale/rotation/opacity/blur/tracking/fill). Keyframe props `text.counter.value` and `animators.<id>.selector.start|end|offset|props.*` (`ANIMATOR_PROP_PATTERN`). Schema 11 -> 12 (identity migration), validation, field table, manifest keys `text.counter`, `text.animators`, `text.animatorKeyframeProps`, new `text.anims`, INTEROP.md section 5.7.
+  - Engine (pure, no rasterizing per frame, P11): `text/rangeSelector.ts` (shapes, ease, seeded order), `text/animators.ts` (evaluate per unit), `text/counter.ts`, `text/decode.ts`. `render/compositor/kineticText.ts` composes counters, animators, decode and the highlight sweep into the existing text-quad frame; counters and decode draw glyph by glyph from a glyph atlas (the distinct characters, built once with the char atlas). Preview and export (`LayerTextures.exactText`) share the path; no shader change, both backends.
+  - Nine new In/Out presets: typeOn, decode, tumbleIn, cascadeUp, riseByLine, popInByChar, blurInByChar, fadeInByChar, highlightSweep. Older animations are unchanged (their code path is untouched when a clip has no animators and the preset is an old one).
+  - UI: Counter rows in the Text section (on/off, from, to, decimals, prefix, suffix, thousands separator, easing; `text.value` always holds the final text); Animators section (add/remove, unit, selector shape and order, start/end/offset with stopwatch and key toggle, ease, seed, props, tint color). Edits are `clip.animators` commands (`timeline/edit/animators.ts`). The In/Out chips list the new presets (they come from `TEXT_ANIM_IDS`).
+  - Fix found by the new fixture: `WebGpuRenderer.blurRecords` grew (destroyed and recreated) its blur uniform buffer in the middle of encoding a frame, so a first frame with many blurred quads (`everyRow`) was an invalid submit and rendered white. The buffer now grows before any pass is encoded.
+  - `fixtures/interop/kinetic` (counter, reveal, every-prop, seeded scatter, word animator and one row per new preset) with expected frames 0, 12, 24. `npm run test:render` passes incl. kinetic (webgpu vs expected SSIM >= 0.98, webgl2 vs webgpu >= 0.97). The spans fixture was rewritten for schema 12.
+  - Tests: range selector, counter, decode, animators (20), compositor-level kinetic layers (13: counter text at every frame 0 to 85.6 with 1 decimal and `%`, no relayout after the first frame, reveal left to right, random order stable across fresh compositors, presets), edit commands (3), fixture (3), validate, capabilities, migration. The Batch 47 fuzz kit puts random counters and animators (with keys) on generated text clips. `npm run check` green.
+- deviations:
+  - Number fields of the Counter rows and the Animators section commit on release (typed values and arrow steps are one command each; a label scrub shows on release): there is no `LiveEdit` channel for them (follow-up).
+  - No palette commands or keys for Add animator and the counter toggle (panel only).
+  - One tint color per clip: the first animator with a `fill` (the tint atlas is built once, P11). A keyed `fill` uses the base color; it has no stopwatch.
+  - A typewriter with the line atlas and no animators keeps its old path; with animators it acts as a per-unit typed count.
+  - Counters take any in/out animation as a block animation, and animators compose on counters. Counters and decode ignore spans; a gradient fill is laid over the glyph-text block.
+  - Decode applies `textCase` to the scramble characters and uses the glyph atlas. The `scale` prop is "toward value" (`1 + (p - 1) * w`), multiplied across animators; x, y, rotation, blur add `prop * w`.
+  - `text.counter.value` is in `KEYFRAME_PROPS` but not in `EXTRA_KEYFRAME_PROPS` (the keyframes interop fixture keys every extra prop).
+  - The counter's per-frame cells/items arrays are small allocations; the P11 numbers (rasterizations during playback) are covered by unit tests of the layout/glyph-text caches, not a Profiler or CDP run.
+- follow-ups:
+  - [from Batch 68 -> Batch 69] Fields commit on release (live channel), palette commands and a keyed-fill stopwatch (see Follow-ups).
+- design gaps:
+  - The Animators section and Counter rows have no DESIGN_SYSTEM.md definition (see Design system gaps).
+- pending manual checks:
+  - Add a title, turn Counter on in the Text section: from 0, to 85.6, decimals 1, suffix `%`, easing Ease out; play: it counts without the digits jittering and the last frame reads `85.6%`.
+  - Add an animator (Character, Ramp up, props Y 40, Opacity 0), click the Offset stopwatch, key 100% at the start and -100% at the end: the text reveals left to right. Set Order to Random with a seed: reload, the same order.
+  - Click each new chip under In (Typeon, Decode, Tumble in, Cascade up, Rise by line, Pop in by char, Blur in by char, Fade in by char, Highlight sweep): it previews once; export and `npm run cli -- render` match.
+  - Profiler: playing a counter and an animator reveal commits no React renders and rasterizes nothing.

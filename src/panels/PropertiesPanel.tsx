@@ -8,6 +8,7 @@ import type { Selection } from "../core/store/selection.js";
 import { transitionAt } from "../timeline/edit/transitions.js";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import { AnimationSection } from "./properties/AnimationSection.js";
+import { AnimatorSection } from "./properties/AnimatorSection.js";
 import { AudioSection } from "./properties/AudioSection.js";
 import { CaptionStyleSection } from "./properties/CaptionStyleSection.js";
 import { ClipSection } from "./properties/ClipSection.js";
@@ -48,6 +49,7 @@ const SECTION_TITLES: Record<SectionId, string> = {
   clip: "Clip",
   text: "Text",
   animation: "Animation",
+  animators: "Animators",
   solid: "Solid",
   shape: "Shape",
   captionStyle: "Caption style",
@@ -71,6 +73,8 @@ function sectionBody(id: SectionId, context: PropertiesContext): ReactNode {
       return context.kind === "clips" ? <TextSection ids={context.textIds} /> : null;
     case "animation":
       return context.kind === "clips" ? <AnimationSection ids={context.textIds} primary={context.primary} /> : null;
+    case "animators":
+      return context.kind === "clips" ? <AnimatorSection ids={context.textIds} /> : null;
     case "solid":
       return context.kind === "clips" ? <SolidSection ids={context.solidIds} /> : null;
     case "shape":

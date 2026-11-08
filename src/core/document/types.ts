@@ -1,7 +1,7 @@
 // The persistent document (spec §5.2). Plain JSON only: no classes, Maps, Sets or undefined-valued
 // keys, so a Project can be serialized as-is and diffed by Immer patches.
 
-export const SCHEMA_VERSION = 11;
+export const SCHEMA_VERSION = 12;
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: JsonValue };
@@ -205,7 +205,9 @@ export interface Transition {
 }
 
 /** The text animations (spec §10.4), in the order of the properties panel's chips. */
-export const TEXT_ANIM_IDS = ["fade", "slideUp", "slideDown", "slideLeft", "slideRight", "pop", "typewriter", "wordPop", "wordFade", "lineReveal", "blurIn", "scaleBounce"] as const;
+export const TEXT_ANIM_IDS = ["fade", "slideUp", "slideDown", "slideLeft", "slideRight", "pop", "typewriter", "wordPop", "wordFade", "lineReveal", "blurIn", "scaleBounce",
+  // Batch 68 (spec §21.13): the kinetic presets.
+  "typeOn", "decode", "tumbleIn", "cascadeUp", "riseByLine", "popInByChar", "blurInByChar", "fadeInByChar", "highlightSweep"] as const;
 export type TextAnimId = (typeof TEXT_ANIM_IDS)[number];
 /** What a text animation moves one by one: characters (graphemes), words or lines; none = the whole text. */
 export const TEXT_ANIM_UNITS = ["char", "word", "line"] as const;
@@ -568,6 +570,64 @@ export interface TextSpan {
   style: TextSpanStyle;
 }
 
+/** The separators a counter groups thousands with ("": none). */
+export const COUNTER_SEPARATORS = ["", ",", ".", " ", "'"] as const;
+export type CounterSeparator = (typeof COUNTER_SEPARATORS)[number];
+
+/**
+ * A number that counts (spec §21.13, Batch 68): the clip shows `prefix + value + suffix`, the value going
+ * from `from` to `to` over the clip (through `ease`), or following the keys of `text.counter.value`.
+ * `text.value` holds the final text (layout bounds).
+ */
+export interface TextCounter {
+  from: number;
+  to: number;
+  decimals: number;
+  prefix: string;
+  suffix: string;
+  separator: CounterSeparator;
+  ease: EaseId;
+}
+
+export const SELECTOR_SHAPES = ["square", "rampUp", "rampDown", "triangle", "round", "smooth"] as const;
+export type SelectorShape = (typeof SELECTOR_SHAPES)[number];
+export const SELECTOR_ORDERS = ["forward", "reverse", "random"] as const;
+export type SelectorOrder = (typeof SELECTOR_ORDERS)[number];
+
+/** A range selector (After Effects semantics): which units an animator moves, and how much (0..1 each). */
+export interface AnimatorSelector {
+  start: number;
+  end: number;
+  offset: number;
+  shape: SelectorShape;
+  /** Reshape of the ramps, -1..1 (0: none). */
+  ease: number;
+  order: SelectorOrder;
+  seed: number;
+}
+
+/** What an animator does to a unit at amount 1 (each prop is times the unit's amount; opacity moves toward its value). */
+export interface AnimatorProps {
+  x?: number;
+  y?: number;
+  scale?: number;
+  rotation?: number;
+  opacity?: number;
+  blur?: number;
+  tracking?: number;
+  fill?: RGBA;
+}
+export const ANIMATOR_PROP_NAMES = ["x", "y", "scale", "rotation", "opacity", "blur", "tracking", "fill"] as const;
+export type AnimatorPropName = (typeof ANIMATOR_PROP_NAMES)[number];
+
+/** A per-character, word or line animation driven by a range selector (spec §21.13, Batch 68). */
+export interface TextAnimator {
+  id: string;
+  unit: TextAnimUnit;
+  selector: AnimatorSelector;
+  props: AnimatorProps;
+}
+
 export interface TextClip extends ClipBase {
   kind: "text";
   text: TextContent;
@@ -577,6 +637,10 @@ export interface TextClip extends ClipBase {
   presetId?: string;
   /** Styled runs inside the text (spec §21.13, Batch 67): UTF-16 offsets into `text.value`, sorted, not overlapping. */
   spans?: TextSpan[];
+  /** A counting number (spec §21.13, Batch 68). */
+  counter?: TextCounter;
+  /** Range-selector animators (spec §21.13, Batch 68). */
+  animators?: TextAnimator[];
   transform: Transform;
   opacity: number;
   keyframes?: Keyframes;

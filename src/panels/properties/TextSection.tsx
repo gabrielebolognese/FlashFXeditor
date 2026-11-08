@@ -7,6 +7,7 @@ import type { Clip, ClipId, TextClip, TextStyle } from "../../core/document/type
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import { NumberField } from "../../ui/NumberField.js";
 import { KeyRows } from "./KeyframeControls.js";
+import { CounterRows } from "./CounterRows.js";
 import { Row } from "./Section.js";
 import { Choice, StyleFields, type StyleTarget } from "./StyleFields.js";
 import { textBinding, type TextBindingDeps } from "./textBinding.js";
@@ -102,6 +103,7 @@ export function TextSection({ ids }: { ids: readonly ClipId[] }) {
         <ContentField ids={ids} />
       </Row>
       <StyleFields target={target} anchor />
+      <CounterRows ids={ids} />
       <Row label="Box">
         <Choice
           value={boxMode}

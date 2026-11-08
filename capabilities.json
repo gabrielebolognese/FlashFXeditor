@@ -2,8 +2,8 @@
   "manifestVersion": 1,
   "app": "shorts-editor",
   "appVersion": "1.1.0",
-  "lastBatch": 67,
-  "schemaVersion": 11,
+  "lastBatch": 68,
+  "schemaVersion": 12,
   "project": {
     "file": "project.json",
     "fontsManifest": "fonts/fonts.json",
@@ -95,7 +95,8 @@
       "shadow.color",
       "style.fontSize",
       "style.letterSpacing",
-      "style.fill"
+      "style.fill",
+      "text.counter.value"
     ],
     "eases": [
       "linear",
@@ -195,7 +196,16 @@
       "wordFade",
       "lineReveal",
       "blurIn",
-      "scaleBounce"
+      "scaleBounce",
+      "typeOn",
+      "decode",
+      "tumbleIn",
+      "cascadeUp",
+      "riseByLine",
+      "popInByChar",
+      "blurInByChar",
+      "fadeInByChar",
+      "highlightSweep"
     ],
     "animUnits": [
       "char",
@@ -203,8 +213,21 @@
       "line"
     ],
     "spans": true,
-    "counter": false,
-    "animators": false
+    "counter": true,
+    "animators": true,
+    "animatorKeyframeProps": [
+      "animators.<id>.selector.start",
+      "animators.<id>.selector.end",
+      "animators.<id>.selector.offset",
+      "animators.<id>.props.x",
+      "animators.<id>.props.y",
+      "animators.<id>.props.scale",
+      "animators.<id>.props.rotation",
+      "animators.<id>.props.opacity",
+      "animators.<id>.props.blur",
+      "animators.<id>.props.tracking",
+      "animators.<id>.props.fill"
+    ]
   },
   "captions": {
     "highlightModes": [

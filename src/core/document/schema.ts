@@ -4,9 +4,9 @@
 // the defaults of `normalize` all come from it. A batch that adds a field adds it here in the same commit
 // (spec §21.1). Pure: no DOM.
 import { MAX_GAIN_DB, MAX_SPEED, MIN_GAIN_DB } from "./limits.js";
-import { KEYFRAME_PROPS, SHAPE_PROP_PATTERN } from "./keyframes.js";
+import { ANIMATOR_PROP_PATTERN, KEYFRAME_PROPS, SHAPE_PROP_PATTERN } from "./keyframes.js";
 import { PRIMITIVE_LIMITS } from "../shapes/primitives.js";
-import { CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, LABEL_COLORS, PRESET_SET_IDS, SCHEMA_VERSION, FILL_RULES, LINE_CAPS, LINE_JOINS, SOLID_SHAPE_IDS, STROKE_ALIGNS, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_KINDS, type JsonValue } from "./types.js";
+import { CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, LABEL_COLORS, PRESET_SET_IDS, SCHEMA_VERSION, FILL_RULES, LINE_CAPS, LINE_JOINS, SOLID_SHAPE_IDS, STROKE_ALIGNS, COUNTER_SEPARATORS, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_KINDS, type JsonValue } from "./types.js";
 
 export type FieldType =
   | { t: "string"; nonEmpty?: boolean }
@@ -211,7 +211,7 @@ const SCHEMAS: ObjectSchema[] = [
     doc: "Keyframe lists by property id, each sorted by frame.",
     types: ["Keyframes"],
     fields: {},
-    value: { t: "record", item: { t: "array", item: obj("Keyframe") }, keys: KEYFRAME_PROPS, keyPatterns: [SHAPE_PROP_PATTERN.source] },
+    value: { t: "record", item: { t: "array", item: obj("Keyframe") }, keys: KEYFRAME_PROPS, keyPatterns: [SHAPE_PROP_PATTERN.source, ANIMATOR_PROP_PATTERN.source] },
   },
   {
     name: "Transition",
@@ -583,10 +583,66 @@ const SCHEMAS: ObjectSchema[] = [
       animOut: opt(obj("TextAnim"), "Out animation."),
       presetId: opt(text, "The preset it was made from."),
       spans: opt(list(obj("TextSpan")), "Styled runs inside the text, sorted by `start` and not overlapping (Batch 67). Content: presets never store them."),
+      counter: opt(obj("TextCounter"), "A number that counts (Batch 68): the clip shows `prefix + value + suffix`; `text.value` holds the final text."),
+      animators: opt(list(obj("TextAnimator")), "Range-selector animators (Batch 68)."),
       transform: req(obj("Transform"), "Placement."),
       opacity: req(range(0, 1), "Opacity.", 1),
       keyframes: opt(obj("Keyframes"), "Animated properties."),
       fades: req(obj("Fades"), "Opacity fades.", { in: 0, out: 0 }),
+    },
+  },
+  {
+    name: "TextCounter",
+    doc: "A counting number: the value goes from `from` to `to` over the clip through `ease`, or follows the keys of `text.counter.value`.",
+    types: ["TextCounter"],
+    fields: {
+      from: req(num, "Value on the first frame.", 0),
+      to: req(num, "Value on the last frame.", 100),
+      decimals: req(int(0, 6), "Digits after the decimal point.", 0),
+      prefix: req(str, "Text before the number.", ""),
+      suffix: req(str, "Text after the number.", ""),
+      separator: req(oneOf(COUNTER_SEPARATORS), "Thousands separator (empty: none).", ""),
+      ease: req(oneOf(EASE_IDS), "Timing curve.", "easeOut"),
+    },
+  },
+  {
+    name: "TextAnimator",
+    doc: "A per-character, word or line animation: each unit gets an amount 0..1 from the range selector and each prop applies times that amount.",
+    types: ["TextAnimator"],
+    fields: {
+      id: req(text, "Unique within the clip; keyframe properties name it (`animators.<id>.*`)."),
+      unit: req(oneOf(TEXT_ANIM_UNITS), "What the selector counts.", "char"),
+      selector: req(obj("AnimatorSelector"), "The range selector."),
+      props: req(obj("AnimatorProps"), "What the animator does at amount 1."),
+    },
+  },
+  {
+    name: "AnimatorSelector",
+    doc: "A range selector with After Effects semantics: a window over the units, shaped by `shape`, moved by `offset`.",
+    types: ["AnimatorSelector"],
+    fields: {
+      start: req(num, "Window start, fraction of the units.", 0),
+      end: req(num, "Window end, fraction of the units.", 1),
+      offset: req(num, "Moves the window; key it from 0 to 1 for a reveal.", 0),
+      shape: req(oneOf(SELECTOR_SHAPES), "Falloff inside the window.", "rampUp"),
+      ease: req(range(-1, 1), "Reshapes the ramps (0: none).", 0),
+      order: req(oneOf(SELECTOR_ORDERS), "Which unit sits where in the window.", "forward"),
+      seed: req(int(0), "Seed of the random order.", 1),
+    },
+  },
+  {
+    name: "AnimatorProps",
+    doc: "What an animator does to a unit at amount 1; each is times the unit's amount (opacity moves toward its value, fill toward its color).",
+    types: ["AnimatorProps"],
+    fields: {
+      x: opt(num, "Offset x, project px."),
+      y: opt(num, "Offset y, project px."),
+      scale: opt(num, "Scale at amount 1 (1: unchanged; moves toward it)."),
+      rotation: opt(num, "Degrees."),
+      opacity: opt(range(0, 1), "Opacity at amount 1."),
+      blur: opt(nonNeg, "Blur, project px."),
+      tracking: opt(num, "Extra letter spacing, project px."),
+      fill: opt(obj("RGBA"), "Color at amount 1."),
     },
   },
   {

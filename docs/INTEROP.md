@@ -564,6 +564,30 @@ Spans are content, not look: text presets never store them and applying a preset
 
 `fixtures/interop/spans` is a complete project with every span field, a `wordPop` title and expected frames 0, 6 and 20.
 
+### 5.7 Number counters and range-selector animators (manifest keys `text.counter`, `text.animators`, `text.anims`, `text.animatorKeyframeProps`; schema 12)
+
+A `text` clip may count a number and may carry `animators`. Both are optional; an older project has neither and renders as before.
+
+**Counter.** `counter` is `{ from, to, decimals, prefix, suffix, separator, ease }`. The clip shows `prefix + number + suffix`, the number going from `from` to `to` over the clip through `ease` (the last frame shows `to` exactly). `decimals` is 0 to 6, `separator` groups thousands (`""`, `","`, `"."`, `" "` or `"'"`; with `"."` the decimal mark is a comma). Keys on `text.counter.value` replace the ease. Write the final text in `text.value` (for `to` 85.6, one decimal, suffix `%`: `85.6%`): the layout and readers of the file use it.
+
+**Animators.** `animators` is a list of `{ id, unit, selector, props }`. `unit` is `char`, `word` or `line`. The selector gives every unit a weight from 0 to 1: `start`, `end` and `offset` are fractions of the units (the range slides by `offset`), `shape` is `square`, `rampUp`, `rampDown`, `triangle`, `round` or `smooth`, `ease` is -1 to 1, `order` is `forward`, `reverse` or `random` (`seed` makes a random order the same on every render). `props` is what moves at weight 1: `x`, `y` (px), `rotation` (degrees), `blur` (px), `tracking` (px), `scale` and `opacity` (the value a unit moves toward) and `fill` (an RGBA tint). Key a field with `animators.<id>.selector.start|end|offset` or `animators.<id>.props.<name>`.
+
+**Presets.** `animIn` and `animOut` also accept `typeOn`, `decode`, `tumbleIn`, `cascadeUp`, `riseByLine`, `popInByChar`, `blurInByChar` and `fadeInByChar`, and `highlightSweep` (a highlight box that grows behind each word).
+
+```jsonc
+{
+  "id": "stat",
+  "kind": "text",
+  "text": { "value": "85.6%", "box": { "mode": "auto", "width": 700 } },
+  "counter": { "from": 0, "to": 85.6, "decimals": 1, "prefix": "", "suffix": "%", "separator": "", "ease": "easeOut" },
+  "animators": [
+    { "id": "reveal", "unit": "char", "selector": { "start": 0, "end": 1, "offset": 0, "shape": "rampUp", "ease": 0, "order": "forward", "seed": 1 }, "props": { "y": 40, "opacity": 0 } }
+  ]
+}
+```
+
+`fixtures/interop/kinetic` is a complete project with a counter, every animator field and every new preset, and expected frames 0, 12 and 24.
+
 ## 6. Captions and word timings
 
 The caption track's `captionTracks[<track id>].style` styles every cue; a cue's `styleOverride` sets only the fields it changes. A cue is a `caption` clip with `text` (`\n` for line breaks) and optional `words`: `start` and `end` are integer frames relative to the cue's start, `end` after `start`. A word may start before the cue or end after it: an in-trim keeps the words it hides (negative frames), so a trim back shows them again. With word timings the active word is highlighted as the style's `highlight` says.
@@ -859,7 +883,7 @@ The parameters of a `spring` ease: a damped cosine over the segment that ends ex
 
 Keyframe lists by property id, each sorted by frame.
 
-Value: object of [Keyframe](#keyframe)[] (keys: `transform.x`, `transform.y`, `transform.scale`, `transform.scaleY`, `transform.rotation`, `opacity`, `volume.gainDb`, `transform.anchor.x`, `transform.anchor.y`, `crop.left`, `crop.top`, `crop.right`, `crop.bottom`, `size.w`, `size.h`, `cornerRadius`, `fill`, `stroke.width`, `stroke.color`, `stroke.dashOffset`, `shadow.x`, `shadow.y`, `shadow.blur`, `shadow.spread`, `shadow.color`, `style.fontSize`, `style.letterSpacing`, `style.fill`, and keys matching `^paths\.([A-Za-z0-9_-]+)\.(trim\.(?:start|end|offset)|stroke\.(?:width|color|dashOffset)|fill|primitive\.([A-Za-z]+))$`).
+Value: object of [Keyframe](#keyframe)[] (keys: `transform.x`, `transform.y`, `transform.scale`, `transform.scaleY`, `transform.rotation`, `opacity`, `volume.gainDb`, `transform.anchor.x`, `transform.anchor.y`, `crop.left`, `crop.top`, `crop.right`, `crop.bottom`, `size.w`, `size.h`, `cornerRadius`, `fill`, `stroke.width`, `stroke.color`, `stroke.dashOffset`, `shadow.x`, `shadow.y`, `shadow.blur`, `shadow.spread`, `shadow.color`, `style.fontSize`, `style.letterSpacing`, `style.fill`, `text.counter.value`, and keys matching `^paths\.([A-Za-z0-9_-]+)\.(trim\.(?:start|end|offset)|stroke\.(?:width|color|dashOffset)|fill|primitive\.([A-Za-z]+))$`, `^animators\.([A-Za-z0-9_-]+)\.(selector\.(?:start|end|offset)|props\.(?:x|y|scale|rotation|opacity|blur|tracking|fill))$`).
 
 #### Transition
 
@@ -965,7 +989,7 @@ A text clip's in or out animation, played at most over half the clip.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `id` | `"fade"` | `"slideUp"` | `"slideDown"` | `"slideLeft"` | `"slideRight"` | `"pop"` | `"typewriter"` | `"wordPop"` | `"wordFade"` | `"lineReveal"` | `"blurIn"` | `"scaleBounce"` | yes |  | The animation. |
+| `id` | `"fade"` | `"slideUp"` | `"slideDown"` | `"slideLeft"` | `"slideRight"` | `"pop"` | `"typewriter"` | `"wordPop"` | `"wordFade"` | `"lineReveal"` | `"blurIn"` | `"scaleBounce"` | `"typeOn"` | `"decode"` | `"tumbleIn"` | `"cascadeUp"` | `"riseByLine"` | `"popInByChar"` | `"blurInByChar"` | `"fadeInByChar"` | `"highlightSweep"` | yes |  | The animation. |
 | `duration` | integer (>= 0) | yes |  | The whole animation, every unit's delay included. Integer frames at the project frame rate. |
 | `perUnit` | `"char"` | `"word"` | `"line"` | no |  | What moves one by one, instead of the animation's own unit. |
 | `stagger` | integer (>= 0) | no |  | Delay between two units; spread over the duration when absent. Integer frames at the project frame rate. |
@@ -977,7 +1001,7 @@ A preset's animation, timed in milliseconds (presets cross frame rates).
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `id` | `"fade"` | `"slideUp"` | `"slideDown"` | `"slideLeft"` | `"slideRight"` | `"pop"` | `"typewriter"` | `"wordPop"` | `"wordFade"` | `"lineReveal"` | `"blurIn"` | `"scaleBounce"` | yes |  | The animation. |
+| `id` | `"fade"` | `"slideUp"` | `"slideDown"` | `"slideLeft"` | `"slideRight"` | `"pop"` | `"typewriter"` | `"wordPop"` | `"wordFade"` | `"lineReveal"` | `"blurIn"` | `"scaleBounce"` | `"typeOn"` | `"decode"` | `"tumbleIn"` | `"cascadeUp"` | `"riseByLine"` | `"popInByChar"` | `"blurInByChar"` | `"fadeInByChar"` | `"highlightSweep"` | yes |  | The animation. |
 | `durationMs` | number (>= 0) | yes |  | Whole animation, ms. |
 | `perUnit` | `"char"` | `"word"` | `"line"` | no |  | What moves one by one. |
 | `staggerMs` | number (>= 0) | no |  | Delay between units, ms. |
@@ -1298,7 +1322,7 @@ project.json.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `schemaVersion` | integer (>= 1) | yes | `11` | The schema version; this build writes and reads up to the current one. |
+| `schemaVersion` | integer (>= 1) | yes | `12` | The schema version; this build writes and reads up to the current one. |
 | `id` | string (not empty) | yes |  | Unique id, never changes (uuid v4 recommended). |
 | `name` | string | yes |  | Project name. |
 | `settings` | [Settings](#settings) | yes |  | Frame and time base. |
@@ -1455,10 +1479,66 @@ A text clip.
 | `animOut` | [TextAnim](#textanim) | no |  | Out animation. |
 | `presetId` | string (not empty) | no |  | The preset it was made from. |
 | `spans` | [TextSpan](#textspan)[] | no |  | Styled runs inside the text, sorted by `start` and not overlapping (Batch 67). Content: presets never store them. |
+| `counter` | [TextCounter](#textcounter) | no |  | A number that counts (Batch 68): the clip shows `prefix + value + suffix`; `text.value` holds the final text. |
+| `animators` | [TextAnimator](#textanimator)[] | no |  | Range-selector animators (Batch 68). |
 | `transform` | [Transform](#transform) | yes |  | Placement. |
 | `opacity` | number (>= 0, <= 1) | yes | `1` | Opacity. |
 | `keyframes` | [Keyframes](#keyframes) | no |  | Animated properties. |
 | `fades` | [Fades](#fades) | yes | `{"in":0,"out":0}` | Opacity fades. |
+
+#### TextCounter
+
+A counting number: the value goes from `from` to `to` over the clip through `ease`, or follows the keys of `text.counter.value`.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `from` | number | yes | `0` | Value on the first frame. |
+| `to` | number | yes | `100` | Value on the last frame. |
+| `decimals` | integer (>= 0, <= 6) | yes | `0` | Digits after the decimal point. |
+| `prefix` | string | yes | `""` | Text before the number. |
+| `suffix` | string | yes | `""` | Text after the number. |
+| `separator` | `""` | `","` | `"."` | `" "` | `"'"` | yes | `""` | Thousands separator (empty: none). |
+| `ease` | `"linear"` | `"easeIn"` | `"easeOut"` | `"easeInOut"` | `"hold"` | `"smooth"` | `"snap"` | `"overshoot"` | `"sineIn"` | `"sineOut"` | `"sineInOut"` | `"quadIn"` | `"quadOut"` | `"quadInOut"` | `"cubicIn"` | `"cubicOut"` | `"cubicInOut"` | `"quartIn"` | `"quartOut"` | `"quartInOut"` | `"quintIn"` | `"quintOut"` | `"quintInOut"` | `"expoIn"` | `"expoOut"` | `"expoInOut"` | `"circIn"` | `"circOut"` | `"circInOut"` | `"backIn"` | `"backOut"` | `"backInOut"` | `"elasticIn"` | `"elasticOut"` | `"elasticInOut"` | `"bounceIn"` | `"bounceOut"` | `"bounceInOut"` | `"bezier"` | `"spring"` | yes | `"easeOut"` | Timing curve. |
+
+#### TextAnimator
+
+A per-character, word or line animation: each unit gets an amount 0..1 from the range selector and each prop applies times that amount.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `id` | string (not empty) | yes |  | Unique within the clip; keyframe properties name it (`animators.<id>.*`). |
+| `unit` | `"char"` | `"word"` | `"line"` | yes | `"char"` | What the selector counts. |
+| `selector` | [AnimatorSelector](#animatorselector) | yes |  | The range selector. |
+| `props` | [AnimatorProps](#animatorprops) | yes |  | What the animator does at amount 1. |
+
+#### AnimatorSelector
+
+A range selector with After Effects semantics: a window over the units, shaped by `shape`, moved by `offset`.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `start` | number | yes | `0` | Window start, fraction of the units. |
+| `end` | number | yes | `1` | Window end, fraction of the units. |
+| `offset` | number | yes | `0` | Moves the window; key it from 0 to 1 for a reveal. |
+| `shape` | `"square"` | `"rampUp"` | `"rampDown"` | `"triangle"` | `"round"` | `"smooth"` | yes | `"rampUp"` | Falloff inside the window. |
+| `ease` | number (>= -1, <= 1) | yes | `0` | Reshapes the ramps (0: none). |
+| `order` | `"forward"` | `"reverse"` | `"random"` | yes | `"forward"` | Which unit sits where in the window. |
+| `seed` | integer (>= 0) | yes | `1` | Seed of the random order. |
+
+#### AnimatorProps
+
+What an animator does to a unit at amount 1; each is times the unit's amount (opacity moves toward its value, fill toward its color).
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `x` | number | no |  | Offset x, project px. |
+| `y` | number | no |  | Offset y, project px. |
+| `scale` | number | no |  | Scale at amount 1 (1: unchanged; moves toward it). |
+| `rotation` | number | no |  | Degrees. |
+| `opacity` | number (>= 0, <= 1) | no |  | Opacity at amount 1. |
+| `blur` | number (>= 0) | no |  | Blur, project px. |
+| `tracking` | number | no |  | Extra letter spacing, project px. |
+| `fill` | [RGBA](#rgba) | no |  | Color at amount 1. |
 
 #### TextSpan
 

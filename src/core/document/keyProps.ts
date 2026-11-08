@@ -56,6 +56,8 @@ export function readProp(clip: Clip, prop: KeyframeProp): KeyValue | undefined {
       return clip.kind === "text" ? clip.style.letterSpacing : undefined;
     case "style.fill":
       return clip.kind === "text" && isColor(clip.style.fill) ? toVector(clip.style.fill) : undefined;
+    case "text.counter.value":
+      return clip.kind === "text" ? clip.counter?.to : undefined;
     default:
       return clip.kind === "shape" ? readShapeProp(clip, prop) : undefined;
   }
@@ -158,6 +160,9 @@ export function writeProp(clip: Draft<Clip>, prop: KeyframeProp, value: KeyValue
       return true;
     case "style.fill":
       if (clip.kind === "text") clip.style.fill = toColor(value);
+      return true;
+    case "text.counter.value":
+      if (clip.kind === "text" && clip.counter) clip.counter.to = n;
       return true;
     default:
       return clip.kind === "shape" ? writeShapeProp(clip, prop, value) : false;

@@ -641,6 +641,14 @@ export class WebGpuRenderer implements BackendRenderer {
   private blurRecords(res: DeviceResources, encoder: GPUCommandEncoder, count: number): void {
     const blur = res.blur;
     let passes = 0;
+    // The uniform buffer grows before any pass is encoded: a pass already encoded keeps the buffer and
+    // group it was made with, and a buffer destroyed after that would make the whole submit invalid.
+    let blurred = 0;
+    for (let index = 0; index < count; index++) {
+      const record = this.records.at(index);
+      if (record.texture0 && blurRegionInto(this.blurRegion, record)) blurred++;
+    }
+    if (blurred * 2 > blur.capacity) this.growBlur(res, blurred * 2);
     for (let index = 0; index < count; index++) {
       const record = this.records.at(index);
       const region = blurRegionInto(this.blurRegion, record);
@@ -651,7 +659,6 @@ export class WebGpuRenderer implements BackendRenderer {
       const h = height + 2 * reach;
       const across = this.blurTexture(res, w, h);
       const down = this.blurTexture(res, w, h);
-      if (passes + 2 > blur.capacity) this.growBlur(res, passes + 2);
       this.writeBlurPass(passes, x, y, width, height, 1, 0, sigma, reach, reach);
       this.blurPass(res, encoder, passes, source, across, w, h);
       this.writeBlurPass(passes + 1, 0, 0, w, h, 0, 1, sigma, reach, 0);

@@ -105,3 +105,27 @@
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-1);
 }
+
+/* Counter prefix and suffix: the DS input, one line. */
+.counterText {
+  width: 100%;
+  height: var(--control-default);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font: var(--type-body);
+  letter-spacing: var(--type-body-track);
+  transition: border-color var(--duration-micro) var(--ease-out);
+}
+
+.counterText:focus-visible {
+  border-color: var(--accent-dim);
+  box-shadow: 0 0 0 1px var(--accent-wash);
+  outline: none;
+}
+
+.counterText:disabled {
+  opacity: var(--disabled-opacity);
+}

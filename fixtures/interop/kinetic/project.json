@@ -1,0 +1,1639 @@
+{
+  "schemaVersion": 12,
+  "id": "8c1a4e72-3b5d-4f09-9a26-d0e7b3f15c84",
+  "name": "Interop kinetic",
+  "settings": {
+    "width": 800,
+    "height": 1384,
+    "fps": {
+      "num": 30,
+      "den": 1
+    },
+    "background": {
+      "r": 0.1,
+      "g": 0.1,
+      "b": 0.12,
+      "a": 1
+    },
+    "sampleRate": 48000
+  },
+  "media": {},
+  "bins": [],
+  "tracks": [
+    {
+      "id": "v1",
+      "kind": "video",
+      "name": "V1",
+      "clipIds": [],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v2",
+      "kind": "video",
+      "name": "V2",
+      "clipIds": [
+        "counter"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v3",
+      "kind": "video",
+      "name": "V3",
+      "clipIds": [
+        "revealRow"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v4",
+      "kind": "video",
+      "name": "V4",
+      "clipIds": [
+        "everyRow"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v5",
+      "kind": "video",
+      "name": "V5",
+      "clipIds": [
+        "scatterRow"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v6",
+      "kind": "video",
+      "name": "V6",
+      "clipIds": [
+        "wordsRow"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v7",
+      "kind": "video",
+      "name": "V7",
+      "clipIds": [
+        "preset-typeOn"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v8",
+      "kind": "video",
+      "name": "V8",
+      "clipIds": [
+        "preset-decode"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v9",
+      "kind": "video",
+      "name": "V9",
+      "clipIds": [
+        "preset-tumbleIn"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v10",
+      "kind": "video",
+      "name": "V10",
+      "clipIds": [
+        "preset-cascadeUp"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v11",
+      "kind": "video",
+      "name": "V11",
+      "clipIds": [
+        "preset-riseByLine"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v12",
+      "kind": "video",
+      "name": "V12",
+      "clipIds": [
+        "preset-popInByChar"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v13",
+      "kind": "video",
+      "name": "V13",
+      "clipIds": [
+        "preset-blurInByChar"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v14",
+      "kind": "video",
+      "name": "V14",
+      "clipIds": [
+        "preset-fadeInByChar"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v15",
+      "kind": "video",
+      "name": "V15",
+      "clipIds": [
+        "preset-highlightSweep"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    }
+  ],
+  "clips": {
+    "counter": {
+      "id": "counter",
+      "trackId": "v2",
+      "kind": "text",
+      "name": "85.6%",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "text": {
+        "value": "85.6%",
+        "box": {
+          "mode": "auto",
+          "width": 700
+        }
+      },
+      "style": {
+        "fontFamily": "Inter",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 72,
+        "fill": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": false,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 0,
+        "y": -624,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "counter": {
+        "from": 0,
+        "to": 85.6,
+        "decimals": 1,
+        "prefix": "",
+        "suffix": "%",
+        "separator": "",
+        "ease": "easeOut"
+      }
+    },
+    "revealRow": {
+      "id": "revealRow",
+      "trackId": "v3",
+      "kind": "text",
+      "name": "ANIMATOR REVEAL",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "text": {
+        "value": "ANIMATOR REVEAL",
+        "box": {
+          "mode": "auto",
+          "width": 700
+        }
+      },
+      "style": {
+        "fontFamily": "Inter",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 44,
+        "fill": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": false,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 0,
+        "y": -528,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "animators": [
+        {
+          "id": "reveal",
+          "unit": "char",
+          "selector": {
+            "start": 0,
+            "end": 1,
+            "offset": 0,
+            "shape": "rampUp",
+            "ease": 0,
+            "order": "forward",
+            "seed": 1
+          },
+          "props": {
+            "y": 40,
+            "opacity": 0
+          }
+        }
+      ],
+      "keyframes": {
+        "animators.reveal.selector.offset": [
+          {
+            "frame": 0,
+            "value": 1,
+            "ease": "linear"
+          },
+          {
+            "frame": 30,
+            "value": -1,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    "everyRow": {
+      "id": "everyRow",
+      "trackId": "v4",
+      "kind": "text",
+      "name": "ALL PROPS",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "text": {
+        "value": "ALL PROPS",
+        "box": {
+          "mode": "auto",
+          "width": 700
+        }
+      },
+      "style": {
+        "fontFamily": "Inter",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 44,
+        "fill": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": false,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 0,
+        "y": -432,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "animators": [
+        {
+          "id": "every",
+          "unit": "char",
+          "selector": {
+            "start": 0,
+            "end": 1,
+            "offset": 0,
+            "shape": "smooth",
+            "ease": 0.5,
+            "order": "reverse",
+            "seed": 3
+          },
+          "props": {
+            "x": 6,
+            "y": -12,
+            "scale": 0.6,
+            "rotation": 20,
+            "opacity": 0.4,
+            "blur": 3,
+            "tracking": 4,
+            "fill": {
+              "r": 1,
+              "g": 0.42,
+              "b": 0.32,
+              "a": 1
+            }
+          }
+        }
+      ],
+      "keyframes": {
+        "animators.every.props.y": [
+          {
+            "frame": 0,
+            "value": -12,
+            "ease": "linear"
+          },
+          {
+            "frame": 30,
+            "value": 12,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    "scatterRow": {
+      "id": "scatterRow",
+      "trackId": "v5",
+      "kind": "text",
+      "name": "SCATTER SEEDED",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "text": {
+        "value": "SCATTER SEEDED",
+        "box": {
+          "mode": "auto",
+          "width": 700
+        }
+      },
+      "style": {
+        "fontFamily": "Inter",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 44,
+        "fill": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": false,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 0,
+        "y": -336,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "animators": [
+        {
+          "id": "scatter",
+          "unit": "char",
+          "selector": {
+            "start": 0,
+            "end": 1,
+            "offset": 0,
+            "shape": "square",
+            "ease": 0,
+            "order": "random",
+            "seed": 11
+          },
+          "props": {
+            "opacity": 0,
+            "scale": 0
+          }
+        }
+      ],
+      "keyframes": {
+        "animators.scatter.selector.offset": [
+          {
+            "frame": 0,
+            "value": 1,
+            "ease": "linear"
+          },
+          {
+            "frame": 30,
+            "value": -1,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    "wordsRow": {
+      "id": "wordsRow",
+      "trackId": "v6",
+      "kind": "text",
+      "name": "WORDS RISE TOGETHER",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "text": {
+        "value": "WORDS RISE TOGETHER",
+        "box": {
+          "mode": "auto",
+          "width": 700
+        }
+      },
+      "style": {
+        "fontFamily": "Inter",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 44,
+        "fill": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": false,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 0,
+        "y": -240,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "animators": [
+        {
+          "id": "words",
+          "unit": "word",
+          "selector": {
+            "start": 0,
+            "end": 1,
+            "offset": 0,
+            "shape": "triangle",
+            "ease": -0.3,
+            "order": "forward",
+            "seed": 1
+          },
+          "props": {
+            "y": -30
+          }
+        }
+      ],
+      "keyframes": {
+        "animators.words.selector.end": [
+          {
+            "frame": 0,
+            "value": 0.5,
+            "ease": "linear"
+          },
+          {
+            "frame": 30,
+            "value": 1,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    "preset-typeOn": {
+      "id": "preset-typeOn",
+      "trackId": "v7",
+      "kind": "text",
+      "name": "TYPEON",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "text": {
+        "value": "TYPEON",
+        "box": {
+          "mode": "auto",
+          "width": 700
+        }
+      },
+      "style": {
+        "fontFamily": "Inter",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 44,
+        "fill": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": false,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 0,
+        "y": -144,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "animIn": {
+        "id": "typeOn",
+        "duration": 30
+      }
+    },
+    "preset-decode": {
+      "id": "preset-decode",
+      "trackId": "v8",
+      "kind": "text",
+      "name": "DECODE",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "text": {
+        "value": "DECODE",
+        "box": {
+          "mode": "auto",
+          "width": 700
+        }
+      },
+      "style": {
+        "fontFamily": "Inter",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 44,
+        "fill": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": false,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 0,
+        "y": -48,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "animIn": {
+        "id": "decode",
+        "duration": 30
+      }
+    },
+    "preset-tumbleIn": {
+      "id": "preset-tumbleIn",
+      "trackId": "v9",
+      "kind": "text",
+      "name": "TUMBLEIN",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "text": {
+        "value": "TUMBLEIN",
+        "box": {
+          "mode": "auto",
+          "width": 700
+        }
+      },
+      "style": {
+        "fontFamily": "Inter",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 44,
+        "fill": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": false,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 0,
+        "y": 48,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "animIn": {
+        "id": "tumbleIn",
+        "duration": 30
+      }
+    },
+    "preset-cascadeUp": {
+      "id": "preset-cascadeUp",
+      "trackId": "v10",
+      "kind": "text",
+      "name": "CASCADEUP",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "text": {
+        "value": "CASCADEUP",
+        "box": {
+          "mode": "auto",
+          "width": 700
+        }
+      },
+      "style": {
+        "fontFamily": "Inter",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 44,
+        "fill": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": false,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 0,
+        "y": 144,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "animIn": {
+        "id": "cascadeUp",
+        "duration": 30
+      }
+    },
+    "preset-riseByLine": {
+      "id": "preset-riseByLine",
+      "trackId": "v11",
+      "kind": "text",
+      "name": "RISE BY",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "text": {
+        "value": "RISE BY\nLINE",
+        "box": {
+          "mode": "auto",
+          "width": 700
+        }
+      },
+      "style": {
+        "fontFamily": "Inter",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 44,
+        "fill": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": false,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 0,
+        "y": 240,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "animIn": {
+        "id": "riseByLine",
+        "duration": 30
+      }
+    },
+    "preset-popInByChar": {
+      "id": "preset-popInByChar",
+      "trackId": "v12",
+      "kind": "text",
+      "name": "POPINBYCHAR",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "text": {
+        "value": "POPINBYCHAR",
+        "box": {
+          "mode": "auto",
+          "width": 700
+        }
+      },
+      "style": {
+        "fontFamily": "Inter",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 44,
+        "fill": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": false,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 0,
+        "y": 336,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "animIn": {
+        "id": "popInByChar",
+        "duration": 30
+      }
+    },
+    "preset-blurInByChar": {
+      "id": "preset-blurInByChar",
+      "trackId": "v13",
+      "kind": "text",
+      "name": "BLURINBYCHAR",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "text": {
+        "value": "BLURINBYCHAR",
+        "box": {
+          "mode": "auto",
+          "width": 700
+        }
+      },
+      "style": {
+        "fontFamily": "Inter",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 44,
+        "fill": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": false,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 0,
+        "y": 432,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "animIn": {
+        "id": "blurInByChar",
+        "duration": 30
+      }
+    },
+    "preset-fadeInByChar": {
+      "id": "preset-fadeInByChar",
+      "trackId": "v14",
+      "kind": "text",
+      "name": "FADEINBYCHAR",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "text": {
+        "value": "FADEINBYCHAR",
+        "box": {
+          "mode": "auto",
+          "width": 700
+        }
+      },
+      "style": {
+        "fontFamily": "Inter",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 44,
+        "fill": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": false,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 0,
+        "y": 528,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "animIn": {
+        "id": "fadeInByChar",
+        "duration": 30
+      }
+    },
+    "preset-highlightSweep": {
+      "id": "preset-highlightSweep",
+      "trackId": "v15",
+      "kind": "text",
+      "name": "SWEEP THE WORDS",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "text": {
+        "value": "SWEEP THE WORDS",
+        "box": {
+          "mode": "auto",
+          "width": 700
+        }
+      },
+      "style": {
+        "fontFamily": "Inter",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 44,
+        "fill": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": false,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 0,
+        "y": 624,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "animIn": {
+        "id": "highlightSweep",
+        "duration": 30
+      },
+      "spans": [
+        {
+          "start": 0,
+          "end": 5,
+          "style": {
+            "highlight": {
+              "r": 1,
+              "g": 0.86,
+              "b": 0.2,
+              "a": 1
+            }
+          }
+        }
+      ]
+    }
+  },
+  "markers": [],
+  "captionTracks": {},
+  "textPresetsLocal": [],
+  "sequences": {},
+  "meta": {
+    "createdAt": "2026-11-08T12:00:00.000Z",
+    "modifiedAt": "2026-11-08T12:00:00.000Z",
+    "appVersion": "1.1.0",
+    "generator": {
+      "name": "interop-fixture",
+      "version": "1",
+      "source": "fixtures/interop/kinetic (Batch 68)"
+    }
+  }
+}

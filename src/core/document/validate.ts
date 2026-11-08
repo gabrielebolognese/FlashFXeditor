@@ -1,13 +1,13 @@
 // Document invariants (spec §5.2). The DocumentStore runs `assertValid` after every command in dev
 // builds; messages name the track and clip so a broken command is found at once.
-import { keyframeIssues } from "./keyframes.js";
+import { isEaseId, keyframeIssues } from "./keyframes.js";
 import { transitionIssues } from "./transitions.js";
 import { sequenceGraphIssues } from "./sequences.js";
 import { usPerFrame } from "./time.js";
 import { sequenceDurationUs, sequenceRecordIssues } from "./sequence.js";
 import { pathDataIssue } from "../shapes/pathData.js";
 import { PRIMITIVE_LIMITS, PRIMITIVE_PARAMS } from "../shapes/primitives.js";
-import { CAPTION_HIGHLIGHTS, CUE_ANIM_KINDS, FILL_RULES, isFreeze, isMediaClip, LABEL_COLORS, LINE_CAPS, LINE_JOINS, PRIMITIVE_KINDS, SOLID_SHAPE_IDS, type PrimitiveKind, type ShapeClip, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type CompoundClip, type Sequence, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextSpan, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
+import { CAPTION_HIGHLIGHTS, COUNTER_SEPARATORS, CUE_ANIM_KINDS, FILL_RULES, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_UNITS, isFreeze, isMediaClip, LABEL_COLORS, LINE_CAPS, LINE_JOINS, PRIMITIVE_KINDS, SOLID_SHAPE_IDS, type PrimitiveKind, type ShapeClip, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type CompoundClip, type Sequence, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextSpan, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
 
 export class DocumentInvariantError extends Error {
   readonly issues: readonly string[];
@@ -190,6 +190,57 @@ function textIssues(clip: TextClip, label: string): string[] {
   if (!isPositive(text?.box?.width)) issues.push(`${label}: text box width ${String(text?.box?.width)} must be > 0`);
   issues.push(...styleIssues(clip.style, label));
   if (typeof text?.value === "string") issues.push(...spanIssues(clip.spans, text.value.length).map((issue) => `${label}: ${issue}`));
+  issues.push(...counterIssues(clip.counter).map((issue) => `${label}: ${issue}`));
+  issues.push(...animatorIssues(clip.animators).map((issue) => `${label}: ${issue}`));
+  return issues;
+}
+
+/** The problems of a text clip counter (empty when valid or absent; spec §21.13). */
+function counterIssues(counter: unknown): string[] {
+  if (counter === undefined) return [];
+  if (typeof counter !== "object" || counter === null || Array.isArray(counter)) return ["counter must be an object"];
+  const c = counter as Record<string, unknown>;
+  const issues: string[] = [];
+  for (const key of ["from", "to"]) if (!(typeof c[key] === "number" && Number.isFinite(c[key]))) issues.push(`counter ${key} must be a number`);
+  if (!(Number.isInteger(c.decimals) && (c.decimals as number) >= 0 && (c.decimals as number) <= 6)) issues.push("counter decimals must be an integer in 0..6");
+  for (const key of ["prefix", "suffix"]) if (typeof c[key] !== "string") issues.push(`counter ${key} must be a string`);
+  if (!(COUNTER_SEPARATORS as readonly unknown[]).includes(c.separator)) issues.push("counter separator must be one of: none, comma, dot, space, apostrophe");
+  if (!isEaseId(c.ease)) issues.push("counter ease must be an ease id");
+  return issues;
+}
+
+/** The problems of a text clip animators (empty when valid or absent; spec §21.13). */
+function animatorIssues(animators: unknown): string[] {
+  if (animators === undefined) return [];
+  if (!Array.isArray(animators)) return ["animators must be a list"];
+  const issues: string[] = [];
+  const seen = new Set<unknown>();
+  animators.forEach((raw: unknown, i) => {
+    const a = raw as Record<string, unknown> | null;
+    if (typeof a !== "object" || a === null) {
+      issues.push(`animator ${i} must be an object`);
+      return;
+    }
+    if (typeof a.id !== "string" || !/^[A-Za-z0-9_-]+$/.test(a.id)) issues.push(`animator ${i} id must be letters, digits, - or _`);
+    else if (seen.has(a.id)) issues.push(`animator ${i} id "${a.id}" is used twice`);
+    seen.add(a.id);
+    if (!(TEXT_ANIM_UNITS as readonly unknown[]).includes(a.unit)) issues.push(`animator ${i} unit must be char, word or line`);
+    const s = a.selector as Record<string, unknown> | null;
+    if (typeof s !== "object" || s === null) issues.push(`animator ${i} selector must be an object`);
+    else {
+      for (const key of ["start", "end", "offset"]) if (!(typeof s[key] === "number" && Number.isFinite(s[key]))) issues.push(`animator ${i} selector ${key} must be a number`);
+      if (!(SELECTOR_SHAPES as readonly unknown[]).includes(s.shape)) issues.push(`animator ${i} selector shape is unknown`);
+      if (!(typeof s.ease === "number" && s.ease >= -1 && s.ease <= 1)) issues.push(`animator ${i} selector ease must be in -1..1`);
+      if (!(SELECTOR_ORDERS as readonly unknown[]).includes(s.order)) issues.push(`animator ${i} selector order must be forward, reverse or random`);
+      if (!(Number.isInteger(s.seed) && (s.seed as number) >= 0)) issues.push(`animator ${i} selector seed must be an integer >= 0`);
+    }
+    const p = a.props as Record<string, unknown> | null;
+    if (typeof p !== "object" || p === null || Array.isArray(p)) issues.push(`animator ${i} props must be an object`);
+    else {
+      for (const key of ["x", "y", "scale", "rotation", "opacity", "blur", "tracking"]) if (p[key] !== undefined && !(typeof p[key] === "number" && Number.isFinite(p[key]))) issues.push(`animator ${i} ${key} must be a number`);
+      if (p.fill !== undefined && !isColor(p.fill)) issues.push(`animator ${i} fill must be RGBA`);
+    }
+  });
   return issues;
 }
 
