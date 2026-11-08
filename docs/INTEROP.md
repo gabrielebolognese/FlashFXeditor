@@ -644,6 +644,57 @@ A `text` clip may count a number and may carry `animators`. Both are optional; a
 
 `fixtures/interop/rig` is a complete project with a null and five children, a text parented to a rotating card and a curved motion path with auto-orient, and expected frames 0, 30 and 60.
 
+### 5.9 2.5D layers: 3D rotation and perspective (manifest key `transform.rotation3d`; schema 14)
+
+**Turn and depth.** A `transform` may carry `rotationX` and `rotationY` (degrees) and `z` (px, positive = farther away). The picture turns around the layer's anchor point: `rotationY` turns the right side away from the viewer, `rotationX` the top side, like CSS `rotateY()` and `rotateX()`. `rotation` then turns the tilted layer around the view axis. `z` moves the layer away (or closer, when negative) along the view axis. All three are absent (0) on a flat layer, and all three are keyframe properties (`transform.rotationX`, `transform.rotationY`, `transform.z`).
+
+**Perspective.** `settings.perspective` (and `perspective` on a sequence, for the layers inside a compound) is the viewing distance in px from the frame, the CSS `perspective` with its origin at the frame center. Absent means 1600. `null` means none: a parallel view where a turn foreshortens the layer and `z` does nothing. A sequence never takes the project's distance; absent inside is 1600 too.
+
+**Back side and order.** A layer turned past 90° shows its back (mirrored) unless `backfaceHidden: true`. A layer reaching the viewer's plane (`z` near minus the distance, or a turned edge behind it) is not drawn. Layers are drawn in track order. A sequence with `depthSort: true` draws its layers farthest `z` first (ties keep track order) inside the compound clips that show it. A parent (§5.8) passes its 2D transform on, never its turn: each clip's own `rotationX`, `rotationY` and `z` apply to it alone.
+
+```json Transform
+{ "x": 0, "y": 0, "scale": 1.5, "rotation": 0, "rotationX": 0, "rotationY": 60, "z": 200, "anchor": { "x": 0.5, "y": 0.5 }, "flipH": false, "flipV": false }
+```
+
+```json Settings
+{ "width": 1080, "height": 1920, "fps": { "num": 30, "den": 1 }, "sampleRate": 48000, "background": { "r": 0, "g": 0, "b": 0, "a": 1 }, "perspective": 1200 }
+```
+
+```json Clip.solid
+{
+  "id": "card",
+  "trackId": "v1",
+  "kind": "solid",
+  "name": "Card",
+  "start": 0,
+  "duration": 60,
+  "enabled": true,
+  "backfaceHidden": true,
+  "fill": { "r": 1, "g": 0.4, "b": 0.3, "a": 1 },
+  "shape": "rect",
+  "size": { "w": 400, "h": 560 },
+  "cornerRadius": 24,
+  "transform": { "x": 0, "y": 0, "scale": 1, "rotation": 0, "anchor": { "x": 0.5, "y": 0.5 }, "flipH": false, "flipV": false },
+  "opacity": 1,
+  "keyframes": {
+    "transform.rotationY": [
+      { "frame": 0, "value": 180, "ease": "cubicOut" },
+      { "frame": 45, "value": 0, "ease": "linear" }
+    ],
+    "transform.z": [
+      { "frame": 0, "value": 2000, "ease": "cubicOut" },
+      { "frame": 45, "value": 0, "ease": "linear" }
+    ]
+  }
+}
+```
+
+```json Sequence
+{ "id": "deck", "name": "Deck", "size": { "w": 1080, "h": 1920 }, "duration": 90, "background": null, "tracks": [], "perspective": null, "depthSort": true }
+```
+
+`fixtures/interop/deck` is a complete project with six cards flying into a grid in perspective, their rotations settling to 0, and expected frames 0, 30 and 59. `fixtures/interop/card` is one checkered card turned 60° on Y with perspective 1600: its expected frame matches the same card drawn by Chrome with CSS (`scripts/css-perspective-reference.mjs`).
+
 ## 6. Captions and word timings
 
 The caption track's `captionTracks[<track id>].style` styles every cue; a cue's `styleOverride` sets only the fields it changes. A cue is a `caption` clip with `text` (`\n` for line breaks) and optional `words`: `start` and `end` are integer frames relative to the cue's start, `end` after `start`. A word may start before the cue or end after it: an in-trim keeps the words it hides (negative frames), so a trim back shows them again. With word timings the active word is highlighted as the style's `highlight` says.
@@ -872,6 +923,9 @@ Where a layer sits. x and y are project pixels from the project center (right an
 | `scale` | number (> 0) | yes | `1` | Scale (the horizontal one when `scaleY` is present). |
 | `scaleY` | number (> 0) | no |  | Vertical scale when it differs from `scale`. |
 | `rotation` | number | yes | `0` | Degrees, clockwise. |
+| `rotationX` | number | no | `0` | 2.5D (Batch 70): degrees about the layer's horizontal axis through its anchor (the top tips away for positive values). |
+| `rotationY` | number | no | `0` | 2.5D (Batch 70): degrees about the layer's vertical axis through its anchor. |
+| `z` | number | no | `0` | 2.5D (Batch 70): depth, project px; positive is farther away. |
 | `anchor` | [Anchor](#anchor) | yes | `{"x":0.5,"y":0.5}` | The point the layer turns and scales around, fractions of its size from its top-left corner (0.5, 0.5 is the center). |
 | `flipH` | boolean | yes | `false` | Mirrored left to right. |
 | `flipV` | boolean | yes | `false` | Mirrored top to bottom. |
@@ -941,7 +995,7 @@ The parameters of a `spring` ease: a damped cosine over the segment that ends ex
 
 Keyframe lists by property id, each sorted by frame.
 
-Value: object of [Keyframe](#keyframe)[] (keys: `transform.x`, `transform.y`, `transform.scale`, `transform.scaleY`, `transform.rotation`, `opacity`, `volume.gainDb`, `transform.anchor.x`, `transform.anchor.y`, `crop.left`, `crop.top`, `crop.right`, `crop.bottom`, `size.w`, `size.h`, `cornerRadius`, `fill`, `stroke.width`, `stroke.color`, `stroke.dashOffset`, `shadow.x`, `shadow.y`, `shadow.blur`, `shadow.spread`, `shadow.color`, `style.fontSize`, `style.letterSpacing`, `style.fill`, `text.counter.value`, `transform.position`, and keys matching `^paths\.([A-Za-z0-9_-]+)\.(trim\.(?:start|end|offset)|stroke\.(?:width|color|dashOffset)|fill|primitive\.([A-Za-z]+))$`, `^animators\.([A-Za-z0-9_-]+)\.(selector\.(?:start|end|offset)|props\.(?:x|y|scale|rotation|opacity|blur|tracking|fill))$`).
+Value: object of [Keyframe](#keyframe)[] (keys: `transform.x`, `transform.y`, `transform.scale`, `transform.scaleY`, `transform.rotation`, `opacity`, `volume.gainDb`, `transform.anchor.x`, `transform.anchor.y`, `crop.left`, `crop.top`, `crop.right`, `crop.bottom`, `size.w`, `size.h`, `cornerRadius`, `fill`, `stroke.width`, `stroke.color`, `stroke.dashOffset`, `shadow.x`, `shadow.y`, `shadow.blur`, `shadow.spread`, `shadow.color`, `style.fontSize`, `style.letterSpacing`, `style.fill`, `text.counter.value`, `transform.position`, `transform.rotationX`, `transform.rotationY`, `transform.z`, and keys matching `^paths\.([A-Za-z0-9_-]+)\.(trim\.(?:start|end|offset)|stroke\.(?:width|color|dashOffset)|fill|primitive\.([A-Za-z]+))$`, `^animators\.([A-Za-z0-9_-]+)\.(selector\.(?:start|end|offset)|props\.(?:x|y|scale|rotation|opacity|blur|tracking|fill))$`).
 
 #### Transition
 
@@ -1246,6 +1300,7 @@ The project's frame and time base.
 | `fps` | [Rational](#rational) | yes | `{"num":30,"den":1}` | Frame rate (24, 25, 30, 50 and 60 are the usual ones). |
 | `background` | [RGBA](#rgba) | yes | `{"r":0,"g":0,"b":0,"a":1}` | Color behind every layer. |
 | `sampleRate` | `48000` | yes | `48000` | Audio sample rate. |
+| `perspective` | number (> 0) or null | no | `1600` | Viewing distance of the 2.5D layers, px (Batch 70); null: none (a flat projection). Absent: 1600. |
 
 #### ProjectGenerator
 
@@ -1380,7 +1435,7 @@ project.json.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `schemaVersion` | integer (>= 1) | yes | `13` | The schema version; this build writes and reads up to the current one. |
+| `schemaVersion` | integer (>= 1) | yes | `14` | The schema version; this build writes and reads up to the current one. |
 | `id` | string (not empty) | yes |  | Unique id, never changes (uuid v4 recommended). |
 | `name` | string | yes |  | Project name. |
 | `settings` | [Settings](#settings) | yes |  | Frame and time base. |
@@ -1419,6 +1474,7 @@ The fields every clip has.
 | `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
 | `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
 | `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
+| `backfaceHidden` | boolean | no | `false` | 2.5D (Batch 70): not drawn while its back faces the viewer. |
 
 #### Clip.video
 
@@ -1439,6 +1495,7 @@ A video clip.
 | `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
 | `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
 | `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
+| `backfaceHidden` | boolean | no | `false` | 2.5D (Batch 70): not drawn while its back faces the viewer. |
 | `mediaId` | string (not empty) | yes |  | The media item it plays; a clip whose item was removed stays as an offline clip. |
 | `in` | integer (>= 0) | yes |  | Source in point. Integer microseconds. |
 | `out` | integer (>= 1) | yes |  | Source out point; `out - in` equals `duration * speed` frame times (within one frame). Integer microseconds. |
@@ -1474,6 +1531,7 @@ A audio clip.
 | `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
 | `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
 | `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
+| `backfaceHidden` | boolean | no | `false` | 2.5D (Batch 70): not drawn while its back faces the viewer. |
 | `mediaId` | string (not empty) | yes |  | The media item it plays; a clip whose item was removed stays as an offline clip. |
 | `in` | integer (>= 0) | yes |  | Source in point. Integer microseconds. |
 | `out` | integer (>= 1) | yes |  | Source out point; `out - in` equals `duration * speed` frame times (within one frame). Integer microseconds. |
@@ -1506,6 +1564,7 @@ A image clip.
 | `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
 | `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
 | `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
+| `backfaceHidden` | boolean | no | `false` | 2.5D (Batch 70): not drawn while its back faces the viewer. |
 | `mediaId` | string (not empty) | yes |  | The media item it plays; a clip whose item was removed stays as an offline clip. |
 | `in` | integer (>= 0) | yes |  | Source in point. Integer microseconds. |
 | `out` | integer (>= 1) | yes |  | Source out point; `out - in` equals `duration * speed` frame times (within one frame). Integer microseconds. |
@@ -1541,6 +1600,7 @@ A text clip.
 | `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
 | `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
 | `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
+| `backfaceHidden` | boolean | no | `false` | 2.5D (Batch 70): not drawn while its back faces the viewer. |
 | `text` | [TextContent](#textcontent) | yes |  | What it says. |
 | `style` | [TextStyle](#textstyle) | yes |  | Its look. |
 | `animIn` | [TextAnim](#textanim) | no |  | In animation. |
@@ -1651,6 +1711,7 @@ A solid or shape layer: `size` project px at scale 1.
 | `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
 | `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
 | `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
+| `backfaceHidden` | boolean | no | `false` | 2.5D (Batch 70): not drawn while its back faces the viewer. |
 | `fill` | [RGBA](#rgba) | [Gradient](#gradient) | [GradientFill](#gradientfill) | yes |  | A color or a vertical two-stop gradient. |
 | `shape` | `"rect"` | `"roundedRect"` | `"ellipse"` | `"line"` | yes | `"rect"` | The shape. |
 | `size` | [Size](#size) | yes |  | Width and height at scale 1, project px. |
@@ -1682,6 +1743,7 @@ A nested sequence shown as one layer (Batch 62): inner frame = `offset + (frame 
 | `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
 | `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
 | `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
+| `backfaceHidden` | boolean | no | `false` | 2.5D (Batch 70): not drawn while its back faces the viewer. |
 | `sequenceId` | string (not empty) | yes |  | The sequence it shows (a key of `Project.sequences`); instances may share one. |
 | `offset` | integer (>= 0) | yes | `0` | The sequence frame shown at the clip's first frame. Integer frames at the project frame rate. |
 | `transform` | [Transform](#transform) | yes |  | Placement. |
@@ -1709,6 +1771,7 @@ A vector graphic (Batch 65): paths drawn in order in a view box of `size` projec
 | `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
 | `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
 | `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
+| `backfaceHidden` | boolean | no | `false` | 2.5D (Batch 70): not drawn while its back faces the viewer. |
 | `size` | [Size](#size) | yes |  | The view box: width and height at scale 1, project px. |
 | `paths` | [ShapePath](#shapepath)[] | yes | `[]` | The paths, bottom to top. |
 | `transform` | [Transform](#transform) | yes |  | Placement. |
@@ -1735,6 +1798,7 @@ An invisible controller (Batch 69): never drawn or exported, a parent for other 
 | `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
 | `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
 | `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
+| `backfaceHidden` | boolean | no | `false` | 2.5D (Batch 70): not drawn while its back faces the viewer. |
 | `size` | [Size](#size) | yes | `{"w":100,"h":100}` | The selection outline: width and height at scale 1, project px. |
 | `transform` | [Transform](#transform) | yes |  | Placement. |
 | `keyframes` | [Keyframes](#keyframes) | no |  | Animated properties, including `transform.position`. |
@@ -1872,6 +1936,8 @@ A nested sequence (Batch 62): its inner clips are in `Project.clips` on its own 
 | `duration` | integer (>= 1) | yes |  | Length. Integer frames at the project frame rate. |
 | `background` | [RGBA](#rgba) or null | yes | `null` | Color behind the inner layers; null: transparent. |
 | `tracks` | [Track](#track)[] | yes |  | Inner video and audio tracks, ordered like `Project.tracks`; no caption track. |
+| `perspective` | number (> 0) or null | no | `1600` | Viewing distance of its 2.5D layers, px (Batch 70); null: none. Absent: 1600. |
+| `depthSort` | boolean | no | `false` | Inner layers drawn by depth, farthest first, instead of track order (Batch 70). |
 
 #### Size
 
@@ -1901,6 +1967,7 @@ A caption cue. Its style is its track's with `styleOverride` on top.
 | `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
 | `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
 | `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
+| `backfaceHidden` | boolean | no | `false` | 2.5D (Batch 70): not drawn while its back faces the viewer. |
 | `text` | string | yes |  | Plain text with `\n` line breaks. |
 | `words` | [CaptionWord](#captionword)[] | no |  | Word timings (karaoke), relative to the cue start. |
 | `styleOverride` | [CaptionStyleOverride](#captionstyleoverride) | no |  | The cue's own style. |

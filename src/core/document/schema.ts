@@ -10,7 +10,7 @@ import { CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, LABEL_COLORS,
 
 export type FieldType =
   | { t: "string"; nonEmpty?: boolean }
-  | { t: "number"; min?: number; max?: number; exclusiveMin?: boolean; integer?: boolean }
+  | { t: "number"; min?: number; max?: number; exclusiveMin?: boolean; integer?: boolean; nullable?: boolean }
   | { t: "boolean" }
   | { t: "enum"; values: readonly (string | number)[] }
   /** An object described by the schema `schema`. */
@@ -169,6 +169,9 @@ const SCHEMAS: ObjectSchema[] = [
       scale: req(pos, "Scale (the horizontal one when `scaleY` is present).", 1),
       scaleY: opt(pos, "Vertical scale when it differs from `scale`."),
       rotation: req(num, "Degrees, clockwise.", 0),
+      rotationX: opt(num, "2.5D (Batch 70): degrees about the layer's horizontal axis through its anchor (the top tips away for positive values).", 0),
+      rotationY: opt(num, "2.5D (Batch 70): degrees about the layer's vertical axis through its anchor.", 0),
+      z: opt(num, "2.5D (Batch 70): depth, project px; positive is farther away.", 0),
       anchor: req(obj("Anchor"), "The point the layer turns and scales around, fractions of its size from its top-left corner (0.5, 0.5 is the center).", { x: 0.5, y: 0.5 }),
       flipH: req(bool, "Mirrored left to right.", false),
       flipV: req(bool, "Mirrored top to bottom.", false),
@@ -434,6 +437,7 @@ const SCHEMAS: ObjectSchema[] = [
       fps: req(obj("Rational"), "Frame rate (24, 25, 30, 50 and 60 are the usual ones).", { num: 30, den: 1 }),
       background: req(obj("RGBA"), "Color behind every layer.", BLACK),
       sampleRate: req(oneOf([48000]), "Audio sample rate.", 48000),
+      perspective: opt({ ...pos, nullable: true }, "Viewing distance of the 2.5D layers, px (Batch 70); null: none (a flat projection). Absent: 1600.", 1600),
     },
   },
   {
@@ -821,6 +825,8 @@ const SCHEMAS: ObjectSchema[] = [
       duration: req(int(1), `Length. ${FRAMES}`),
       background: { type: { t: "object", schema: "RGBA", nullable: true }, required: true, default: null, doc: "Color behind the inner layers; null: transparent." },
       tracks: req(list(obj("Track")), "Inner video and audio tracks, ordered like `Project.tracks`; no caption track."),
+      perspective: opt({ ...pos, nullable: true }, "Viewing distance of its 2.5D layers, px (Batch 70); null: none. Absent: 1600.", 1600),
+      depthSort: opt(bool, "Inner layers drawn by depth, farthest first, instead of track order (Batch 70).", false),
     },
   },
   { name: "Size", doc: "A width and a height in project px.", types: [], fields: { w: req(pos, "Width."), h: req(pos, "Height.") } },
@@ -878,6 +884,7 @@ function clipBaseFields(kind?: string): Record<string, Field> {
     fallbackOf: opt(obj("FallbackOf"), "Set when the clip is a baked stand-in."),
     parentId: opt(text, "A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles."),
     autoOrient: opt(bool, "Rotation follows the tangent of the `transform.position` motion path (Batch 69)."),
+    backfaceHidden: opt(bool, "2.5D (Batch 70): not drawn while its back faces the viewer.", false),
   };
 }
 

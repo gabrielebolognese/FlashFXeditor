@@ -20,6 +20,7 @@ describe("layer uniforms", () => {
     const out = new Float32Array(layerFloats(2));
     packLayer(out, 1, {
       transform: rectTransform(10, 20, 30, 40),
+      wRow: [0, 0, 1],
       uv: { u0: 0.1, v0: 0.2, u1: 0.9, v1: 0.8 },
       color: { r: 1, g: 0.5, b: 0.25, a: 0.5 },
       to: { r: 0, g: 0.25, b: 1, a: 1 },
@@ -67,7 +68,7 @@ describe("layer uniforms", () => {
     style.stopColor.set([1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1]);
     style.stopAt.set([0, 0.25, 0.5, 1]);
     packLayer(out, 0, {
-      transform: rectTransform(0, 0, 1, 1), uv: FULL_UV, color: { r: 1, g: 1, b: 1, a: 1 }, to: { r: 0, g: 0, b: 0, a: 1 }, shape: { width: 10, height: 10, radius: 0, code: SHAPE_CODE.box },
+      transform: rectTransform(0, 0, 1, 1), wRow: [0, 0, 1], uv: FULL_UV, color: { r: 1, g: 1, b: 1, a: 1 }, to: { r: 0, g: 0, b: 0, a: 1 }, shape: { width: 10, height: 10, radius: 0, code: SHAPE_CODE.box },
       opacity: 1, flipX: false, flipY: false, mix: 0, uv2: FULL_UV, mapA: [0, 0, 0, 0, 0, 0], mapB: [0, 0, 0, 0, 0, 0], sides: { from: 1, to: 1 },
       radii: new Float32Array([1, 2, 3, 4]), style,
     });
@@ -90,6 +91,7 @@ describe("layer uniforms", () => {
     const black = { r: 0, g: 0, b: 0, a: 1 };
     packLayer(out, 0, {
       transform: rectTransform(0, 0, 1, 1),
+      wRow: [0, 0, 1],
       uv: FULL_UV,
       color: black,
       to: black,

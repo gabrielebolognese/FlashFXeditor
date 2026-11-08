@@ -82,6 +82,7 @@ function clipIssues(project: Project, clip: Clip): string[] {
   if (clip.kind === "null") issues.push(...nullIssues(clip, label));
   if (clip.autoOrient !== undefined && typeof clip.autoOrient !== "boolean") issues.push(`${label}: autoOrient must be true or false`);
   if (clip.parentId !== undefined && typeof clip.parentId !== "string") issues.push(`${label}: parentId must be a clip id`);
+  issues.push(...depthIssues(clip, label));
   // Frame styles (spec §21.7): pictures have rounded corners, an outline and a shadow.
   if (clip.kind === "video" || clip.kind === "image") issues.push(...frameIssues(clip, label));
   // Keyframes (Batch 35): known properties, one key per integer frame in order, finite values, known eases.
@@ -142,6 +143,26 @@ function sequenceIssues(key: string, sequence: Sequence): string[] {
   if (!isPositiveInteger(sequence.duration)) issues.push(`${label}: duration ${String(sequence.duration)} must be an integer >= 1`);
   if (sequence.background !== null && !isColor(sequence.background)) issues.push(`${label}: background must be RGBA or null`);
   if (!Array.isArray(sequence.tracks)) issues.push(`${label}: tracks must be a list`);
+  issues.push(...perspectiveIssues(sequence.perspective, label));
+  if (sequence.depthSort !== undefined && typeof sequence.depthSort !== "boolean") issues.push(`${label}: depthSort must be true or false`);
+  return issues;
+}
+
+/** A viewing distance (spec §21.15): absent, null (none) or a positive number of px. */
+function perspectiveIssues(perspective: unknown, label: string): string[] {
+  if (perspective === undefined || perspective === null) return [];
+  return typeof perspective === "number" && Number.isFinite(perspective) && perspective > 0 ? [] : [`${label}: perspective ${String(perspective)} must be a positive number of px or null`];
+}
+
+/** The 2.5D fields of a clip (spec §21.15, Batch 70): finite rotations and depth, a boolean backface flag. */
+function depthIssues(clip: Clip, label: string): string[] {
+  const issues: string[] = [];
+  if (clip.backfaceHidden !== undefined && typeof clip.backfaceHidden !== "boolean") issues.push(`${label}: backfaceHidden must be true or false`);
+  if (!("transform" in clip) || !isObjectLike(clip.transform)) return issues;
+  for (const field of ["rotationX", "rotationY", "z"] as const) {
+    const value = clip.transform[field];
+    if (value !== undefined && !(typeof value === "number" && Number.isFinite(value))) issues.push(`${label}: transform.${field} must be a number`);
+  }
   return issues;
 }
 
@@ -621,6 +642,7 @@ export function validateProject(project: Project): string[] {
 
   const state: TrackScan = { trackIds, placed, transitionIds };
   issues.push(...trackIssues(project, project.tracks, null, state));
+  issues.push(...perspectiveIssues(project.settings?.perspective, "settings"));
   for (const [key, sequence] of Object.entries(project.sequences ?? {})) {
     issues.push(...sequenceIssues(key, sequence));
     if (!Array.isArray(sequence?.tracks)) continue;

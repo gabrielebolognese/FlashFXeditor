@@ -1,0 +1,952 @@
+{
+  "schemaVersion": 14,
+  "id": "8f1c3a52-2d7e-4b61-9a0e-4c5d6e7f8a90",
+  "name": "Interop deck",
+  "settings": {
+    "width": 720,
+    "height": 1280,
+    "fps": {
+      "num": 30,
+      "den": 1
+    },
+    "background": {
+      "r": 0.07,
+      "g": 0.07,
+      "b": 0.09,
+      "a": 1
+    },
+    "sampleRate": 48000
+  },
+  "media": {},
+  "bins": [],
+  "tracks": [
+    {
+      "id": "v1",
+      "kind": "video",
+      "name": "V1",
+      "clipIds": [
+        "card1"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v2",
+      "kind": "video",
+      "name": "V2",
+      "clipIds": [
+        "card2"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v3",
+      "kind": "video",
+      "name": "V3",
+      "clipIds": [
+        "card3"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v4",
+      "kind": "video",
+      "name": "V4",
+      "clipIds": [
+        "card4"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v5",
+      "kind": "video",
+      "name": "V5",
+      "clipIds": [
+        "card5"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v6",
+      "kind": "video",
+      "name": "V6",
+      "clipIds": [
+        "card6"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    }
+  ],
+  "clips": {
+    "card1": {
+      "kind": "shape",
+      "name": "Card 1",
+      "enabled": true,
+      "size": {
+        "w": 100,
+        "h": 140
+      },
+      "paths": [
+        {
+          "id": "body",
+          "d": "M8 0 L92 0 Q100 0 100 8 L100 132 Q100 140 92 140 L8 140 Q0 140 0 132 L0 8 Q0 0 8 0 Z",
+          "fill": {
+            "r": 0.96,
+            "g": 0.36,
+            "b": 0.3,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        },
+        {
+          "id": "band",
+          "d": "M0 56 L100 56 L100 84 L0 84 Z",
+          "fill": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        },
+        {
+          "id": "mark",
+          "d": "M12 12 L36 12 L36 36 L12 36 Z",
+          "fill": {
+            "r": 0.08,
+            "g": 0.09,
+            "b": 0.12,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        }
+      ],
+      "transform": {
+        "x": -200,
+        "y": -140,
+        "scale": 1.5,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false,
+        "rotationX": 0,
+        "rotationY": 0,
+        "z": 0
+      },
+      "opacity": 1,
+      "id": "card1",
+      "trackId": "v1",
+      "start": 0,
+      "duration": 60,
+      "keyframes": {
+        "transform.x": [
+          {
+            "frame": 0,
+            "value": -520,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 30,
+            "value": -200,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.y": [
+          {
+            "frame": 0,
+            "value": -620,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 30,
+            "value": -140,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.z": [
+          {
+            "frame": 0,
+            "value": 2400,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 30,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.rotation": [
+          {
+            "frame": 0,
+            "value": -25,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 30,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.rotationX": [
+          {
+            "frame": 0,
+            "value": 70,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 30,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.rotationY": [
+          {
+            "frame": 0,
+            "value": -160,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 30,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ]
+      }
+    },
+    "card2": {
+      "kind": "shape",
+      "name": "Card 2",
+      "enabled": true,
+      "size": {
+        "w": 100,
+        "h": 140
+      },
+      "paths": [
+        {
+          "id": "body",
+          "d": "M8 0 L92 0 Q100 0 100 8 L100 132 Q100 140 92 140 L8 140 Q0 140 0 132 L0 8 Q0 0 8 0 Z",
+          "fill": {
+            "r": 1,
+            "g": 0.75,
+            "b": 0.2,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        },
+        {
+          "id": "band",
+          "d": "M0 56 L100 56 L100 84 L0 84 Z",
+          "fill": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        },
+        {
+          "id": "mark",
+          "d": "M12 12 L36 12 L36 36 L12 36 Z",
+          "fill": {
+            "r": 0.08,
+            "g": 0.09,
+            "b": 0.12,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        }
+      ],
+      "transform": {
+        "x": 0,
+        "y": -140,
+        "scale": 1.5,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false,
+        "rotationX": 0,
+        "rotationY": 0,
+        "z": 0
+      },
+      "opacity": 1,
+      "id": "card2",
+      "trackId": "v2",
+      "start": 0,
+      "duration": 60,
+      "keyframes": {
+        "transform.x": [
+          {
+            "frame": 0,
+            "value": 60,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 34,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.y": [
+          {
+            "frame": 0,
+            "value": -760,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 34,
+            "value": -140,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.z": [
+          {
+            "frame": 0,
+            "value": 3000,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 34,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.rotation": [
+          {
+            "frame": 0,
+            "value": 15,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 34,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.rotationX": [
+          {
+            "frame": 0,
+            "value": -55,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 34,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.rotationY": [
+          {
+            "frame": 0,
+            "value": 140,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 34,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ]
+      }
+    },
+    "card3": {
+      "kind": "shape",
+      "name": "Card 3",
+      "enabled": true,
+      "size": {
+        "w": 100,
+        "h": 140
+      },
+      "paths": [
+        {
+          "id": "body",
+          "d": "M8 0 L92 0 Q100 0 100 8 L100 132 Q100 140 92 140 L8 140 Q0 140 0 132 L0 8 Q0 0 8 0 Z",
+          "fill": {
+            "r": 0.36,
+            "g": 0.8,
+            "b": 0.46,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        },
+        {
+          "id": "band",
+          "d": "M0 56 L100 56 L100 84 L0 84 Z",
+          "fill": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        },
+        {
+          "id": "mark",
+          "d": "M12 12 L36 12 L36 36 L12 36 Z",
+          "fill": {
+            "r": 0.08,
+            "g": 0.09,
+            "b": 0.12,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        }
+      ],
+      "transform": {
+        "x": 200,
+        "y": -140,
+        "scale": 1.5,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false,
+        "rotationX": 0,
+        "rotationY": 0,
+        "z": 0
+      },
+      "opacity": 1,
+      "id": "card3",
+      "trackId": "v3",
+      "start": 0,
+      "duration": 60,
+      "keyframes": {
+        "transform.x": [
+          {
+            "frame": 0,
+            "value": 560,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 38,
+            "value": 200,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.y": [
+          {
+            "frame": 0,
+            "value": -520,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 38,
+            "value": -140,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.z": [
+          {
+            "frame": 0,
+            "value": 2000,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 38,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.rotation": [
+          {
+            "frame": 0,
+            "value": 30,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 38,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.rotationX": [
+          {
+            "frame": 0,
+            "value": 45,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 38,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.rotationY": [
+          {
+            "frame": 0,
+            "value": 200,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 38,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ]
+      }
+    },
+    "card4": {
+      "kind": "shape",
+      "name": "Card 4",
+      "enabled": true,
+      "size": {
+        "w": 100,
+        "h": 140
+      },
+      "paths": [
+        {
+          "id": "body",
+          "d": "M8 0 L92 0 Q100 0 100 8 L100 132 Q100 140 92 140 L8 140 Q0 140 0 132 L0 8 Q0 0 8 0 Z",
+          "fill": {
+            "r": 0.3,
+            "g": 0.62,
+            "b": 1,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        },
+        {
+          "id": "band",
+          "d": "M0 56 L100 56 L100 84 L0 84 Z",
+          "fill": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        },
+        {
+          "id": "mark",
+          "d": "M12 12 L36 12 L36 36 L12 36 Z",
+          "fill": {
+            "r": 0.08,
+            "g": 0.09,
+            "b": 0.12,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        }
+      ],
+      "transform": {
+        "x": -200,
+        "y": 140,
+        "scale": 1.5,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false,
+        "rotationX": 0,
+        "rotationY": 0,
+        "z": 0
+      },
+      "opacity": 1,
+      "id": "card4",
+      "trackId": "v4",
+      "start": 0,
+      "duration": 60,
+      "keyframes": {
+        "transform.x": [
+          {
+            "frame": 0,
+            "value": -600,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 42,
+            "value": -200,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.y": [
+          {
+            "frame": 0,
+            "value": 640,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 42,
+            "value": 140,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.z": [
+          {
+            "frame": 0,
+            "value": 2600,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 42,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.rotation": [
+          {
+            "frame": 0,
+            "value": -10,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 42,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.rotationX": [
+          {
+            "frame": 0,
+            "value": -80,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 42,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.rotationY": [
+          {
+            "frame": 0,
+            "value": 120,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 42,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ]
+      }
+    },
+    "card5": {
+      "kind": "shape",
+      "name": "Card 5",
+      "enabled": true,
+      "size": {
+        "w": 100,
+        "h": 140
+      },
+      "paths": [
+        {
+          "id": "body",
+          "d": "M8 0 L92 0 Q100 0 100 8 L100 132 Q100 140 92 140 L8 140 Q0 140 0 132 L0 8 Q0 0 8 0 Z",
+          "fill": {
+            "r": 0.72,
+            "g": 0.46,
+            "b": 1,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        },
+        {
+          "id": "band",
+          "d": "M0 56 L100 56 L100 84 L0 84 Z",
+          "fill": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        },
+        {
+          "id": "mark",
+          "d": "M12 12 L36 12 L36 36 L12 36 Z",
+          "fill": {
+            "r": 0.08,
+            "g": 0.09,
+            "b": 0.12,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        }
+      ],
+      "transform": {
+        "x": 0,
+        "y": 140,
+        "scale": 1.5,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false,
+        "rotationX": 0,
+        "rotationY": 0,
+        "z": 0
+      },
+      "opacity": 1,
+      "id": "card5",
+      "trackId": "v5",
+      "start": 0,
+      "duration": 60,
+      "keyframes": {
+        "transform.x": [
+          {
+            "frame": 0,
+            "value": -40,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 46,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.y": [
+          {
+            "frame": 0,
+            "value": 780,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 46,
+            "value": 140,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.z": [
+          {
+            "frame": 0,
+            "value": 1800,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 46,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.rotation": [
+          {
+            "frame": 0,
+            "value": 20,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 46,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.rotationX": [
+          {
+            "frame": 0,
+            "value": 60,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 46,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.rotationY": [
+          {
+            "frame": 0,
+            "value": -210,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 46,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ]
+      }
+    },
+    "card6": {
+      "kind": "shape",
+      "name": "Card 6",
+      "enabled": true,
+      "size": {
+        "w": 100,
+        "h": 140
+      },
+      "paths": [
+        {
+          "id": "body",
+          "d": "M8 0 L92 0 Q100 0 100 8 L100 132 Q100 140 92 140 L8 140 Q0 140 0 132 L0 8 Q0 0 8 0 Z",
+          "fill": {
+            "r": 0.2,
+            "g": 0.82,
+            "b": 0.86,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        },
+        {
+          "id": "band",
+          "d": "M0 56 L100 56 L100 84 L0 84 Z",
+          "fill": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        },
+        {
+          "id": "mark",
+          "d": "M12 12 L36 12 L36 36 L12 36 Z",
+          "fill": {
+            "r": 0.08,
+            "g": 0.09,
+            "b": 0.12,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        }
+      ],
+      "transform": {
+        "x": 200,
+        "y": 140,
+        "scale": 1.5,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false,
+        "rotationX": 0,
+        "rotationY": 0,
+        "z": 0
+      },
+      "opacity": 1,
+      "id": "card6",
+      "trackId": "v6",
+      "start": 0,
+      "duration": 60,
+      "keyframes": {
+        "transform.x": [
+          {
+            "frame": 0,
+            "value": 520,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 50,
+            "value": 200,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.y": [
+          {
+            "frame": 0,
+            "value": 600,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 50,
+            "value": 140,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.z": [
+          {
+            "frame": 0,
+            "value": 2200,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 50,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.rotation": [
+          {
+            "frame": 0,
+            "value": -30,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 50,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.rotationX": [
+          {
+            "frame": 0,
+            "value": -40,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 50,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ],
+        "transform.rotationY": [
+          {
+            "frame": 0,
+            "value": -130,
+            "ease": "cubicOut"
+          },
+          {
+            "frame": 50,
+            "value": 0,
+            "ease": "cubicOut"
+          }
+        ]
+      }
+    }
+  },
+  "markers": [],
+  "captionTracks": {},
+  "textPresetsLocal": [],
+  "sequences": {},
+  "meta": {
+    "createdAt": "2026-11-08T12:00:00.000Z",
+    "modifiedAt": "2026-11-08T12:00:00.000Z",
+    "appVersion": "1.1.0",
+    "generator": {
+      "name": "interop-fixture",
+      "version": "1",
+      "source": "fixtures/interop/deck (Batch 70)"
+    }
+  }
+}

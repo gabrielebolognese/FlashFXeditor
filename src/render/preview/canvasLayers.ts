@@ -17,6 +17,11 @@
 //   every video track), marked `cue`: its caption as drawn (captionGizmo.ts, with the live caption
 //   values and a drag's position), hit on its glyphs and boxes like text. Hidden caption tracks have
 //   none; a locked one is in the picture only.
+// - A 2.5D layer (spec §21.15, Batch 70) is listed as it shows: every point of its quad, drawn bounds
+//   and hit areas goes through its projection (render/projection.ts, the compositor's), so a click hits
+//   the projected shape and the gizmo sits on it. `persp` and `flat` keep the projection and the flat
+//   quad for the gestures. A layer the compositor does not draw (through the viewer's plane, or showing
+//   a hidden back) is not on the canvas.
 import { animatedTransform } from "../../core/document/keyframes.js";
 import { RigResolver } from "../../core/document/rig.js";
 import type { ClipId, Crop, Frame, Project, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
@@ -28,6 +33,7 @@ import type { SolidLook } from "../../timeline/edit/solid.js";
 import type { Rect as TextRect } from "../text/layout.js";
 import { spannedContent, textLayout } from "../text/layoutCache.js";
 import { drawnReach } from "./drawnBounds.js";
+import { isDepthTransform, newHomography, projectPoint, viewingDistance, writeProjection, type Homography } from "../projection.js";
 
 /** Text glyph bounds are hit this far around them, in project px (spec §7.2 "padded by 4 px"). */
 export const TEXT_HIT_PADDING = 4;
@@ -51,6 +57,10 @@ export interface CanvasLayer {
   hits?: readonly Quad[];
   /** The caption track's cue (spec §20.3): moved and sized as a caption, not transformed. */
   cue?: true;
+  /** A 2.5D layer's projection (spec §21.15): `quad`, `drawn` and `hits` are projected through it. */
+  persp?: Homography;
+  /** A 2.5D layer's quad before its projection. */
+  flat?: Quad;
 }
 
 /** Axis-aligned rectangle in project px. */
@@ -120,6 +130,7 @@ function layersAt(
       const y1 = box.bottom + reach.bottom;
       layer.drawn = [layerPoint(transform, box, settings, x0, y0), layerPoint(transform, box, settings, x1, y0), layerPoint(transform, box, settings, x1, y1), layerPoint(transform, box, settings, x0, y1)];
     }
+    if (isDepthTransform(transform) && !projectLayer(layer, project, clip.backfaceHidden === true)) continue;
     layers.push(layer);
   }
   // The cue at the frame, on top (spec §20.3).
@@ -132,6 +143,47 @@ function layersAt(
     }
   }
   return layers;
+}
+
+/**
+ * Projects a 2.5D layer's quads in place (spec §21.15): false when the compositor does not draw it (a
+ * corner on or behind the viewer's plane, or its back shown with `backfaceHidden`).
+ */
+function projectLayer(layer: CanvasLayer, project: Project, backfaceHidden: boolean): boolean {
+  const { width, height, perspective } = project.settings;
+  const persp = writeProjection(newHomography(), layer.transform, width, height, viewingDistance(perspective));
+  const quad = projectQuad(persp, layer.quad);
+  if (!quad) return false;
+  if (backfaceHidden && Math.sign(area(quad)) !== Math.sign(area(layer.quad))) return false;
+  const drawn = layer.drawn ? projectQuad(persp, layer.drawn) : undefined;
+  const hits = layer.hits?.map((q) => projectQuad(persp, q));
+  if (drawn === null || hits?.includes(null)) return false;
+  layer.flat = layer.quad;
+  layer.quad = quad;
+  layer.persp = persp;
+  if (drawn) layer.drawn = drawn;
+  if (hits) layer.hits = hits as Quad[];
+  return true;
+}
+
+/** `quad` through the homography `h`, or null when a corner reaches the viewer's plane. */
+export function projectQuad(h: Homography, quad: Quad): Quad | null {
+  const a = projectPoint(h, quad[0].x, quad[0].y);
+  const b = projectPoint(h, quad[1].x, quad[1].y);
+  const c = projectPoint(h, quad[2].x, quad[2].y);
+  const d = projectPoint(h, quad[3].x, quad[3].y);
+  return a && b && c && d ? [a, b, c, d] : null;
+}
+
+/** Twice the signed area of `quad`. */
+function area(quad: Quad): number {
+  let sum = 0;
+  for (let i = 0; i < 4; i++) {
+    const p = quad[i] as Point;
+    const n = quad[(i + 1) % 4] as Point;
+    sum += p.x * n.y - n.x * p.y;
+  }
+  return sum;
 }
 
 /** A text layer's hit areas (§7.2): each line's glyph bounds padded by TEXT_HIT_PADDING project px, and its background boxes. */

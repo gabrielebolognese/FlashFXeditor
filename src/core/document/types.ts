@@ -1,7 +1,7 @@
 // The persistent document (spec §5.2). Plain JSON only: no classes, Maps, Sets or undefined-valued
 // keys, so a Project can be serialized as-is and diffed by Immer patches.
 
-export const SCHEMA_VERSION = 13;
+export const SCHEMA_VERSION = 14;
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: JsonValue };
@@ -379,7 +379,15 @@ export interface Project {
   /** uuid, never changes */
   id: string;
   name: string;
-  settings: { width: number; height: number; fps: Rational; background: RGBA; sampleRate: 48000 };
+  settings: {
+    width: number;
+    height: number;
+    fps: Rational;
+    background: RGBA;
+    sampleRate: 48000;
+    /** Viewing distance in px of the 2.5D layers (spec §21.15, Batch 70; schema 14); null: none (flat projection); absent: 1600. */
+    perspective?: number | null;
+  };
   media: Record<MediaId, MediaItem>;
   /**
    * The media panel's bins (spec §12, Batch 41; schema 2): flat folders in strip order, one level. A
@@ -420,6 +428,10 @@ export interface Sequence {
   background: RGBA | null;
   /** Inner video and audio tracks, ordered like `Project.tracks`; no caption track. */
   tracks: Track[];
+  /** Viewing distance in px of its 2.5D layers (spec §21.15, Batch 70); null: none; absent: 1600. */
+  perspective?: number | null;
+  /** Inner layers drawn by depth (farthest first) instead of track order (spec §21.15). */
+  depthSort?: boolean;
 }
 
 /** The deepest a compound may nest (a compound in a compound in ...): spec §21.10. */
@@ -535,6 +547,8 @@ export interface ClipBase {
   parentId?: ClipId;
   /** Rotation follows the tangent of the `transform.position` motion path (added to `transform.rotation`). */
   autoOrient?: boolean;
+  /** 2.5D (spec §21.15, Batch 70): the layer is not drawn while its back faces the viewer. */
+  backfaceHidden?: boolean;
 }
 
 export interface MediaClip extends ClipBase {
@@ -797,6 +811,12 @@ export interface Transform {
   scale: number;
   scaleY?: number;
   rotation: number;
+  /** 2.5D (spec §21.15, Batch 70): degrees about the layer's horizontal axis through its anchor. */
+  rotationX?: number;
+  /** 2.5D: degrees about the layer's vertical axis through its anchor. */
+  rotationY?: number;
+  /** 2.5D: depth in px, positive = farther away. */
+  z?: number;
   anchor: { x: number; y: number };
   flipH: boolean;
   flipV: boolean;

@@ -10,11 +10,15 @@
 // A vector shape (spec §21.12, Batch 65) is a "path" record: the backend draws its draws (stencil, then
 // cover) into a multisampled scratch over `pathRegionInto`, resolves it into a pooled texture and
 // `showPath` turns the record into a textured quad of that texture (the shape's group opacity).
+// A 2.5D layer (spec §21.15, Batch 70) carries a homography after its matrix: its record's matrix is
+// projective (`wRow` holds the bottom row) and the vertex stages output w, so the GPU interpolates UVs
+// perspective-correctly. Every step that grows or moves a quad multiplies the whole projective matrix.
 import type { GradientFill, RGBA } from "../../core/document/types.js";
 import type { DrawList, Layer, PathDraw, PathLayer, SolidLayer, UvRect } from "../compositor/drawList.js";
 import { invertInto, multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import { boxPerimeter } from "../../core/document/fill.js";
-import { newStyleUniform, resetStyleUniform, SHAPE_CODE, type LayerUniform } from "./layerUniforms.js";
+import { newStyleUniform, resetStyleUniform, SHAPE_CODE, type LayerUniform, type WRow } from "./layerUniforms.js";
+import { affineTimesHomography, homographyTimesAffine, newHomography, type Homography } from "../projection.js";
 import type { Pane, TextureHandle, Viewport } from "./renderer.js";
 
 export type RecordKind = "textured" | "dissolve" | "solid" | "path";
@@ -56,6 +60,7 @@ const TRANSPARENT: RGBA = { r: 0, g: 0, b: 0, a: 0 };
 export function newRecordUniform(): RecordUniform {
   return {
     transform: mutableIdentity(),
+    wRow: [0, 0, 1],
     uv: { u0: 0, v0: 0, u1: 1, v1: 1 },
     color: { r: 0, g: 0, b: 0, a: 0 },
     to: { r: 0, g: 0, b: 0, a: 0 },
@@ -150,6 +155,7 @@ export class DrawRecords<T extends TextureHandle> {
     record.blur = 0;
     record.path = null;
     const u = record.uniform;
+    setFlat(u.wRow);
     u.opacity = 1;
     u.flipX = false;
     u.flipY = false;
@@ -184,7 +190,7 @@ export class DrawRecords<T extends TextureHandle> {
         const record = this.nextRecord("textured", scissor);
         record.texture0 = layer.texture;
         record.blur = layer.blur ?? 0;
-        copyLayer(record, view, layer.transform, layer.opacity);
+        copyLayer(record, view, layer, layer.transform, layer.opacity);
         setUv(record.uniform.uv, layer.crop.u0, layer.crop.v0, layer.crop.u1, layer.crop.v1);
         record.uniform.flipX = layer.flipX;
         record.uniform.flipY = layer.flipY;
@@ -210,7 +216,7 @@ export class DrawRecords<T extends TextureHandle> {
         sideMap(u.mapB, to.transform, layer.transform);
         record.texture0 = from.texture;
         record.texture1 = to.texture;
-        copyLayer(record, view, layer.transform, layer.opacity);
+        copyLayer(record, view, layer, layer.transform, layer.opacity);
         setUv(u.uv, from.crop.u0, from.crop.v0, from.crop.u1, from.crop.v1);
         setUv(u.uv2, to.crop.u0, to.crop.v0, to.crop.u1, to.crop.v1);
         u.sides.from = from.opacity;
@@ -222,12 +228,12 @@ export class DrawRecords<T extends TextureHandle> {
         if (layer.draws.length === 0 || layer.opacity <= 0) return;
         const record = this.nextRecord("path", scissor);
         record.path = layer;
-        copyLayer(record, view, layer.transform, layer.opacity);
+        copyLayer(record, view, layer, layer.transform, layer.opacity);
         return;
       }
       case "solid": {
         const record = this.solidRecord(layer.color, scissor);
-        copyLayer(record, view, layer.transform, layer.opacity);
+        copyLayer(record, view, layer, layer.transform, layer.opacity);
         const u = record.uniform;
         if (layer.to) setColor(u.to, layer.to);
         const shape = layer.shape;
@@ -241,7 +247,7 @@ export class DrawRecords<T extends TextureHandle> {
           const reach = style ? writeStyle(u.style, style, u.radii, shape) : 0;
           // The quad grows by the edge's half px, and by what the stroke and the shadow reach past the shape (layer px -> target px).
           const scale = Math.hypot(u.transform[0], u.transform[1]) / shape.width;
-          growQuad(u.transform, u.uv, SHAPE_MARGIN + reach * scale);
+          growQuad(u.transform, u.uv, SHAPE_MARGIN + reach * scale, u.wRow);
         }
         return;
       }
@@ -279,6 +285,7 @@ export function pathRegionInto(out: Rect, record: DrawRecord<TextureHandle>): Re
   const layer = record.path;
   if (record.kind !== "path" || !layer) return null;
   const m = record.uniform.transform;
+  const w = record.uniform.wRow;
   const [x0, y0, x1, y1] = layer.bounds;
   let minX = Infinity;
   let minY = Infinity;
@@ -287,8 +294,11 @@ export function pathRegionInto(out: Rect, record: DrawRecord<TextureHandle>): Re
   for (let i = 0; i < 4; i++) {
     const x = i & 1 ? x1 : x0;
     const y = i & 2 ? y1 : y0;
-    const tx = m[0] * x + m[2] * y + m[4];
-    const ty = m[1] * x + m[3] * y + m[5];
+    // A 2.5D shape: the projected corner (its quad is convex, so the corners bound it).
+    const pw = w[0] * x + w[1] * y + w[2];
+    if (!(pw > 1e-6)) return null;
+    const tx = (m[0] * x + m[2] * y + m[4]) / pw;
+    const ty = (m[1] * x + m[3] * y + m[5]) / pw;
     if (tx < minX) minX = tx;
     if (tx > maxX) maxX = tx;
     if (ty < minY) minY = ty;
@@ -313,13 +323,8 @@ export function writePathUniform(out: RecordUniform, record: DrawRecord<TextureH
   const m = record.uniform.transform;
   const sx = 2 / width;
   const sy = (flipY ? 2 : -2) / height;
-  const t = out.transform;
-  t[0] = sx * m[0];
-  t[1] = sy * m[1];
-  t[2] = sx * m[2];
-  t[3] = sy * m[3];
-  t[4] = sx * (m[4] - region.x) - 1;
-  t[5] = sy * (m[5] - region.y) + (flipY ? -1 : 1);
+  // Target px -> the scratch's clip space, after the record's (projective) matrix.
+  writeProjective(out, setMat(pathToClip, sx, 0, 0, sy, -sx * region.x - 1, -sy * region.y + (flipY ? -1 : 1)), m, record.uniform.wRow);
   const [c0, c1, c2, c3] = draw.cover;
   setUv(out.uv, c0, c1, c2, c3);
   setColor(out.color, draw.color);
@@ -340,6 +345,7 @@ export function showPath<T extends TextureHandle>(record: DrawRecord<T>, region:
   record.texture0 = texture;
   const u = record.uniform;
   setMat(u.transform, region.width, 0, 0, region.height, region.x, region.y);
+  setFlat(u.wRow);
   setUv(u.uv, 0, 0, region.width / texture.width, region.height / texture.height);
   u.flipX = false;
   u.flipY = false;
@@ -387,19 +393,26 @@ export function showBlurred<T extends TextureHandle>(record: DrawRecord<T>, regi
   const gx = reach / width;
   const gy = reach / height;
   const m = record.uniform.transform;
-  multiplyInto(m, m, setMat(scratch, 1 + 2 * gx, 0, 0, 1 + 2 * gy, -gx, -gy));
+  const grow = setMat(scratch, 1 + 2 * gx, 0, 0, 1 + 2 * gy, -gx, -gy);
+  rightAffine(record.uniform.wRow, grow);
+  multiplyInto(m, m, grow);
   setUv(record.uniform.uv, 0, 0, (width + 2 * reach) / blurred.width, (height + 2 * reach) / blurred.height);
   record.texture0 = blurred;
 }
 
-/** Grows the unit quad of `m` (unit quad -> target px) by `margin` target px on each side, the UV past 0..1 with it. */
-export function growQuad(m: MutableMat3, uv: UvRect, margin: number): void {
+/** Grows the unit quad of `m` (unit quad -> target px; projective with the bottom row `w`) by `margin` target px on each side, the UV past 0..1 with it. */
+export function growQuad(m: MutableMat3, uv: UvRect, margin: number, w?: WRow): void {
   const width = Math.hypot(m[0], m[1]);
   const height = Math.hypot(m[2], m[3]);
   if (!(width > 1e-6) || !(height > 1e-6)) return;
   const ex = margin / width;
   const ey = margin / height;
   // m * [1 + 2ex, 0; 0, 1 + 2ey] with the quad moved by (-ex, -ey).
+  if (w) {
+    w[2] -= w[0] * ex + w[1] * ey;
+    w[0] *= 1 + 2 * ex;
+    w[1] *= 1 + 2 * ey;
+  }
   m[4] -= m[0] * ex + m[2] * ey;
   m[5] -= m[1] * ex + m[3] * ey;
   m[0] *= 1 + 2 * ex;
@@ -420,10 +433,50 @@ function sideMap(out: MutableMat3, side: Mat3, quad: Mat3): void {
   if (invertInto(out, side)) multiplyInto(out, out, quad);
 }
 
-/** The layer's matrix in target px (`view * transform`) and its opacity. */
-function copyLayer<T extends TextureHandle>(record: DrawRecord<T>, view: Mat3, transform: Mat3, opacity: number): void {
-  multiplyInto(record.uniform.transform, view, transform);
+/** The layer's matrix in target px (`view * persp * transform`, projective for a 2.5D layer) and its opacity. */
+function copyLayer<T extends TextureHandle>(record: DrawRecord<T>, view: Mat3, layer: { persp?: Homography | null }, transform: Mat3, opacity: number): void {
+  const persp = layer.persp;
+  if (persp) writeProjective(record.uniform, view, homographyTimesAffine(projective, persp, transform), null);
+  else {
+    multiplyInto(record.uniform.transform, view, transform);
+    setFlat(record.uniform.wRow);
+  }
   record.uniform.opacity = opacity;
+}
+
+const projective = newHomography();
+const pathToClip = mutableIdentity();
+
+/** `out`'s matrix = `left * h` (affine after projective; `h` is a homography, or a matrix `m` with the bottom row `w`). */
+function writeProjective(out: { transform: MutableMat3; wRow: WRow }, left: Mat3, h: Homography | Mat3, w: Readonly<WRow> | null): void {
+  const full = w ? setHomographyFrom(projective, h, w) : (h as Homography);
+  const r = affineTimesHomography(projective, left, full);
+  setMat(out.transform, r[0], r[1], r[2], r[3], r[4], r[5]);
+  out.wRow[0] = r[6];
+  out.wRow[1] = r[7];
+  out.wRow[2] = r[8];
+}
+
+function setHomographyFrom(out: Homography, m: Homography | Mat3, w: Readonly<WRow>): Homography {
+  for (let i = 0; i < 6; i++) out[i] = m[i] as number;
+  out[6] = w[0];
+  out[7] = w[1];
+  out[8] = w[2];
+  return out;
+}
+
+/** The bottom row of `m * r` for a projective `m` with bottom row `w` and an affine `r`, in place. */
+function rightAffine(w: WRow, r: Mat3): void {
+  const [g, h, i] = w;
+  w[0] = g * r[0] + h * r[1];
+  w[1] = g * r[2] + h * r[3];
+  w[2] = g * r[4] + h * r[5] + i;
+}
+
+function setFlat(w: WRow): void {
+  w[0] = 0;
+  w[1] = 0;
+  w[2] = 1;
 }
 
 export function setRect(out: Rect, x: number, y: number, width: number, height: number): Rect {

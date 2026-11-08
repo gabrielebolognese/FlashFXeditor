@@ -161,9 +161,16 @@ export class RigResolver {
     out.anchor = local.anchor;
     out.flipH = local.flipH;
     out.flipV = local.flipV;
+    // The 2.5D fields are the clip's own (spec §21.15): a parent places it in 2D only.
+    for (const field of DEPTH_FIELDS) {
+      if (local[field] !== undefined) out[field] = local[field];
+      else delete out[field];
+    }
     return writeAffine(out, composeAffine(space, affineOf(local)), local);
   }
 }
+
+const DEPTH_FIELDS = ["rotationX", "rotationY", "z"] as const;
 
 /**
  * The local transform that shows `world` at `frame` under `clipId`'s parent (the parent as the document

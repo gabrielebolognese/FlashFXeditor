@@ -55,7 +55,8 @@ vec4 quadPosition(vec2 corner) {
   mat3 model = mat3(L_C0.xyz, L_C1.xyz, L_C2.xyz);
   mat3 toClip = mat3(u_view[0].xyz, u_view[1].xyz, u_view[2].xyz);
   vec3 position = toClip * model * vec3(corner, 1.0);
-  return vec4(position.xy, 0.0, 1.0);
+  // w: a 2.5D layer's projective matrix (spec §21.15); varyings interpolate perspective-correctly.
+  return vec4(position.xy, 0.0, position.z);
 }
 `;
 
@@ -398,7 +399,8 @@ layout(location = 0) in vec2 a_position;
 
 void main() {
   mat3 m = mat3(L_C0.xyz, L_C1.xyz, L_C2.xyz);
-  gl_Position = vec4((m * vec3(a_position, 1.0)).xy, 0.0, 1.0);
+  vec3 q = m * vec3(a_position, 1.0);
+  gl_Position = vec4(q.xy, 0.0, q.z);
 }
 `;
 
@@ -411,7 +413,8 @@ void main() {
   vec2 p = mix(L_UV.xy, L_UV.zw, corner);
   mat3 m = mat3(L_C0.xyz, L_C1.xyz, L_C2.xyz);
   v_local = p;
-  gl_Position = vec4((m * vec3(p, 1.0)).xy, 0.0, 1.0);
+  vec3 q = m * vec3(p, 1.0);
+  gl_Position = vec4(q.xy, 0.0, q.z);
 }
 `;
 

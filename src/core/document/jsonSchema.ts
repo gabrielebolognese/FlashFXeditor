@@ -15,7 +15,7 @@ function typeSchema(type: FieldType): Json {
       return { type: "boolean" };
     case "number":
       return {
-        type: type.integer ? "integer" : "number",
+        type: type.nullable ? [type.integer ? "integer" : "number", "null"] : type.integer ? "integer" : "number",
         ...(type.min !== undefined && { [type.exclusiveMin ? "exclusiveMinimum" : "minimum"]: type.min }),
         ...(type.max !== undefined && { maximum: type.max }),
       };

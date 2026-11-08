@@ -74,7 +74,8 @@ fn vs(@builtin(vertex_index) index: u32) -> VertexOut {
   if (layer.params.y > 0.5) { t.x = 1.0 - t.x; }
   if (layer.params.z > 0.5) { t.y = 1.0 - t.y; }
   var out: VertexOut;
-  out.position = vec4f(position.xy, 0.0, 1.0);
+  // w: a 2.5D layer's projective matrix (spec §21.15); varyings interpolate perspective-correctly.
+  out.position = vec4f(position.xy, 0.0, position.z);
   out.uv = mix(layer.uv.xy, layer.uv.zw, t);
   out.local = corner;
   return out;
@@ -243,7 +244,7 @@ fn vs(@builtin(vertex_index) index: u32) -> DissolveOut {
   let toClip = mat3x3f(view.c0.xyz, view.c1.xyz, view.c2.xyz);
   let position = toClip * model * vec3f(corner, 1.0);
   var out: DissolveOut;
-  out.position = vec4f(position.xy, 0.0, 1.0);
+  out.position = vec4f(position.xy, 0.0, position.z);
   out.a = vec2f(layer.mapA.x * corner.x + layer.mapA.z * corner.y + layer.mapT.x, layer.mapA.y * corner.x + layer.mapA.w * corner.y + layer.mapT.y);
   out.b = vec2f(layer.mapB.x * corner.x + layer.mapB.z * corner.y + layer.mapT.z, layer.mapB.y * corner.x + layer.mapB.w * corner.y + layer.mapT.w);
   return out;
@@ -487,7 +488,8 @@ struct CoverOut {
 
 fn toScratch(p: vec2f) -> vec4f {
   let m = mat3x3f(layer.c0.xyz, layer.c1.xyz, layer.c2.xyz);
-  return vec4f((m * vec3f(p, 1.0)).xy, 0.0, 1.0);
+  let q = m * vec3f(p, 1.0);
+  return vec4f(q.xy, 0.0, q.z);
 }
 
 @vertex

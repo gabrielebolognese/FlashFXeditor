@@ -15,6 +15,10 @@ import {
   rotationPivot,
   scaleGesture,
   snapRotation,
+  boxPoint,
+  tiltGesture,
+  tiltPoints,
+  TILT_DEGREES_PER_PX,
   type GestureStart,
   type HeldLayer,
 } from "./gizmo.js";
@@ -224,5 +228,44 @@ describe("anchor (spec §7.3)", () => {
     expect(a).toMatchObject({ x: 700 - 540, y: 900 - 960 });
     const after = layerCorners(a, BOX, FRAME);
     for (let i = 0; i < 4; i++) closeTo(after[i]!, before[i]!);
+  });
+});
+
+describe("tilt handles (spec §21.15, Batch 70)", () => {
+  const screen: Mat3 = [0.5, 0, 0, 0.5, 10, 20];
+  const metrics = { handleHit: 12, rotateZone: 16, minEdge: 24 };
+
+  it("puts box points bilinearly: a parallelogram's as before, a projected quad's on it", () => {
+    const box = start([{ id: "a", transform: t({ rotation: 30, scale: 2 }) }]).box;
+    const [tl, tr, , bl] = box;
+    closeTo(boxPoint(box, 0.25, 0.75), { x: tl.x + 0.25 * (tr.x - tl.x) + 0.75 * (bl.x - tl.x), y: tl.y + 0.25 * (tr.y - tl.y) + 0.75 * (bl.y - tl.y) });
+    // A trapezoid: the bottom right corner and the bottom middle are on it.
+    const trapezoid = [{ x: 40, y: 0 }, { x: 60, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }] as const;
+    closeTo(boxPoint(trapezoid, 1, 1), { x: 100, y: 100 });
+    closeTo(handlePoint(trapezoid, "s"), { x: 50, y: 100 });
+    closeTo(handlePoint(trapezoid, "e"), { x: 80, y: 50 });
+  });
+
+  it("hits the Y handle past the right side and the X handle past the bottom side, only when asked", () => {
+    const box = start([{ id: "a", transform: t() }]).box;
+    const points = tiltPoints(box, screen, metrics.rotateZone);
+    // Right side middle (640, 960) on screen (330, 500), 16 px out along +x; bottom middle (540, 1010) -> (280, 525), 16 px down.
+    closeTo(points.y, { x: 346, y: 500 });
+    closeTo(points.x, { x: 280, y: 541 });
+    expect(hitGizmo(box, screen, 346, 500, metrics, false, false, false, true)).toEqual({ kind: "tilt", axis: "y" });
+    expect(hitGizmo(box, screen, 280, 541, metrics, false, false, false, true)).toEqual({ kind: "tilt", axis: "x" });
+    expect(hitGizmo(box, screen, 346, 500, metrics)).toBeNull();
+    // Not in crop mode or on a caption.
+    expect(hitGizmo(box, screen, 346, 500, metrics, true, false, false, true)).toBeNull();
+    expect(hitGizmo(box, screen, 346, 500, metrics, false, false, true, true)).toBeNull();
+  });
+
+  it("turns one layer by the pointer's travel: left pushes the right side away (Y), down the top side (X); Shift snaps to 45°", () => {
+    const s = start([{ id: "a", transform: t({ rotationY: 10 }) }]);
+    expect(result(tiltGesture(s, "y", -40, 3, NONE)).rotationY).toBe(10 + 40 * TILT_DEGREES_PER_PX);
+    expect(result(tiltGesture(s, "x", 7, 50, NONE)).rotationX).toBe(50 * TILT_DEGREES_PER_PX);
+    expect(result(tiltGesture(s, "x", 7, 50, NONE)).rotationY).toBe(10);
+    expect(result(tiltGesture(s, "y", -68, 0, { shift: true, alt: false })).rotationY).toBe(45);
+    expect(tiltGesture(s, "x", 0, 20.3, NONE).readout).toBe("X 10.2°");
   });
 });

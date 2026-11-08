@@ -13,7 +13,7 @@ export type LayerChange = { kind: "transform"; transform: Transform } | { kind: 
 
 export interface LayerNumberProp {
   /** Stable id (the coalesce key of arrow steps). */
-  id: "x" | "y" | "scaleX" | "scaleY" | "rotation" | "anchorX" | "anchorY" | "opacity" | `crop.${CropEdge}`;
+  id: "x" | "y" | "scaleX" | "scaleY" | "rotation" | "rotationX" | "rotationY" | "z" | "anchorX" | "anchorY" | "opacity" | `crop.${CropEdge}`;
   /** Undo history label. */
   label: string;
   precision: number;
@@ -84,6 +84,32 @@ export const ROTATION: LayerNumberProp = {
   precision: 1,
   read: (clip) => clip.transform.rotation,
   write: (clip, value) => transform({ ...clip.transform, rotation: value }),
+};
+
+/** The 2.5D rotations (spec §21.15): X turns the top side away, Y the right side; degrees. */
+export const ROTATION_X: LayerNumberProp = {
+  id: "rotationX",
+  label: "Change X rotation",
+  precision: 1,
+  read: (clip) => clip.transform.rotationX ?? 0,
+  write: (clip, value) => transform({ ...clip.transform, rotationX: value }),
+};
+
+export const ROTATION_Y: LayerNumberProp = {
+  id: "rotationY",
+  label: "Change Y rotation",
+  precision: 1,
+  read: (clip) => clip.transform.rotationY ?? 0,
+  write: (clip, value) => transform({ ...clip.transform, rotationY: value }),
+};
+
+/** Depth in px (spec §21.15): positive is farther away; the depth sort key inside a compound. */
+export const DEPTH: LayerNumberProp = {
+  id: "z",
+  label: "Change depth",
+  precision: 1,
+  read: (clip) => clip.transform.z ?? 0,
+  write: (clip, value) => transform({ ...clip.transform, z: value }),
 };
 
 export const ANCHOR_X: LayerNumberProp = {

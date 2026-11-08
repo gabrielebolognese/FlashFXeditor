@@ -117,6 +117,8 @@ import { applyMoveRequest, dropClips, moveToAdjacentLane, NO_LANE_DELTA, nudgeCl
 import { ATTRIBUTE_GROUPS, attributeTargets, pasteAttributes, pastedSpeed, type AttributeGroup } from "./pasteAttributes.js";
 import { closeSilences, cutSilences, REMOVE_SILENCE_LABEL, silencePlan, silenceTargets, spanFrames, type SilenceGroup } from "./silence.js";
 import { addNull, convertFromMotionPath, convertToMotionPath, parentCandidates, setAutoOrient, setParent, smoothMotionPath } from "./rig.js";
+import { resetDepth, setBackfaceHidden, setDepthSort } from "./depth.js";
+import { setPerspective } from "../../core/commands/projectCommands.js";
 import { addSolid, newSolidClip, setSolids, type SolidEdit, type SolidLook } from "./solid.js";
 import { normalizeSpans } from "../../text/spans.js";
 import { setSpeedDurations, setSpeeds } from "./speed.js";
@@ -820,9 +822,10 @@ export type FuzzArea =
   | "captions"
   | "media"
   | "markers"
-  | "rig";
+  | "rig"
+  | "depth";
 
-export const FUZZ_AREAS: readonly FuzzArea[] = ["move", "trim", "split", "delete", "gaps", "links", "tracks", "keyframes", "transitions", "fades", "speed", "audio", "silence", "clipboard", "props", "solids", "text", "captions", "media", "markers", "rig"];
+export const FUZZ_AREAS: readonly FuzzArea[] = ["move", "trim", "split", "delete", "gaps", "links", "tracks", "keyframes", "transitions", "fades", "speed", "audio", "silence", "clipboard", "props", "solids", "text", "captions", "media", "markers", "rig", "depth"];
 
 export interface FuzzOp {
   name: string;
@@ -1903,6 +1906,36 @@ const RIG_OPS: FuzzOp[] = [
   }),
 ];
 
+/** 2.5D layers (Batch 70, spec §21.15): X / Y rotations and depth (keyed or not), backface, depth sort, perspective. */
+const DEPTH_OPS: FuzzOp[] = [
+  op("depth.turn", "depth", (store, rng) => {
+    const p = store.getState();
+    const clip = pickClip(p, rng, isLayerClip);
+    if (!clip || !isLayerClip(clip)) return false;
+    const t = clip.transform;
+    const transform = rng.chance(0.05)
+      ? { ...t, rotationY: Number.POSITIVE_INFINITY }
+      : { ...t, rotationX: rng.chance(0.3) ? 0 : rng.int(-180, 180), rotationY: rng.chance(0.3) ? 0 : rng.int(-180, 180), z: rng.pick([-800, -100, 0, 0, 250, 1500]) };
+    return exec(store, setTransforms(p, new Map([[clip.id, transform]]), { label: "Turn", ...(rng.chance(0.5) && { at: frameIn(clip, rng) }) }));
+  }),
+  op("depth.reset", "depth", (store, rng) => {
+    const p = store.getState();
+    const clip = pickClip(p, rng, isLayerClip);
+    return clip ? exec(store, resetDepth(p, selection(p, rng, clip, false), frameIn(clip, rng))) : false;
+  }),
+  op("depth.backface", "depth", (store, rng) => {
+    const p = store.getState();
+    const clip = pickClip(p, rng, isLayerClip);
+    return clip ? exec(store, setBackfaceHidden(p, selection(p, rng, clip, false), rng.chance(0.6))) : false;
+  }),
+  op("depth.sort", "depth", (store, rng) => {
+    const p = store.getState();
+    const clip = some(rng, Object.values(p.clips).filter((c) => c.kind === "compound"));
+    return clip ? exec(store, setDepthSort(p, [clip.id], rng.chance(0.6))) : false;
+  }),
+  op("depth.perspective", "depth", (store, rng) => exec(store, setPerspective(rng.pick([null, 400, 1600, 5000, 1e9])))),
+];
+
 /** Every edit operation of the catalogue, with random but sensible arguments. */
 export const FUZZ_OPS: readonly FuzzOp[] = [
   ...MOVE_OPS,
@@ -1926,6 +1959,7 @@ export const FUZZ_OPS: readonly FuzzOp[] = [
   ...MEDIA_OPS,
   ...MARKER_OPS,
   ...RIG_OPS,
+  ...DEPTH_OPS,
 ];
 
 /** The operations of some areas. */

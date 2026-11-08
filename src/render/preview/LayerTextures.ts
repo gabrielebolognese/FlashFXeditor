@@ -60,6 +60,7 @@ import type { NeighborFrame, UpcomingText } from "../compositor/Compositor.js";
 import { type CaptionHighlightFrame, type Composite, type CompoundCompositeLayer, type DissolveLayer, type DrawList, type Layer, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextGlyphDraw, type TextCompositeLayer, type TextureLayer, type TransitionCompositeLayer, type UvRect } from "../compositor/drawList.js";
 import type { TextureHandle } from "../gpu/renderer.js";
 import { multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
+import type { Homography } from "../projection.js";
 import type { Rect } from "../text/layout.js";
 import type { ResolvedText, ResolvedUnit, TextRasterCache } from "../text/TextRasterCache.js";
 import type { CompoundTargets } from "./CompoundTargets.js";
@@ -284,37 +285,45 @@ export class LayerTextures {
     this.dissolveCount = 0;
     this.compoundCount = 0;
     this.pathCount = 0;
-    const stats = this.stats;
     for (const layer of composite.layers) {
-      if (layer.kind === "shape") {
-        const pool = this.pathLayers[pane];
-        const out = (pool[this.pathCount] ??= newPathLayer());
-        if (this.shapes.resolve(layer, this.renderScale, false, out)) {
-          this.pathCount += 1;
-          list.layers.push(out);
-        }
-        continue;
-      }
-      if (layer.kind === "compound") {
-        const drawn = this.resolveCompound(pane, layer, priority);
-        if (drawn) list.layers.push(drawn);
-        continue;
-      }
-      if (layer.kind === "solid") {
-        list.layers.push(layer);
-        continue;
-      }
-      if (layer.kind === "text") {
-        if (this.resolveText(pane, list.layers, layer)) stats.texts += 1;
-        continue;
-      }
-      if (layer.kind === "dissolve") {
-        this.resolveDissolve(pane, list, layer, composite, priority);
-        continue;
-      }
-      const drawn = this.resolveLayer(pane, layer, priority);
-      if (drawn) list.layers.push(drawn);
+      const start = list.layers.length;
+      this.resolveOne(pane, list, layer, composite, priority);
+      // The 2.5D projection of the clip (spec §21.15) on every layer it drew (a dissolve sets its own).
+      if (layer.kind !== "dissolve") project(list.layers, start, layer.persp);
     }
+  }
+
+  /** The draw layers of one composite layer, pushed onto `list`. */
+  private resolveOne(pane: 0 | 1, list: WritableList, layer: Composite["layers"][number], composite: Composite, priority: FramePriority): void {
+    const stats = this.stats;
+    if (layer.kind === "shape") {
+      const pool = this.pathLayers[pane];
+      const out = (pool[this.pathCount] ??= newPathLayer());
+      if (this.shapes.resolve(layer, this.renderScale, false, out)) {
+        this.pathCount += 1;
+        list.layers.push(out);
+      }
+      return;
+    }
+    if (layer.kind === "compound") {
+      const drawn = this.resolveCompound(pane, layer, priority);
+      if (drawn) list.layers.push(drawn);
+      return;
+    }
+    if (layer.kind === "solid") {
+      list.layers.push(layer);
+      return;
+    }
+    if (layer.kind === "text") {
+      if (this.resolveText(pane, list.layers, layer)) stats.texts += 1;
+      return;
+    }
+    if (layer.kind === "dissolve") {
+      this.resolveDissolve(pane, list, layer, composite, priority);
+      return;
+    }
+    const drawn = this.resolveLayer(pane, layer, priority);
+    if (drawn) list.layers.push(drawn);
   }
 
   /** The resolver of the compound clip `clipId` of this scope (made on first use). */
@@ -383,9 +392,11 @@ export class LayerTextures {
       const pool = this.dissolveLayers[pane];
       const dissolve = (pool[this.dissolveCount] ??= newDissolveLayer());
       this.dissolveCount += 1;
-      list.layers.push(writeDissolve(dissolve, from, to, layer.mix, composite.width, composite.height));
+      pushDissolve(list.layers, dissolve, from, to, layer, composite);
     } else if (from || to) {
-      list.layers.push((from ?? to) as TextureLayer);
+      const side = (from ?? to) as TextureLayer;
+      list.layers.push(side);
+      project(list.layers, list.layers.length - 1, (from ? layer.from : layer.to).persp);
     }
   }
 
@@ -643,40 +654,54 @@ export class LayerTextures {
     const layers: Layer[] = [];
     try {
       for (const layer of composite.layers) {
-        if (layer.kind === "shape") {
-          // Export draws at project size: one device px per project px (compounds pass their own scale).
-          const out = newPathLayer();
-          if (this.shapes.resolve(layer, renderScale, true, out)) layers.push(out);
-          continue;
-        }
-        if (layer.kind === "compound") {
-          const drawn = await this.exactCompound(layer, maxLongEdge, unpins);
-          if (drawn) layers.push(drawn);
-          continue;
-        }
-        if (layer.kind === "solid") {
-          layers.push(layer);
-          continue;
-        }
-        if (layer.kind === "text") {
-          await this.exactText(layer, layers, unpins);
-          continue;
-        }
-        if (layer.kind === "dissolve") {
-          const from = await this.exactMedia(layer.from, maxLongEdge, unpins);
-          const to = await this.exactMedia(layer.to, maxLongEdge, unpins);
-          if (from && to) layers.push(writeDissolve(newDissolveLayer(), from, to, layer.mix, composite.width, composite.height));
-          else if (from || to) layers.push((from ?? to) as TextureLayer);
-          continue;
-        }
-        const drawn = await this.exactMedia(layer, maxLongEdge, unpins);
-        if (drawn) layers.push(drawn);
+        const start = layers.length;
+        // Copied before waiting: the composite's layers are reused by the next evaluation.
+        const persp = layer.kind === "dissolve" ? null : copyPersp(layer.persp);
+        await this.exactOne(layer, layers, composite, maxLongEdge, renderScale, unpins);
+        if (layer.kind !== "dissolve") project(layers, start, persp);
       }
     } catch (error) {
       release();
       throw error;
     }
     return { list: { width: composite.width, height: composite.height, background: composite.background, layers }, release };
+  }
+
+  /** The exact draw layers of one composite layer, pushed onto `layers`. */
+  private async exactOne(layer: Composite["layers"][number], layers: Layer[], composite: Composite, maxLongEdge: number, renderScale: number, unpins: (() => void)[]): Promise<void> {
+    if (layer.kind === "shape") {
+      // Export draws at project size: one device px per project px (compounds pass their own scale).
+      const out = newPathLayer();
+      if (this.shapes.resolve(layer, renderScale, true, out)) layers.push(out);
+      return;
+    }
+    if (layer.kind === "compound") {
+      const drawn = await this.exactCompound(layer, maxLongEdge, unpins);
+      if (drawn) layers.push(drawn);
+      return;
+    }
+    if (layer.kind === "solid") {
+      layers.push(layer);
+      return;
+    }
+    if (layer.kind === "text") {
+      await this.exactText(layer, layers, unpins);
+      return;
+    }
+    if (layer.kind === "dissolve") {
+      const sides = { from: copyPersp(layer.from.persp), to: copyPersp(layer.to.persp) };
+      const mix = layer.mix;
+      const from = await this.exactMedia(layer.from, maxLongEdge, unpins);
+      const to = await this.exactMedia(layer.to, maxLongEdge, unpins);
+      if (from && to) pushDissolve(layers, newDissolveLayer(), from, to, { mix, from: { persp: sides.from }, to: { persp: sides.to } }, composite);
+      else if (from || to) {
+        layers.push((from ?? to) as TextureLayer);
+        project(layers, layers.length - 1, from ? sides.from : sides.to);
+      }
+      return;
+    }
+    const drawn = await this.exactMedia(layer, maxLongEdge, unpins);
+    if (drawn) layers.push(drawn);
   }
 
   /** A compound clip for Export frame: its sequence resolved exactly (by its own resolver) and drawn into a texture held until `unpins` run. */
@@ -1212,7 +1237,34 @@ function writeDissolve(out: WritableDissolveLayer, from: TextureLayer, to: Textu
   out.from = from;
   out.to = to;
   out.mix = mix;
+  out.persp = null;
   return out;
+}
+
+/** Sets the 2.5D projection of the layers from `start` on (spec §21.15). */
+function project(layers: Layer[], start: number, persp: Homography | null | undefined): void {
+  for (let i = start; i < layers.length; i++) (layers[i] as { persp?: Homography | null }).persp = persp ?? null;
+}
+
+function copyPersp(persp: Homography | null | undefined): Homography | null {
+  return persp ? ([...persp] as Homography) : null;
+}
+
+const samePersp = (a: Homography | null | undefined, b: Homography | null | undefined) => (a ?? null) === (b ?? null) || (!!a && !!b && a.every((value, i) => value === b[i]));
+
+/**
+ * A cross dissolve: one dissolve layer when both sides share their 2.5D projection (flat, or one clip cut in
+ * two); otherwise each side drawn alone in its own projection, faded by the mix (spec §21.15, Batch 70 deviation).
+ */
+function pushDissolve(layers: Layer[], out: WritableDissolveLayer, from: TextureLayer, to: TextureLayer, layer: { mix: number; from: { persp?: Homography | null }; to: { persp?: Homography | null } }, composite: Composite): void {
+  if (samePersp(layer.from.persp, layer.to.persp)) {
+    layers.push(writeDissolve(out, from, to, layer.mix, composite.width, composite.height));
+    project(layers, layers.length - 1, layer.from.persp);
+    return;
+  }
+  const a = { ...from, opacity: from.opacity * (1 - layer.mix), persp: layer.from.persp ?? null };
+  const b = { ...to, opacity: to.opacity * layer.mix, persp: layer.to.persp ?? null };
+  layers.push(a, b);
 }
 
 function newSolidLayer(): WritableSolidLayer {

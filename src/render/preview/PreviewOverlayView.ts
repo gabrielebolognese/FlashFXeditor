@@ -15,6 +15,7 @@
 //   inline text editing draws the edited box's
 //   outline, the caret (--text-caret-width, --accent) and the IME composition underline. A box holding
 //   a keyframed layer gets the keyframe diamond up and right of its top-right handle (Batch 35).
+//   One held layer gets its two round tilt handles past its right and bottom sides (spec §21.15, Batch 70).
 // - Smart guides (§7.4, the scene's `guides`): 1 px --accent lines (across the frame for the frame and
 //   safe-zone targets, from the dragged box to the layer for a layer), distance spans with end caps
 //   and their distance chips (--accent, --on-accent mono caption), equal-spacing gaps, measure mode.
@@ -191,6 +192,8 @@ export class PreviewOverlayView implements RenderView {
       for (const q of scene.nulls ?? []) quad(q);
       if (scene.anchor) out.push(1, scene.anchor.x, scene.anchor.y);
       else out.push(0);
+      if (scene.tilt) out.push(1, scene.tilt.x.x, scene.tilt.x.y, scene.tilt.y.x, scene.tilt.y.y);
+      else out.push(0);
       if (scene.marquee) out.push(1, scene.marquee.x0, scene.marquee.y0, scene.marquee.x1, scene.marquee.y1);
       else out.push(0);
       if (scene.snap) out.push(1, CORNERS.indexOf(scene.snap.handle), EDGES.indexOf(scene.snap.handle), scene.snap.x ? 1 : 0, scene.snap.y ? 1 : 0);
@@ -343,6 +346,15 @@ export class PreviewOverlayView implements RenderView {
         ctx.strokeRect(x + line / 2, y + line / 2, size - line, size - line);
       }
       if (scene.keyframe) this.drawKeyframeMark(ctx, at(handlePoint(box, "ne")), scene.keyframe.on, line, dpr);
+      // The tilt handles (spec §21.15): round, past the right and bottom sides (device px already).
+      if (scene.tilt) {
+        for (const p of [scene.tilt.x, scene.tilt.y]) {
+          ctx.beginPath();
+          ctx.arc(Math.round(p.x), Math.round(p.y), size / 2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
     }
     if (scene.anchor) this.drawAnchor(ctx, at(scene.anchor), dpr, line);
     if (scene.text) {

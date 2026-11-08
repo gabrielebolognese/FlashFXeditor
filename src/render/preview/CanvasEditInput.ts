@@ -85,6 +85,8 @@ import {
   rotateGesture,
   rotationPivot,
   scaleGesture,
+  tiltGesture,
+  tiltPoints,
   toScreen,
   type GestureResult,
   type GestureStart,
@@ -103,6 +105,7 @@ import { solidSizeGesture, type SolidGestureStart } from "./solidGizmo.js";
 import { setSolids, solidLook, type SolidLook } from "../../timeline/edit/solid.js";
 import { setPathKeys } from "../../timeline/edit/rig.js";
 import { hitPath, liveByFrame, pathDragEdit, pathScene, type PathHit, type PathLive, type PathScene } from "./pathGizmo.js";
+import { projectPoint as projectThrough, unprojectPoint, viewingDistance, type Homography } from "../projection.js";
 
 /** Inline text editing as the canvas drives it (InlineTextEditor, spec §7.7). */
 export interface CanvasTextEditing {
@@ -188,9 +191,11 @@ export interface GizmoScene {
   path?: PathScene | null;
   /** The outlined null clips (spec §21.14): drawn with a cross through the box corners. */
   nulls?: readonly Quad[];
+  /** The tilt handles of one held layer (spec §21.15), in device px, or null. */
+  tilt?: { x: Point; y: Point } | null;
 }
 
-type GestureKind = "move" | "scale" | "rotate" | "anchor" | "crop" | "textSize" | "textWidth" | "captionSize";
+type GestureKind = "move" | "scale" | "rotate" | "anchor" | "crop" | "textSize" | "textWidth" | "captionSize" | "tiltX" | "tiltY";
 
 interface Press {
   pointerId: number;
@@ -237,6 +242,14 @@ interface Drag {
   caption: CaptionSizeStart | null;
   cueStyles: ReadonlyMap<ClipId, CaptionStyle> | null;
   fontSize: number | null;
+  /**
+   * One held 2.5D layer (spec §21.15): its projection at the start. Scale and anchor drags work on its
+   * flat quad with the pointer taken back through it; a move's travel is scaled to the anchor's depth.
+   */
+  persp: Homography | null;
+  depthScale: number;
+  /** The box drawn while it runs is the held layers' live (projected) quads, not the gesture's. */
+  projected: boolean;
 }
 
 interface Marquee {
@@ -259,6 +272,8 @@ const LABELS: Record<GestureKind, [string, string]> = {
   textSize: ["Resize text", "Resize text"],
   textWidth: ["Change text box width", "Change text box width"],
   captionSize: ["Resize caption", "Resize caption"],
+  tiltX: ["Rotate layer on X", "Rotate layers on X"],
+  tiltY: ["Rotate layer on Y", "Rotate layers on Y"],
 };
 
 export class CanvasEditInput {
@@ -599,7 +614,8 @@ export class CanvasEditInput {
     const outlines = outlined.map(outlineQuad);
     const clips = this.deps.document.getState().clips;
     const nulls = outlined.filter((layer) => clips[layer.clipId]?.kind === "null").map(outlineQuad);
-    const box = drag?.result?.box ?? (marquee ? null : gizmoBoxOf(selected.map((layer) => layer.quad)));
+    // A 2.5D layer's box while dragged is its live projected quad (spec §21.15).
+    const box = (drag?.projected ? null : drag?.result?.box) ?? (marquee ? null : gizmoBoxOf(selected.map((layer) => layer.quad)));
     const hoverLayer = !drag && !marquee && this.hover !== null ? layers.find((layer) => layer.clipId === this.hover && !selected.includes(layer)) : undefined;
     const single = selected.length === 1 ? selected[0] : undefined;
     const caption = marquee ? null : this.captionLayer(selected);
@@ -628,6 +644,7 @@ export class CanvasEditInput {
       keyframe: box && !marquee && !cropLayer ? this.keyframeMark(selected) : null,
       path: marquee ? null : this.pathSceneNow(),
       nulls,
+      tilt: this.tiltScene(box, single, caption !== null || cropLayer !== null || marquee !== null, drag),
     };
   }
 
@@ -694,7 +711,7 @@ export class CanvasEditInput {
     const cropLayer = this.cropLayer(held);
     const textLayer = cropLayer ? null : this.textLayer(held.length, held[0]);
     const caption = this.captionLayer(held);
-    const hit = box ? this.hitBox(box, placement, event, cropLayer !== null, textLayer !== null, caption !== null) : null;
+    const hit = box ? this.hitBox(box, placement, event, cropLayer !== null, textLayer !== null, caption !== null, held.length === 1) : null;
     const under = layersUnder(this.layers(), point.x, point.y);
     const top = under[0];
     // Deep select (§7.2): the next layer under the pointer after the selected one, alone.
@@ -709,6 +726,7 @@ export class CanvasEditInput {
     // In crop mode a click on its layer keeps the selection (a group would end crop mode).
     else if (cropLayer && hit?.kind === "body" && !mods.alt && !mods.shift && !mods.mod && top?.clipId === cropLayer.clipId) press = { drag: { kind: "move" }, click: null };
     else if (hit?.kind === "rotate") press = { drag: { kind: "rotate", handle: hit.corner }, click: null };
+    else if (hit?.kind === "tilt") press = { drag: { kind: hit.axis === "x" ? "tiltX" : "tiltY" }, click: null };
     if (!press) {
       if (mods.alt && top) {
         setSelection(session, cycled());
@@ -953,6 +971,12 @@ export class CanvasEditInput {
     if (kind === "crop" && !cropLayer) return;
     const handle = press.drag.handle ?? null;
     const first = held[0] as CanvasLayer;
+    // One 2.5D layer (spec §21.15): scale and anchor drags work on its flat quad, the pointer taken back.
+    const persp = held.length === 1 && first.persp ? first.persp : null;
+    const flatWork = persp !== null && first.flat !== undefined && (kind === "scale" || kind === "anchor");
+    if (flatWork) start.box = first.flat as Quad;
+    const pressAt = (flatWork && unprojectPoint(persp, press.point.x, press.point.y)) || press.point;
+    const distance = viewingDistance(project.settings.perspective);
     const grabbed =
       kind === "anchor"
         ? { x: project.settings.width / 2 + first.transform.x, y: project.settings.height / 2 + first.transform.y }
@@ -966,9 +990,9 @@ export class CanvasEditInput {
       start,
       held: new Set(held.map((layer) => layer.clipId)),
       project,
-      point: press.point,
-      grab: grabbed ? { x: grabbed.x - press.point.x, y: grabbed.y - press.point.y } : { x: 0, y: 0 },
-      tracker: kind === "rotate" ? new AngleTracker(rotationPivot(start), press.point) : null,
+      point: pressAt,
+      grab: grabbed ? { x: grabbed.x - pressAt.x, y: grabbed.y - pressAt.y } : { x: 0, y: 0 },
+      tracker: kind === "rotate" ? new AngleTracker(this.pivotOf(start, persp), press.point) : null,
       result: null,
       guides: null,
       crop: cropLayer ? { clipId: cropLayer.clipId, transform: cropLayer.transform, box: cropLayer.box, frame: project.settings } : null,
@@ -981,6 +1005,10 @@ export class CanvasEditInput {
       caption: kind === "captionSize" && caption ? this.captionStart(caption, project) : null,
       cueStyles: null,
       fontSize: null,
+      persp: flatWork ? persp : null,
+      // A move at the anchor's depth: the travel on screen shrinks by distance / (distance + z).
+      depthScale: persp && distance !== null ? Math.max(distance + (first.transform.z ?? 0), 1) / distance : 1,
+      projected: held.some((layer) => layer.persp !== undefined) || kind === "tiltX" || kind === "tiltY",
     };
     if (kind === "captionSize" && !this.drag.caption) {
       this.drag = null;
@@ -1020,17 +1048,19 @@ export class CanvasEditInput {
     const placement = this.deps.placement();
     const pointer = this.pointer;
     if (!drag || !pointer) return;
-    const pressed = this.projectPoint(pointer, placement);
-    if (!pressed || !placement) return;
+    const screenPoint = this.projectPoint(pointer, placement);
+    if (!screenPoint || !placement) return;
+    // A 2.5D layer's scale or anchor drag: the pointer on its flat plane (spec §21.15).
+    const pressed = (drag.persp && unprojectPoint(drag.persp, screenPoint.x, screenPoint.y)) || screenPoint;
     const mods: Modifiers = { shift: this.modifiers.shift, alt: this.modifiers.alt };
-    const snapping = this.snapping;
+    const snapping = this.snapping && !drag.persp;
     drag.guides = null;
     // Where the grabbed handle is now: the pointer plus the offset it was grabbed at.
     const point = { x: pressed.x + drag.grab.x, y: pressed.y + drag.grab.y };
     switch (drag.kind) {
       case "move": {
-        const dx = point.x - drag.point.x;
-        const dy = point.y - drag.point.y;
+        const dx = (point.x - drag.point.x) * drag.depthScale;
+        const dy = (point.y - drag.point.y) * drag.depthScale;
         if (!snapping) {
           drag.result = moveGesture(drag.start, dx, dy, mods);
           break;
@@ -1069,6 +1099,13 @@ export class CanvasEditInput {
       case "anchor":
         drag.result = anchorGesture(drag.start, point);
         break;
+      case "tiltX":
+      case "tiltY": {
+        // The pointer's travel in CSS px (spec §21.15: degrees per CSS px).
+        const css = placement.transform[0] / placement.dpr;
+        drag.result = tiltGesture(drag.start, drag.kind === "tiltX" ? "x" : "y", (point.x - drag.point.x) * css, (point.y - drag.point.y) * css, mods);
+        break;
+      }
       case "crop":
         this.updateCrop(drag, point, placement, mods, snapping);
         break;
@@ -1293,9 +1330,22 @@ export class CanvasEditInput {
   }
 
   /** The gizmo zone under the pointer (device px against the box on screen); `crop`: crop handles, no rotate zones; `text`: no top and bottom handles; `caption`: corner handles only. */
-  private hitBox(box: GizmoBox, placement: PreviewPlacement, event: { clientX: number; clientY: number }, crop = false, text = false, caption = false): GizmoHit | null {
+  private hitBox(box: GizmoBox, placement: PreviewPlacement, event: { clientX: number; clientY: number }, crop = false, text = false, caption = false, tilt = false): GizmoHit | null {
     const device = this.devicePoint(event, placement.dpr);
-    return device ? hitGizmo(box, placement.transform, device.x, device.y, this.metrics(placement.dpr), crop, text, caption) : null;
+    return device ? hitGizmo(box, placement.transform, device.x, device.y, this.metrics(placement.dpr), crop, text, caption, tilt) : null;
+  }
+
+  /** The rotate pivot on screen: a 2.5D layer's anchor as projected (spec §21.15). */
+  private pivotOf(start: GestureStart, persp: Homography | null): Point {
+    const pivot = rotationPivot(start);
+    return (persp && projectThrough(persp, pivot.x, pivot.y)) || pivot;
+  }
+
+  /** The tilt handles (spec §21.15) of one held layer, in device px: none in crop mode, on a caption or during another drag. */
+  private tiltScene(box: GizmoBox | null, single: CanvasLayer | undefined, off: boolean, drag: Drag | null): { x: Point; y: Point } | null {
+    const placement = this.deps.placement();
+    if (!box || !single || off || !placement || (drag && drag.kind !== "tiltX" && drag.kind !== "tiltY")) return null;
+    return tiltPoints(box, placement.transform, this.theme.gizmo.rotateZone * placement.dpr);
   }
 
   private overAnchor(layer: CanvasLayer, placement: PreviewPlacement, event: { clientX: number; clientY: number }): boolean {
@@ -1352,6 +1402,8 @@ export class CanvasEditInput {
       if (drag.kind === "move") return "move";
       if (drag.kind === "rotate") return this.cursors.rotate;
       if (drag.kind === "anchor") return "crosshair";
+      if (drag.kind === "tiltX") return "ns-resize";
+      if (drag.kind === "tiltY") return "ew-resize";
       // Scale and crop handles: the resize cursor of the handle's direction on screen.
       return placement && drag.result ? resizeCursor(drag.result.box, placement.transform, drag.handle as HandleId) : "";
     }
@@ -1368,7 +1420,8 @@ export class CanvasEditInput {
     const cropping = this.cropLayer(held) !== null;
     const caption = this.captionLayer(held) !== null;
     if (!cropping && !caption && this.modifiers.alt && held.length === 1 && this.overAnchor(held[0] as CanvasLayer, placement, this.pointer)) return "crosshair";
-    const hit = this.hitBox(box, placement, this.pointer, cropping, !cropping && this.textLayer(held.length, held[0]) !== null, caption);
+    const hit = this.hitBox(box, placement, this.pointer, cropping, !cropping && this.textLayer(held.length, held[0]) !== null, caption, held.length === 1);
+    if (hit?.kind === "tilt") return hit.axis === "x" ? "ns-resize" : "ew-resize";
     if (hit?.kind === "handle") return resizeCursor(box, placement.transform, hit.handle);
     if (hit?.kind === "rotate") return this.cursors.rotate;
     return hit?.kind === "body" ? "move" : "";

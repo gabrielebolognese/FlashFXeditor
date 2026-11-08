@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 69
+last_completed_batch: 70
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -25,6 +25,7 @@ What release 1.1.0 does not do, or does not do well. Next steps for each are in 
 
 ## Design system gaps
 Items the design system did not define and the functional default that was used instead.
+- The X and Y tilt handles of a 2.5D layer have no DESIGN_SYSTEM.md definition: they reuse the round tangent handle look of the path overlay, and their offset past the box is `gizmo.rotateZone` (no dedicated token). (Batch 70)
 - The Parent picker, the Motion path and Auto-orient toggles and the path overlay (path line, key squares, round tangent handles) have no DESIGN_SYSTEM.md definition; they reuse Select, IconButton (pressed), Row, and the gizmo tokens (accent, accent dim, handle size, line width). (Batch 69)
 - The Animators section and the Counter rows have no DESIGN_SYSTEM.md definition; they reuse the Shape section's rows, stopwatch and navigator buttons, Select, NumberField and ColorField. (Batch 68)
 - External-change banner reuses the read-only notice look; the stand-in notice and generator-notes block have no DS definition and use tokens. (Batch 56)
@@ -853,6 +854,11 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 65 -> Batch 66] A path marked slow (one build over 2 ms) stays on the worker for the session, so its trim animation shows each new stroke one frame late; seen on WebGL2 (301 offloaded builds in 5 s, still 60 fps). Consider unmarking it after fast worker builds when the tools make editing interactive.
 - [from Batch 66 -> Batch 67] Shape fields commit on release (no live scrub preview): a `LiveEdit.shapes` channel plus Compositor plumbing would show scrubbing live.
 - [from Batch 66 -> Batch 80] Shape keys have no timeline lane; keys are edited from the Shape section's per-group stopwatch rows only.
+- [from Batch 70 -> Batch 82] (from Batch 69) Parented text rasterizes at its live world scale; a live channel for the path drag; deleting a parent keeping the children's world placement; nudge, align and the quick transforms in world space for parented clips.
+- [from Batch 70 -> Batch 82] (from Batch 69) Profile 105 animated shape layers (about 30 fps in a dev build) and the one React commit per 10 s of playback.
+- [from Batch 70 -> Batch 77] (from Batch 69) Compound fades and transitions do not reach audio.
+- [from Batch 70 -> Batch 80] (from Batch 69) Counter and animator fields have no `LiveEdit` channel.
+- [from Batch 70 -> Batch 72] Track mattes and blend modes on a 2.5D layer: check that a matte follows the projected picture.
 
 ## Dependencies
 Why each dependency exists (Batch rule 8).
@@ -6999,3 +7005,54 @@ Why each dependency exists (Batch rule 8).
   3. §21.1 port rule: `src/core/document/positionPath.ts:1-5` does not start with `// Ported from FlashFX-v2 <path> @ <commit>, adapted.` and names no commit (FlashFX-v2 HEAD is a91c675). The implementation notes also name the parent resolution of FlashFX-v2 `src/core/sceneGraph.ts`; `src/core/document/rig.ts` has no port header and the entry logs no deviation for not porting it (only `motionPath.ts` is logged at `docs/PROGRESS.md:6976`).
 - fix-attempt: done (2026-11-08). Problem 1: a selected null now draws a cross through its outline (`GizmoScene.nulls`, `PreviewOverlayView`; test in `CanvasEditInput.test.ts`). Problem 2: measured in headless Chrome (WebGPU, AMD RDNA2, Vite dev build, window 1600x900) with the project described under pending manual check 4 (100 keyed children of 5 keyed nulls, a path child selected so the path overlay is live, 10 s window): 4 interleaved passes of parented / parents cleared. Parented: 20.6 to 34 preview fps, preview render avg 5.2 to 8.8 ms (max 18 to 125 ms), 210 to 220 of about 600 frames late; parents cleared: 28 to 30.6 preview fps, avg 5.6 ms, 217 to 221 late; React commits: 1 in every pass of both variants (not caused by parenting; the commit counter registers one commit per pass). So parenting adds no measurable cost over 105 plain animated shape layers (the resolver is 0.12 ms per frame), but 105 simultaneous animated shape layers do not hold 60 fps on this machine in a dev build (about 30 fps), and the single React commit per 10 s is not explained: both are logged as deviations, with the cause outside Batch 69 (flat baseline equal). Follow-up: Batch 70 or the perf pass should profile many animated shape layers and the periodic commit. Problem 3: `positionPath.ts` starts with the port header (`@ a91c675`); `rig.ts` is logged above as not ported, with the reason.
 - review: accepted (2026-11-08, second review). `npm run check`: typecheck, lint (with the CSS color and token checks), 3075 / 3075 unit tests in 302 files (4 skipped) and the build pass. The perf project failed once: `fuzz.perf.test.ts` took 75.5 s against its 60 s limit while the full check ran. Alone it took 31.2 s, and the whole perf project then passed 4 / 4, so the failure was machine load. Earlier problems: (1) fixed: `CanvasEditInput.scene()` lists the outlined nulls (`GizmoScene.nulls`) and `PreviewOverlayView.ts:312-321` strokes both corner-to-corner lines in `color.accent`, covered by a test; the deviation now describes the cross. (2) fixed: pending manual check 4 gives exact steps. I also measured it myself with an A/B run in headless Chrome (WebGPU, Vite dev build, the builder's project of 5 keyed nulls and 100 keyed children, a path child selected, 10 s after a 1 s warm-up). At HEAD the parented project played at 50-56 preview fps (render avg 3.0 ms). The same 100 shapes with the nulls removed and the paths turned into x/y keys played at 54-57 fps at HEAD and 48-50 fps on the Batch 68 tree (5e74d69). Every pass of both trees counted 1 React commit. So parenting, paths and the overlay add no measurable cost, and the shortfall below 60 fps and the one commit per 10 s already happen on Batch 68. The builder's 20-34 fps were skewed by the environment; the follow-up at line 521 ("about 30 fps") is too pessimistic. (3) fixed: `positionPath.ts:1` carries the port header @ a91c675, and `rig.ts:1-2` plus the deviations give the reason it is not a port of `sceneGraph.ts`. Clerical: the fix commit had put the fix-attempt line into the Batch 55 entry (old line 6422). This review moved it, unchanged, to just above this line. Acceptance 1-3 are covered by the rig fixture and the unit tests, as the first review found. Nothing from Do not build yet was built. The fix adds no literal and no untagged TODO.
+
+### Batch 70: 2.5D layers: 3D rotation and perspective
+- status: done
+- date: 2026-11-08
+- notes:
+  - Built in auto mode (lean run). `npm run check` green: typecheck, lint (with the CSS color and token checks), 3115 / 3115 unit tests in 307 files (5 skipped writers), render tests, build.
+  - Model, schema 14: `transform.rotationX` / `rotationY` (degrees) and `z` (px, positive = farther), all keyframe properties. `perspective` on settings and on sequences (absent = 1600 px, `null` = parallel view). `depthSort` on sequences, `backfaceHidden` on visual clips. Migration 13 → 14 (nothing to rewrite), validate, strict schema, JSON schema, interop doc, capabilities (`transform.rotation3d`) and INTEROP §5.9.
+  - Math: `src/core/space/mat4.ts` and `camera3d.ts` (ported from FlashFX-v2, port headers). `src/render/projection.ts` builds the homography that follows the flat 2D affine: `T(0,0,z)·T(p)·Rz·Ry·Rx·Rz⁻¹·T(−p)`, with the camera at the viewing distance from the frame center, as CSS does with `perspective-origin: 50% 50%`.
+  - Compositor: `place3d` writes a per-layer homography. Depth sort is a stable painter order (farthest `z` first) inside compounds whose sequence has `depthSort`; without it, track order is kept. A sequence uses its own perspective. Hidden back sides and layers crossing the eye plane are culled. `DrawListSnapshot` carries the projection, and frames identical to the last one are not drawn again.
+  - Renderers: on both backends (WebGPU WGSL, WebGL2 GLSL), the projective bottom row travels in the mat3 `.z` lanes (`wRow`). The vertex shaders output w, so texturing is perspective-correct. `LayerTextures` projects the layers it resolves, exactly or through a dissolve.
+  - Canvas: `canvasLayers` lists projected quads (`persp`, `flat`). Hit testing uses the projected shape. The gizmo box is the projected quad (bilinear box points). Round X and Y tilt handles sit one `gizmo.rotateZone` past the right side (Y) and the bottom side (X): 0.5° per CSS px, Shift snaps to 45°, one command `transform.set` per drag ("Rotate layer on X/Y").
+  - Gestures on a 2.5D layer: scale and anchor work on the flat quad with the pointer unprojected. Move is scaled by (d+z)/d so the layer follows the pointer. Rotate pivots on the projected anchor.
+  - Panels and commands:
+    - Transform section: "3D rotation" X/Y, "Depth" Z, "Back side" (Hide back side `clip.backface`, Reset 3D rotation `transform.reset3d`) and "Depth sort" for compounds (`compound.depthSort`).
+    - Project section: Perspective field with an on/off button (`project.setPerspective`, 100 to 100000 px). While a compound is open (`runInScope`) it edits that sequence's perspective.
+    - The command palette lists the new actions.
+  - Fixtures:
+    - `fixtures/interop/deck`: six cards fly into a 3 x 2 grid, with expected frames 0, 30 and 59.
+    - `fixtures/interop/card`: a checkered card at rotateY 60° with perspective 1600, with expected frame 0.
+    - Both are built by `src/core/document/deckFixture.ts`.
+    - `npm run test:render`: all 13 fixtures pass on both backends.
+  - CSS reference (acceptance 1): `scripts/css-perspective-reference.mjs` draws the same card with CSS `perspective: 1600px; transform: rotateY(60deg)` in headless Chrome and compares it with the card's expected frame through the CLI compare. SSIM 0.9993 (threshold 0.98).
+  - Browser check (CDP, own Vite on 5351 and Chrome on 9461, both backends, all ok):
+    - Deck fixture: every changing frame drawn, 0 React commits while playing.
+    - Deck variant at 60 fps with six cards turning for 10 s: 60.1 fps, 602 / 602 frames, 0 React commits, render average 0.5 to 0.9 ms, maximum ≤ 3.1 ms.
+    - P1 playback (rig fixture stretched to 900 frames, 10 s): 59.1 to 59.9 fps, 0 commits.
+    - App Export frame vs the CLI expected frame: SSIM 1.0000.
+    - A click inside the flat box but outside the projected shape selects nothing, and a click on the projected shape selects the card.
+    - Tilt handles show. A drag from the projected far side moves the card. A Y handle drag sets 75°. Undo takes two steps.
+    - All panel fields are present.
+  - Tests: projection (homography and CSS matrix agreement, unproject round trip), space (mat4 / camera3d), Compositor.depth (depth sort on and off, sequence perspective, backface cull), layerUniforms (wRow), canvasLayers (projected hit, culled back side, eye plane), gizmo (bilinear box, tilt points and gesture), depth commands (4), projectFile (schema 13 open, 2.5D round trip), validate (2), deck and card fixtures (4), and a Batch 47 fuzz area `depth` (seeds 701 to 703).
+- deviations:
+  - A parent (Batch 69) passes on its 2D transform only, never its 3D turn or depth. Each clip's rotationX, rotationY and z apply to it alone. A 3D hierarchy would need a 4x4 world matrix per clip, and the spec's 2.5D scope does not ask for one.
+  - A dissolve between two layers whose projections differ draws each side with its own projection (approximate in the middle of a transition between projections).
+  - A layer that reaches the viewer's plane (w ≤ 1e-3 at any corner) is not drawn, rather than clipped against the near plane.
+  - Absent perspective means 1600 px (the spec's default), so turning a layer for the first time writes nothing to settings. A sequence never inherits the project's distance.
+  - The Perspective field in the Project section edits the open compound's own perspective (the store swaps it in `runInScope`), so there is no separate sequence field.
+  - Scale and anchor gestures on a 2.5D layer work in flat space with the pointer unprojected. Snapping is off for every gesture on a layer with a projection, because the snap targets are flat.
+  - Move on a 2.5D layer is scaled by (d+z)/d, so the layer stays under the pointer at its depth.
+  - The tilt handles reuse `gizmo.rotateZone` for their offset and the round handle look of the path tangents (no DESIGN_SYSTEM.md definition, see Design system gaps).
+  - The CSS reference uses a dedicated `card` fixture (a flat checkered card, 800x600) instead of the deck, because the CSS page has to rebuild the picture from the project by hand.
+  - Acceptance 2 "plays at 60 fps": the deck fixture is 30 fps, and its last card lands at frame 50, so frames 51 to 59 are skipped as identical. The 60 fps figure is measured on the same deck at 60 fps settings with turning keys kept moving for 10 s.
+  - The ports `core/space/mat4.ts` and `camera3d.ts` start with the FlashFX-v2 port header. `render/projection.ts` is new: FlashFX-v2 renders 3D through its own camera and has no per-layer homography.
+- follow-ups:
+  - [from Batch 69 -> Batch 70] Items not done in this batch, moved on (see Follow-ups): parented text raster scale, live path channel, parent deletion keeping world placement, and nudge and align in local space (Batch 82); the 105-shape perf profile (Batch 82); compound audio fades (Batch 77); counter and animator `LiveEdit` (Batch 80).
+  - [from Batch 70 -> Batch 72] Track mattes and blend modes on a 2.5D layer: check that a matte follows the projected picture.
+- design gaps:
+  - The X and Y tilt handles have no DESIGN_SYSTEM.md definition and no dedicated offset token (see Design system gaps).
+- pending manual checks:
+  - Tilt handle feel: add a shape and select it. Drag the round handle right of the box left and right, then the one below the box up and down. The card turns on Y, then on X, and the readout shows the angle. Hold Shift: it snaps to 45°. Undo restores it in one step per drag.
+  - Profiler: record while dragging a tilt handle and while moving a turned card (Transform, 3D rotation Y 60). Expect no React commits during the drag and one on release.

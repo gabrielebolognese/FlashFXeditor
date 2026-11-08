@@ -76,6 +76,7 @@ function checkType(type: FieldType, value: unknown, path: string, issues: Strict
       if (typeof value !== "boolean") issues.push({ path, message: `must be true or false, found ${describe(value)}` });
       return;
     case "number": {
+      if (value === null && type.nullable) return;
       if (typeof value !== "number" || !Number.isFinite(value)) return void issues.push({ path, message: `must be a number, found ${describe(value)}` });
       if (type.integer && !Number.isInteger(value)) return void issues.push({ path, message: `must be an integer, found ${value}` });
       if (type.min !== undefined && (type.exclusiveMin ? value <= type.min : value < type.min)) issues.push({ path, message: `must be ${type.exclusiveMin ? ">" : ">="} ${type.min}, found ${value}` });

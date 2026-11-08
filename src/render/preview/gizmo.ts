@@ -10,6 +10,11 @@
 //   within 3°; otherwise free at 0.1°. The pointer angle is unwrapped, so turns add up.
 // - Move: whole project px; Shift keeps the dominant axis. Anchor (one layer, Alt): the anchor goes
 //   under the pointer, the position follows so the layer stays where it is.
+// - Tilt (spec §21.15, Batch 70; one layer): a round handle out past the right side turns it around
+//   its vertical axis (rotationY: dragging left pushes the right side away), one out past the bottom
+//   side around its horizontal axis (rotationX: dragging down brings the bottom side closer), at
+//   TILT_DEGREES_PER_PX per CSS px; Shift snaps to 45° like rotate. A 2.5D layer's box is its projected
+//   quad (canvasLayers.ts), so handle points are bilinear in the box (exact for a flat parallelogram).
 import type { ClipId, Transform } from "../../core/document/types.js";
 import { layerCorners, layerPoint, rotationTrig, scaleYOf, type ContentBox, type Point, type Size } from "../../timeline/edit/transform.js";
 import type { Mat3 } from "../mat3.js";
@@ -46,8 +51,30 @@ export const MIN_SCALE = 0.01;
 export type GizmoBox = Quad;
 
 export function boxPoint(box: GizmoBox, u: number, v: number): Point {
-  const [tl, tr, , bl] = box;
-  return { x: tl.x + u * (tr.x - tl.x) + v * (bl.x - tl.x), y: tl.y + u * (tr.y - tl.y) + v * (bl.y - tl.y) };
+  const [tl, tr, br, bl] = box;
+  // Bilinear: the same point as tl + u (tr - tl) + v (bl - tl) on a parallelogram; on a projected quad on it.
+  const x = tl.x + u * (tr.x - tl.x) + v * (bl.x - tl.x) + u * v * (br.x - tr.x - bl.x + tl.x);
+  const y = tl.y + u * (tr.y - tl.y) + v * (bl.y - tl.y) + u * v * (br.y - tr.y - bl.y + tl.y);
+  return { x, y };
+}
+
+/** Tilt degrees per CSS px of pointer travel (spec §21.15). */
+export const TILT_DEGREES_PER_PX = 0.5;
+
+export type TiltAxis = "x" | "y";
+
+/**
+ * The tilt handles of a one-layer box on screen (device px): `y` (rotationY) `offset` past the middle of
+ * the right side, `x` (rotationX) past the middle of the bottom side, away from the box center.
+ */
+export function tiltPoints(box: GizmoBox, screen: Mat3, offset: number): Record<TiltAxis, Point> {
+  const c = toScreen(screen, boxPoint(box, 0.5, 0.5));
+  const out = (p: Point): Point => {
+    const s = toScreen(screen, p);
+    const length = Math.hypot(s.x - c.x, s.y - c.y);
+    return length > 1e-9 ? { x: s.x + ((s.x - c.x) / length) * offset, y: s.y + ((s.y - c.y) / length) * offset } : { x: s.x + offset, y: s.y };
+  };
+  return { y: out(handlePoint(box, "e")), x: out(handlePoint(box, "s")) };
 }
 
 export function handlePoint(box: GizmoBox, handle: HandleId): Point {
@@ -80,7 +107,7 @@ export interface GizmoMetrics {
   minEdge: number;
 }
 
-export type GizmoHit = { kind: "handle"; handle: HandleId } | { kind: "rotate"; corner: HandleId } | { kind: "body" };
+export type GizmoHit = { kind: "handle"; handle: HandleId } | { kind: "rotate"; corner: HandleId } | { kind: "tilt"; axis: TiltAxis } | { kind: "body" };
 
 function insideScreenQuad(points: readonly Point[], x: number, y: number): boolean {
   let sign = 0;
@@ -109,7 +136,7 @@ export function edgeHandlesShown(box: GizmoBox, screen: Mat3, minEdge: number): 
  * is no rotate zone. A text box (`text`, Batch 29) has no top and bottom handles. A caption (`caption`,
  * Batch 53) has the corner handles only (its font size) and no rotate zone.
  */
-export function hitGizmo(box: GizmoBox, screen: Mat3, x: number, y: number, metrics: GizmoMetrics, crop = false, text = false, caption = false): GizmoHit | null {
+export function hitGizmo(box: GizmoBox, screen: Mat3, x: number, y: number, metrics: GizmoMetrics, crop = false, text = false, caption = false, tilt = false): GizmoHit | null {
   const half = metrics.handleHit / 2;
   const near = (p: Point) => Math.abs(p.x - x) <= half && Math.abs(p.y - y) <= half;
   for (const handle of CORNERS) if (near(toScreen(screen, handlePoint(box, handle)))) return { kind: "handle", handle };
@@ -118,6 +145,12 @@ export function hitGizmo(box: GizmoBox, screen: Mat3, x: number, y: number, metr
     if (text && (handle === "n" || handle === "s")) continue;
     if (!((handle === "n" || handle === "s") ? shown.horizontal : shown.vertical)) continue;
     if (near(toScreen(screen, handlePoint(box, handle)))) return { kind: "handle", handle };
+  }
+  // The tilt handles (one layer, spec §21.15) sit outside the box, past the side handles.
+  if (tilt && !crop && !caption) {
+    const points = tiltPoints(box, screen, metrics.rotateZone);
+    if (near(points.y)) return { kind: "tilt", axis: "y" };
+    if (near(points.x)) return { kind: "tilt", axis: "x" };
   }
   const corners = box.map((p) => toScreen(screen, p));
   if (insideScreenQuad(corners, x, y)) return { kind: "body" };
@@ -372,6 +405,19 @@ export function rotateGesture(start: GestureStart, turned: number, mods: Modifie
     transforms.set(layer.clipId, { ...layer.transform, x: anchor.x - frame.width / 2, y: anchor.y - frame.height / 2, rotation: round1(layer.transform.rotation + delta) });
   }
   return { transforms, box: mapBox(start.box, turn), snapX: false, snapY: false, readout: `Δ ${delta.toFixed(1)}°` };
+}
+
+/**
+ * Tilt (spec §21.15, one layer): rotationY by the horizontal travel (`dx`, CSS px; left turns the right
+ * side away), rotationX by the vertical travel (`dy`; down turns the top side away). Shift snaps to 45°.
+ */
+export function tiltGesture(start: GestureStart, axis: TiltAxis, dx: number, dy: number, mods: Modifiers): GestureResult {
+  const layer = start.layers[0] as HeldLayer;
+  const t = layer.transform;
+  const turned = axis === "x" ? dy * TILT_DEGREES_PER_PX : -dx * TILT_DEGREES_PER_PX;
+  const value = snapRotation((axis === "x" ? (t.rotationX ?? 0) : (t.rotationY ?? 0)) + turned, mods.shift);
+  const transform: Transform = axis === "x" ? { ...t, rotationX: value } : { ...t, rotationY: value };
+  return { transforms: new Map([[layer.clipId, transform]]), box: start.box, snapX: false, snapY: false, readout: `${axis.toUpperCase()} ${value.toFixed(1)}°` };
 }
 
 /** Anchor move (§7.3, one layer, Alt): the anchor under the pointer, the position moved so the layer stays in place. */

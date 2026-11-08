@@ -141,6 +141,9 @@ export function sameTransform(a: Transform, b: Transform): boolean {
     a.scale === b.scale &&
     scaleYOf(a) === scaleYOf(b) &&
     a.rotation === b.rotation &&
+    (a.rotationX ?? 0) === (b.rotationX ?? 0) &&
+    (a.rotationY ?? 0) === (b.rotationY ?? 0) &&
+    (a.z ?? 0) === (b.z ?? 0) &&
     a.anchor.x === b.anchor.x &&
     a.anchor.y === b.anchor.y &&
     a.flipH === b.flipH &&
@@ -148,7 +151,7 @@ export function sameTransform(a: Transform, b: Transform): boolean {
   );
 }
 
-const finite = (t: Transform) => [t.x, t.y, t.scale, scaleYOf(t), t.rotation, t.anchor.x, t.anchor.y].every(Number.isFinite);
+const finite = (t: Transform) => [t.x, t.y, t.scale, scaleYOf(t), t.rotation, t.rotationX ?? 0, t.rotationY ?? 0, t.z ?? 0, t.anchor.x, t.anchor.y].every(Number.isFinite);
 
 /** Where a transform edit writes: the playhead (Batch 35) when the clip's Transform section is keyed. */
 export interface TransformEditOptions {

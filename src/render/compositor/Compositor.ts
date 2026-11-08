@@ -59,11 +59,19 @@
 //   layer slot, so two instances never share a pooled composite) over a view of the document whose
 //   tracks, size and background are the sequence's. The preview and the export render that composite into
 //   a pooled texture and draw it under the clip's transform, opacity and fades.
+// - 2.5D layers (spec §21.15, Batch 70; render/projection.ts): a clip whose transform has an X or Y
+//   rotation or a depth gives each of its layers the homography of its 3D placement (`persp`, the
+//   project's or the sequence's perspective), applied after the layer's flat matrix. A clip whose box
+//   reaches the viewer's plane is not drawn, nor a `backfaceHidden` one whose back shows. A sequence with
+//   `depthSort` draws its layers farthest first (painter's order of their z, stable: equal depths keep
+//   track order). The 2D parent of a clip does not pass its own 3D placement on (the Batch 69 rig is 2D).
 // Layer structs and arrays are reused between frames; evaluating allocates nothing once warm.
 import { sequenceView } from "../../core/document/sequences.js";
 import { isRgba } from "../../core/document/color.js";
 import { animatedOpacity, animatedTransform, maxKeyedScale } from "../../core/document/keyframes.js";
 import { RigResolver } from "../../core/document/rig.js";
+import { painterOrder, type DepthSortItem } from "../../core/space/camera3d.js";
+import { facesAway, isDepthTransform, newHomography, projectedCorners, viewingDistance, writeProjection, type Homography } from "../projection.js";
 import { framesToSourceUs, secondsToFrames } from "../../core/document/time.js";
 import { handleTimeUs, transitionMix } from "../../core/document/transitions.js";
 import type { CaptionClip, CaptionStyle, CaptionWord, Clip, ClipId, CompoundClip, Crop, Frame, MediaClip, MediaId, Project, RGBA, ShadowStyle, ShapeClip, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
@@ -71,7 +79,7 @@ import { pathFramesAt, type PathFrameScratch } from "./shapeFrames.js";
 import { activeWordIndex, captionPlace, defaultCaptionStyle, effectiveCaptionStyle } from "../../text/captions.js";
 import { activeAnim, animUnit, isPlayable, newUnitState, presence, resetUnitState, typedCount, unitProgress, writeUnitShape, type ActiveAnim, type UnitState } from "../../text/anim.js";
 import { clipInIndex, lastClipStartingBy, trackIndex, type TrackIndex } from "../../timeline/model/queries.js";
-import { multiplyInto, mutableIdentity, setMat, type MutableMat3 } from "../mat3.js";
+import { multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import { DEFAULT_TEXT_STYLE, textContent } from "../../text/style.js";
 import type { AtlasUnitKind } from "../text/atlas.js";
 import { layoutStops, layoutUnits } from "../text/animUnits.js";
@@ -283,6 +291,15 @@ export class Compositor {
   /** A keyed clip's transform at the frame (read before the next layer). */
   /** Parent chains of the frame (spec §21.14): world transforms of parented clips. */
   private readonly rig = new RigResolver();
+  /** 2.5D (spec §21.15): the homographies of the frame (one per projected clip) and each layer's depth (z). */
+  private readonly perspPool: Homography[] = [];
+  private perspCount = 0;
+  private readonly corners: number[] = [0, 0, 0, 0, 0, 0, 0, 0];
+  private readonly depths: number[] = [];
+  private readonly sortItems: DepthSortItem[] = [];
+  private readonly sorted: CompositeLayer[] = [];
+  /** Draws the layers farthest first (a sequence with `depthSort`, set by the compound layer that owns this compositor). */
+  depthSort = false;
   private readonly world: Transform = { x: 0, y: 0, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false };
   private readonly animated: Transform = { x: 0, y: 0, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false };
   /** The crop, solid look, text motion and drawn transform of keyed clips at the frame (read before the next layer). */
@@ -325,6 +342,8 @@ export class Compositor {
     out.height = height;
     out.background = background;
     out.layers.length = 0;
+    this.perspCount = 0;
+    this.depths.length = 0;
     this.rig.begin(doc, frame, transforms);
     let media = 0;
     let solidLayers = 0;
@@ -337,7 +356,9 @@ export class Compositor {
       if (track.kind === "caption") {
         const layer = (this.textPool[textLayers] ??= newTextLayer());
         if (!track.hidden && this.writeCaption(layer, doc, track, frame, captions, transforms)) {
+          layer.persp = null;
           out.layers.push(layer);
+          this.depths.push(0);
           textLayers += 1;
         }
         continue;
@@ -361,12 +382,14 @@ export class Compositor {
             layer.trackId = track.id;
             layer.mix = mix;
             out.layers.push(layer);
+            this.depths.push(right.transform.z ?? 0);
             transitions += 1;
           } else if (from || to) {
-            // A side with no picture (its media has no size yet): the other one alone.
+            // A side with no picture (its media has no size yet, or it is not drawn in 2.5D): the other one alone.
             const single = (this.mediaPool[media] ??= newMediaLayer());
             copyMediaLayer(single, from ? layer.from : layer.to);
             out.layers.push(single);
+            this.depths.push((from ? left : right).transform.z ?? 0);
             media += 1;
           }
         } else {
@@ -376,9 +399,12 @@ export class Compositor {
           const layer = (this.mediaPool[media] ??= newMediaLayer());
           if (this.writeMediaAt(layer, doc, shown, frame, track.id, transforms, opacities, crops)) {
             out.layers.push(layer);
+            this.depths.push(shown.transform.z ?? 0);
             media += 1;
             const dip = (this.solidPool[solidLayers] ??= newSolidLayer());
             for (let i = 0; i < 6; i++) dip.transform[i] = layer.transform[i] as number;
+            dip.persp = layer.persp ?? null;
+            this.depths.push(shown.transform.z ?? 0);
             copyColor(dip.color, transition.kind === "dipToWhite" ? WHITE : BLACK);
             dip.to = null;
             dip.shape = null;
@@ -393,6 +419,7 @@ export class Compositor {
       const rel = frame - clip.start;
       const transform = this.rig.resolve(clip, transforms?.get(clip.id) ?? animatedTransform(clip, rel, this.animated), this.world);
       const opacity = opacities?.get(clip.id) ?? animatedOpacity(clip, rel);
+      const first = out.layers.length;
       if (clip.kind === "video" || clip.kind === "image") {
         const reason = this.offline?.label(clip.mediaId) ?? null;
         if (reason !== null && this.offline) {
@@ -407,6 +434,7 @@ export class Compositor {
             out.layers.push(label);
             textLayers += 1;
           }
+          this.place3d(doc, clip, transform, first);
           continue;
         }
         const layer = (this.mediaPool[media] ??= newMediaLayer());
@@ -478,8 +506,57 @@ export class Compositor {
           }
         }
       }
+      this.place3d(doc, clip, transform, first);
     }
+    if (this.depthSort) this.sortByDepth();
     return out;
+  }
+
+  /**
+   * The 2.5D projection of `clip` (spec §21.15) for its layers pushed from `first` on: null when flat;
+   * the layers are taken back out when its box reaches the viewer's plane or shows its back while
+   * `backfaceHidden`. Records each layer's depth.
+   */
+  private place3d(doc: Project, clip: Clip, transform: Transform, first: number): void {
+    const layers = this.out.layers;
+    if (layers.length === first) return;
+    const lead = layers[first] as CompositeLayer;
+    const persp = lead.kind === "dissolve" ? null : this.projection(doc, clip, transform, ...boxOf(lead));
+    if (persp === false) {
+      layers.length = first;
+      return;
+    }
+    for (let i = first; i < layers.length; i++) {
+      (layers[i] as { persp?: Homography | null }).persp = persp;
+      this.depths[i] = transform.z ?? 0;
+    }
+  }
+
+  /** The homography of `transform` for a box laid out by `model` (`width` x `height`): null when flat, false when the clip is not drawn. */
+  private projection(doc: Project, clip: Clip, transform: Transform, model: Mat3, width: number, height: number): Homography | null | false {
+    if (!isDepthTransform(transform)) return null;
+    const persp = writeProjection((this.perspPool[this.perspCount] ??= newHomography()), transform, doc.settings.width, doc.settings.height, viewingDistance(doc.settings.perspective));
+    if (!projectedCorners(this.corners, persp, model, width, height)) return false;
+    if (clip.backfaceHidden && facesAway(persp, model, width, height)) return false;
+    this.perspCount += 1;
+    return persp;
+  }
+
+  /** Painter's order of the layers' depths (farthest first, equal depths in track order). */
+  private sortByDepth(): void {
+    const layers = this.out.layers;
+    const items = this.sortItems;
+    items.length = layers.length;
+    for (let i = 0; i < layers.length; i++) {
+      const item = (items[i] ??= { is3D: true, depth: 0 });
+      // Camera-space depth: farther is more negative.
+      item.depth = -(this.depths[i] ?? 0);
+    }
+    const order = painterOrder(items);
+    const sorted = this.sorted;
+    sorted.length = 0;
+    for (const index of order) sorted.push(layers[index] as CompositeLayer);
+    for (let i = 0; i < sorted.length; i++) layers[i] = sorted[i] as CompositeLayer;
   }
 
   private newCompoundLayer(): WritableCompoundLayer {
@@ -491,6 +568,7 @@ export class Compositor {
     const sequence = doc.sequences?.[clip.sequenceId];
     if (!sequence) return false;
     const innerFrame = Math.min(sequence.duration - 1, Math.max(0, clip.offset + (frame - clip.start)));
+    layer.child.depthSort = sequence.depthSort === true;
     layer.inner = layer.child.evaluate(sequenceView(doc, sequence), innerFrame);
     const { w, h } = sequence.size;
     const m = multiplyInto(layer.model, writeModel(this.step, transform, w, h, doc.settings.width, doc.settings.height), setMat(this.step2, w, 0, 0, h, 0, 0));
@@ -678,6 +756,9 @@ export class Compositor {
     const transform = this.rig.resolve(clip, transforms?.get(clip.id) ?? animatedTransform(clip, rel, this.animated), this.world);
     const opacity = opacities?.get(clip.id) ?? animatedOpacity(clip, rel);
     if (!this.writeMedia(layer, doc, clip, frame, transform, opacity, crops?.get(clip.id) ?? animatedCrop(clip.keyframes, clip.crop, rel, this.cropScratch), true)) return false;
+    const persp = this.projection(doc, clip, transform, layer.transform, 1, 1);
+    if (persp === false) return false;
+    layer.persp = persp;
     layer.trackId = slot;
     return true;
   }
@@ -817,6 +898,8 @@ export class Compositor {
     if (!(own > 0)) return false;
     const scale = rasterScale !== null ? Math.max(own, rasterScale) : own;
     layer.trackId = clip.trackId;
+    layer.width = layout.width;
+    layer.height = layout.height;
     layer.clipId = pass === 1 ? clip.id + FILL_SLOT : clip.id;
     layer.text = shown.text;
     layer.style = style;
@@ -1045,6 +1128,21 @@ export class Compositor {
     style.shadow = part === "shadow" && clip.shadow ? this.mirroredShadow(layer.shadowValue, clip.shadow, transform) : null;
     style.part = part;
     layer.style = style;
+  }
+}
+
+/** The box a layer lays out (its matrix and the box size it maps): the unit quad, or its content px. */
+function boxOf(layer: Exclude<CompositeLayer, TransitionCompositeLayer>): [Mat3, number, number] {
+  switch (layer.kind) {
+    case "media":
+    case "solid":
+      return [layer.transform, 1, 1];
+    case "compound":
+      return [layer.model, 1, 1];
+    case "text":
+      return [layer.model, layer.width ?? 1, layer.height ?? 1];
+    case "shape":
+      return [layer.model, layer.width, layer.height];
   }
 }
 
@@ -1337,6 +1435,7 @@ function copyMediaLayer(out: WritableMediaLayer, from: MediaLayer): void {
   out.still = from.still;
   out.timeUs = from.timeUs;
   for (let i = 0; i < 6; i++) out.transform[i] = from.transform[i] as number;
+  out.persp = from.persp ?? null;
   out.opacity = from.opacity;
   out.crop.u0 = from.crop.u0;
   out.crop.v0 = from.crop.v0;

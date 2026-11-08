@@ -69,11 +69,13 @@ export function runInScope(draft: Draft<Project>, scope: SequenceId | null, fn: 
     fn(draft);
     return;
   }
-  const outer = { tracks: draft.tracks, width: draft.settings.width, height: draft.settings.height, background: draft.settings.background };
+  const outer = { tracks: draft.tracks, width: draft.settings.width, height: draft.settings.height, background: draft.settings.background, perspective: draft.settings.perspective };
   draft.tracks = sequence.tracks;
   draft.settings.width = sequence.size.w;
   draft.settings.height = sequence.size.h;
   draft.settings.background = sequence.background ?? { r: 0, g: 0, b: 0, a: 0 };
+  // The perspective inside is the sequence's (spec §21.15): an edit of it is the sequence's.
+  setPerspective(draft.settings, sequence.perspective);
   const inner = { w: draft.settings.width, h: draft.settings.height, bg: { ...draft.settings.background }, fps: { ...draft.settings.fps } };
   try {
     fn(draft);
@@ -90,6 +92,7 @@ export function runInScope(draft: Draft<Project>, scope: SequenceId | null, fn: 
     // A sequence has no caption track (spec 21.10): refuse the edit instead of saving a document the validator rejects.
     if (draft.tracks.some((track) => track.kind === "caption")) throw new Error("Captions are not available inside a compound: close it first");
     sequence.tracks = draft.tracks;
+    setPerspective(sequence, draft.settings.perspective);
     let end = sequence.duration;
     for (const track of sequence.tracks) {
       for (const id of track.clipIds) {
@@ -103,7 +106,13 @@ export function runInScope(draft: Draft<Project>, scope: SequenceId | null, fn: 
     draft.settings.width = outer.width;
     draft.settings.height = outer.height;
     draft.settings.background = outer.background;
+    setPerspective(draft.settings, outer.perspective);
   }
+}
+
+function setPerspective(target: { perspective?: number | null }, perspective: number | null | undefined): void {
+  if (perspective === undefined) delete target.perspective;
+  else target.perspective = perspective;
 }
 
 function intersects(a: ReadonlySet<Affect>, b: ReadonlySet<Affect>): boolean {

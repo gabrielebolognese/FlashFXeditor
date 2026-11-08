@@ -104,3 +104,56 @@ describe("canvas layers (spec §7.2)", () => {
     expect(quadsBounds([])).toBeNull();
   });
 });
+
+describe("2.5D layers on the canvas (spec §21.15, Batch 70)", () => {
+  /** One 400 x 400 solid at the frame center (340..740, 760..1160), turned with `fields`. */
+  function card(fields: Partial<Transform>, clip: Partial<Clip> = {}): Project {
+    const p = project([{}]);
+    Object.assign(p.clips.s1 as Clip, { transform: t({ scale: 4, ...fields }), ...clip });
+    return p;
+  }
+
+  it("hits a card turned 60° on Y on its projected shape, not on its flat box", () => {
+    const [layer] = canvasLayersAt(card({ rotationY: 60 }), 0);
+    expect(layer?.persp).toBeDefined();
+    expect(layer?.flat?.[1]).toEqual({ x: 740, y: 760 });
+    // The right side turned away (x 540 + 100 * 1600 / (1600 + 173.2)), the left one closer.
+    expect(layer?.quad[1].x).toBeCloseTo(540 + (100 * 1600) / (1600 + 200 * Math.sin(Math.PI / 3)), 6);
+    expect(layer?.quad[0].x).toBeCloseTo(540 - (100 * 1600) / (1600 - 200 * Math.sin(Math.PI / 3)), 6);
+    const layers = canvasLayersAt(card({ rotationY: 60 }), 0);
+    // Inside the flat box but past the projected right side: a miss.
+    expect(layersUnder(layers, 700, 960)).toEqual([]);
+    // Left of the flat center, inside the projected shape (its closer left side is at x 428).
+    expect(layersUnder(layers, 440, 960).map((hit) => hit.clipId)).toEqual(["s1"]);
+    expect(layersUnder(layers, 560, 960).map((hit) => hit.clipId)).toEqual(["s1"]);
+    // A marquee takes it on its projected quad too.
+    expect(layersInRect(layers, { x0: 680, y0: 900, x1: 730, y1: 1000 })).toEqual([]);
+  });
+
+  it("follows a gesture's live tilt, and leaves a flat layer's quad as it was", () => {
+    const flat = canvasLayersAt(card({}), 0)[0];
+    expect(flat?.persp).toBeUndefined();
+    expect(flat?.quad[1]).toEqual({ x: 740, y: 760 });
+    const live = canvasLayersAt(card({}), 0, new Map([["s1", t({ scale: 4, rotationX: 45 })]]))[0];
+    // Top side away: narrower than the bottom.
+    const top = (live?.quad[1].x ?? 0) - (live?.quad[0].x ?? 0);
+    const bottom = (live?.quad[2].x ?? 0) - (live?.quad[3].x ?? 0);
+    expect(top).toBeLessThan(400);
+    expect(bottom).toBeGreaterThan(400);
+  });
+
+  it("leaves out what the compositor does not draw: a hidden back side, a layer through the viewer's plane", () => {
+    expect(canvasLayersAt(card({ rotationY: 120 }), 0)).toHaveLength(1);
+    expect(canvasLayersAt(card({ rotationY: 120 }, { backfaceHidden: true }), 0)).toEqual([]);
+    expect(canvasLayersAt(card({ rotationY: 30 }, { backfaceHidden: true }), 0)).toHaveLength(1);
+    expect(canvasLayersAt(card({ z: -1700 }), 0)).toEqual([]);
+  });
+
+  it("projects with the document's perspective: none keeps the turned card's parallel shape", () => {
+    const p = card({ rotationY: 60 });
+    p.settings.perspective = null;
+    const [layer] = canvasLayersAt(p, 0);
+    expect(layer?.quad[1].x).toBeCloseTo(640, 6);
+    expect(layer?.quad[0].x).toBeCloseTo(440, 6);
+  });
+});

@@ -7,6 +7,7 @@
 import type { ClipId, Fill, FillRule, GradientFill, MediaId, PathStroke, PathTrim, RGBA, ShadowStyle, StrokeStyle, TextContent, TextStyle, TrackId } from "../../core/document/types.js";
 import type { Bounds, PathSource } from "../../core/shapes/geometry.js";
 import type { UnitState } from "../../text/anim.js";
+import type { Homography } from "../projection.js";
 import type { Mat3 } from "../mat3.js";
 import type { TextureHandle } from "../gpu/renderer.js";
 import type { AtlasUnitKind } from "../text/atlas.js";
@@ -28,6 +29,8 @@ interface LayerBase {
   transform: Mat3;
   /** 0..1, multiplied into the (premultiplied) output. */
   opacity: number;
+  /** The 2.5D projection applied after `transform` (spec §21.15, `render/projection.ts`); absent or null: flat. */
+  persp?: Homography | null;
 }
 
 /** A picture cut to a rounded rectangle (spec §21.7): its size in the layer's own px and the radii tl, tr, br, bl. */
@@ -243,6 +246,11 @@ export interface TextCompositeLayer {
   clipId: ClipId;
   /** Maps the layer's content px (its layout box, flips included) into project pixels. */
   model: Mat3;
+  /** The 2.5D projection applied after `model` (spec §21.15); absent or null: flat. */
+  persp?: Homography | null;
+  /** Its layout box, content px (what `model` lays out). */
+  width?: number;
+  height?: number;
   opacity: number;
   text: TextContent;
   style: TextStyle;
@@ -286,6 +294,8 @@ export interface CompoundCompositeLayer {
   sequenceId: string;
   /** Maps the unit quad (0..1, 0..1) into project pixels: the sequence frame under the clip's transform. */
   model: Mat3;
+  /** The 2.5D projection applied after `model` (spec §21.15); absent or null: flat. */
+  persp?: Homography | null;
   opacity: number;
   /** The sequence frame's size in its own px. */
   width: number;
@@ -317,6 +327,8 @@ export interface ShapeCompositeLayer {
   clipId: ClipId;
   /** Maps view-box px into project pixels. */
   model: Mat3;
+  /** The 2.5D projection applied after `model` (spec §21.15); absent or null: flat. */
+  persp?: Homography | null;
   opacity: number;
   /** The view box, px. */
   width: number;

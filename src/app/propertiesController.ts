@@ -5,7 +5,8 @@
 // is one command. The number fields' bindings (panels/properties/bindings.ts) write through `liveEdit`
 // and the document store. Duplicate (the quick row, Mod+D) is the clipboard controller's (Batch 39).
 import { updateClip } from "../core/commands/basicCommands.js";
-import { setBackground } from "../core/commands/projectCommands.js";
+import { setBackground, setPerspective } from "../core/commands/projectCommands.js";
+import { backfaceHiddenAll, depthSortOf, resetDepth, setBackfaceHidden, setDepthSort } from "../timeline/edit/depth.js";
 import { formatHexColor } from "../core/document/color.js";
 import type { ClipId, RGBA } from "../core/document/types.js";
 import { pushRecentColor } from "../project/appSettings.js";
@@ -63,6 +64,33 @@ export function toggleMotionPath(): void {
 export function smoothPath(): void {
   const command = smoothMotionPath(documentStore.getState(), selectedClips().ids);
   if (command) documentStore.dispatch(command);
+}
+
+/** Hide back side on or off for the selected layers (on unless all already hide it; spec §21.15). */
+export function toggleBackface(): void {
+  const project = documentStore.getState();
+  const ids = selectedClips().ids;
+  const command = setBackfaceHidden(project, ids, !backfaceHiddenAll(project, ids));
+  if (command) documentStore.dispatch(command);
+}
+
+/** Reset 3D (spec §21.15): the selected layers' X and Y rotations and depth back to 0. */
+export function resetDepthRotation(): void {
+  const command = resetDepth(documentStore.getState(), selectedClips().ids, sessionStore.state.getState().playhead);
+  if (command) documentStore.dispatch(command);
+}
+
+/** Depth sort on or off for the selected compounds' inner layers (spec §21.15). */
+export function toggleDepthSort(): void {
+  const project = documentStore.getState();
+  const ids = selectedClips().ids;
+  const command = setDepthSort(project, ids, depthSortOf(project, ids) !== true);
+  if (command) documentStore.dispatch(command);
+}
+
+/** The viewing distance of the 2.5D layers (spec §21.15; null: none), the open compound's inside one. */
+export function changePerspective(perspective: number | null): void {
+  documentStore.dispatch(setPerspective(perspective));
 }
 
 /** Auto-orient on or off for the selected clips (on unless all already have it). */
@@ -171,6 +199,9 @@ export function installPropertiesController(): () => void {
     actions.register("clip.motionPath", toggleMotionPath),
     actions.register("clip.smoothPath", smoothPath),
     actions.register("clip.autoOrient", toggleAutoOrient),
+    actions.register("clip.backface", toggleBackface),
+    actions.register("transform.reset3d", resetDepthRotation),
+    actions.register("compound.depthSort", toggleDepthSort),
     actions.register("clip.toggleEnabled", toggleEnabled),
     actions.register("crop.toFrame", () => quickCrop("frame")),
     actions.register("crop.reset", () => quickCrop("reset")),

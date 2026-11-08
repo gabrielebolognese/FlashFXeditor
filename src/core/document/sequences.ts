@@ -139,7 +139,14 @@ const views = new WeakMap<Sequence, { doc: Project; view: Project }>();
 export function sequenceView(doc: Project, sequence: Sequence): Project {
   const known = views.get(sequence);
   if (known?.doc === doc) return known.view;
-  const view: Project = { ...doc, tracks: sequence.tracks, settings: { ...doc.settings, width: sequence.size.w, height: sequence.size.h, background: sequence.background ?? TRANSPARENT } };
+  // The sequence's own perspective (spec §21.15): the project's does not reach inside it.
+  const settings = { ...doc.settings };
+  delete settings.perspective;
+  const view: Project = {
+    ...doc,
+    tracks: sequence.tracks,
+    settings: { ...settings, width: sequence.size.w, height: sequence.size.h, background: sequence.background ?? TRANSPARENT, ...(sequence.perspective !== undefined && { perspective: sequence.perspective }) },
+  };
   views.set(sequence, { doc, view });
   return view;
 }

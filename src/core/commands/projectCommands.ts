@@ -91,6 +91,26 @@ export function frameRateReport(project: Project, fps: Rational): ConversionRepo
   return report;
 }
 
+/** Perspective limits in px (spec §21.15: the viewing distance). */
+export const MIN_PERSPECTIVE = 100;
+export const MAX_PERSPECTIVE = 100_000;
+
+/**
+ * The viewing distance of the 2.5D layers (spec §21.15), in px; null for none (parallel). Inside an
+ * open compound it is the sequence's (runInScope).
+ */
+export function setPerspective(perspective: number | null): Command {
+  const value = perspective === null ? null : Math.min(MAX_PERSPECTIVE, Math.max(MIN_PERSPECTIVE, Math.round(perspective)));
+  return {
+    id: "project.setPerspective",
+    label: value === null ? "Turn perspective off" : "Change perspective",
+    affects: ["settings", "composite"],
+    run(draft) {
+      draft.settings.perspective = value;
+    },
+  };
+}
+
 export function setBackground(color: RGBA): Command {
   return {
     id: "project.setBackground",

@@ -1,4 +1,4 @@
-import { Droplet, FlipHorizontal2, FlipVertical2, Link2, Navigation, RotateCw, Spline, Unlink2 } from "lucide-react";
+import { Droplet, EyeOff, FlipHorizontal2, FlipVertical2, Layers, Link2, Navigation, Rotate3d, RotateCw, Spline, Unlink2 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { liveEdit } from "../../app/liveEdit.js";
 import { changeParent, smoothPath, toggleAutoOrient, toggleMotionPath } from "../../app/propertiesController.js";
@@ -6,13 +6,14 @@ import { documentStore, sessionStore } from "../../app/services.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import type { Clip, ClipId, Project } from "../../core/document/types.js";
 import { onMotionPath, parentCandidates } from "../../timeline/edit/rig.js";
+import { depthSortOf } from "../../timeline/edit/depth.js";
 import { isLayerClip, isTransformClip, scaleYOf } from "../../timeline/edit/transform.js";
 import { Select } from "../../ui/Select.js";
 import { IconButton } from "../../ui/IconButton.js";
 import { NumberField } from "../../ui/NumberField.js";
 import { layerBinding, type BindingDeps } from "./bindings.js";
 import { EaseRow, KeyRows } from "./KeyframeControls.js";
-import { ANCHOR_X, ANCHOR_Y, MAX_SCALE_PERCENT, MIN_SCALE_PERCENT, OPACITY, POSITION_X, POSITION_Y, ROTATION, scaleProp } from "./layerProps.js";
+import { ANCHOR_X, ANCHOR_Y, DEPTH, MAX_SCALE_PERCENT, MIN_SCALE_PERCENT, OPACITY, POSITION_X, POSITION_Y, ROTATION, ROTATION_X, ROTATION_Y, scaleProp } from "./layerProps.js";
 import { Row } from "./Section.js";
 import styles from "./Section.module.css";
 import { SKIP, useClipsShared } from "./useShared.js";
@@ -25,6 +26,8 @@ import { SKIP, useClipsShared } from "./useShared.js";
 // whose values differ shows `--`, typing sets them all and a scrub or a step moves each from its own.
 // With the section's stopwatch on (Batch 35) the fields show and key the values at the playhead, and
 // an Ease row comes first (the keyframe controls are in the header, KeyframeControls.tsx).
+// The 2.5D rows (spec §21.15, Batch 70): Rotation X / Y, Depth (z), Hide back side, and for compound
+// clips Depth sort (their inner layers drawn by z instead of track order).
 
 // Keyed clips show and take their values at the playhead (spec §11 stopwatch, Batch 35).
 const DEPS: BindingDeps = {
@@ -76,6 +79,31 @@ function RigRows({ ids }: { ids: readonly ClipId[] }) {
   );
 }
 
+const getBackface = (clip: Clip) => (isTransformClip(clip) ? clip.backfaceHidden === true : SKIP);
+
+/** Hide back side, and Depth sort for compounds (spec §21.15). */
+function DepthRows({ ids }: { ids: readonly ClipId[] }) {
+  const backface = useClipsShared(ids, getBackface);
+  const depthSort = useStoreSelector(documentStore, useCallback((project: Project) => depthSortOf(project, ids), [ids]));
+  return (
+    <>
+      <Row label="Back side">
+        <div className={styles.buttons}>
+          <IconButton icon={EyeOff} label="Hide back side" commandId="clip.backface" pressed={backface === true} />
+          <IconButton icon={Rotate3d} label="Reset 3D rotation" commandId="transform.reset3d" />
+        </div>
+      </Row>
+      {depthSort !== null && (
+        <Row label="Depth sort">
+          <div className={styles.buttons}>
+            <IconButton icon={Layers} label="Sort inner layers by depth" commandId="compound.depthSort" pressed={depthSort} />
+          </div>
+        </Row>
+      )}
+    </>
+  );
+}
+
 const getFlipH = (clip: Clip) => (isLayerClip(clip) ? clip.transform.flipH : SKIP);
 const getFlipV = (clip: Clip) => (isLayerClip(clip) ? clip.transform.flipV : SKIP);
 
@@ -95,6 +123,9 @@ export function TransformSection({ ids }: { ids: readonly ClipId[] }) {
       x: layerBinding(DEPS, POSITION_X, ids),
       y: layerBinding(DEPS, POSITION_Y, ids),
       rotation: layerBinding(DEPS, ROTATION, ids),
+      rotationX: layerBinding(DEPS, ROTATION_X, ids),
+      rotationY: layerBinding(DEPS, ROTATION_Y, ids),
+      z: layerBinding(DEPS, DEPTH, ids),
       anchorX: layerBinding(DEPS, ANCHOR_X, ids),
       anchorY: layerBinding(DEPS, ANCHOR_Y, ids),
     }),
@@ -122,6 +153,15 @@ export function TransformSection({ ids }: { ids: readonly ClipId[] }) {
       <Row label="Rotation">
         <NumberField label={<RotateCw aria-hidden="true" />} unit="°" binding={bindings.rotation} precision={1} ariaLabel="Rotation" />
       </Row>
+      <Row label="3D rotation">
+        <div className={styles.pair}>
+          <NumberField label="X" unit="°" binding={bindings.rotationX} precision={1} ariaLabel="Rotation X" />
+          <NumberField label="Y" unit="°" binding={bindings.rotationY} precision={1} ariaLabel="Rotation Y" />
+        </div>
+      </Row>
+      <Row label="Depth">
+        <NumberField label="Z" unit="px" binding={bindings.z} precision={1} ariaLabel="Depth" />
+      </Row>
       <Row label="Anchor">
         <div className={styles.pair}>
           <NumberField label="X" unit="%" binding={bindings.anchorX} precision={1} ariaLabel="Anchor X" />
@@ -129,6 +169,7 @@ export function TransformSection({ ids }: { ids: readonly ClipId[] }) {
         </div>
       </Row>
       <KeyRows ids={ids} section="anchor" />
+      <DepthRows ids={ids} />
       <RigRows ids={ids} />
       <Row label="Flip">
         <div className={styles.buttons}>

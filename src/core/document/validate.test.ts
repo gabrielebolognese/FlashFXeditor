@@ -308,3 +308,30 @@ describe("text spans (Batch 67)", () => {
     expect(withSpans(spans).length).toBeGreaterThan(0);
   });
 });
+
+describe("2.5D fields (spec §21.15, Batch 70)", () => {
+  it("accepts finite X / Y rotations and depth, a positive or null perspective, boolean switches", () => {
+    const p = valid();
+    Object.assign(p.clips.c1 as object, { backfaceHidden: true, transform: { ...(p.clips.c1 as { transform: object }).transform, rotationX: -720, rotationY: 33.3, z: -50 } });
+    p.settings.perspective = null;
+    expect(validateProject(p)).toEqual([]);
+    p.settings.perspective = 1600;
+    expect(validateProject(p)).toEqual([]);
+  });
+
+  it("rejects a non-finite rotation or depth, a zero or negative perspective and non-boolean switches", () => {
+    const p = valid();
+    Object.assign(p.clips.c1 as object, { backfaceHidden: "yes", transform: { ...(p.clips.c1 as { transform: object }).transform, rotationY: Number.NaN, z: Number.POSITIVE_INFINITY } });
+    p.settings.perspective = 0;
+    const issues = validateProject(p).join("\n");
+    expect(issues).toMatch(/backfaceHidden/);
+    expect(issues).toMatch(/rotationY/);
+    expect(issues).toMatch(/\bz\b/);
+    expect(issues).toMatch(/settings: perspective 0/);
+    const q = valid();
+    q.sequences.s = { id: "s", name: "s", size: { w: 100, h: 100 }, duration: 10, background: null, tracks: [], perspective: -1, depthSort: 1 as never };
+    const sequenceIssues = validateProject(q).join("\n");
+    expect(sequenceIssues).toMatch(/perspective -1/);
+    expect(sequenceIssues).toMatch(/depthSort/);
+  });
+});

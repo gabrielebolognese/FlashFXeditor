@@ -110,6 +110,29 @@ describe("parenting, nulls and motion paths (Batch 69)", { timeout: 60_000 }, ()
   }
 });
 
+describe("2.5D layers (Batch 70)", { timeout: 60_000 }, () => {
+  const ops = [...opsOf("depth", "rig", "split", "keyframes", "props", "clipboard", "move")];
+  for (const seed of [701, 702, 703]) {
+    it(`X / Y rotations, depth, backface, depth sort and perspective mixed with edits keep every invariant (seed ${seed})`, () => {
+      const result = property({
+        seed,
+        steps: 400,
+        ops,
+        check: (_before, after) => {
+          const issues: string[] = [];
+          for (const clip of Object.values(after.clips)) {
+            if ("keyframes" in clip && clip.keyframes) issues.push(...keyframeIssues(clip.keyframes).map((issue) => `${clip.id}: ${issue}`));
+            if ("transform" in clip) for (const field of ["rotationX", "rotationY", "z"] as const) if (clip.transform[field] !== undefined && !Number.isFinite(clip.transform[field])) issues.push(`${clip.id}: ${field} not finite`);
+          }
+          return issues;
+        },
+      });
+      // The run turned layers in 2.5D at all.
+      expect(Object.values(result.final.clips).some((clip) => "transform" in clip && (clip.transform.rotationX ?? 0) !== 0)).toBe(true);
+    });
+  }
+});
+
 describe("transitions and fades (Batch 36 follow-up)", { timeout: 30_000 }, () => {
   const ops = [
     ...opsOf("transitions", "fades"),

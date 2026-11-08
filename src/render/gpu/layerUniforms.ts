@@ -76,8 +76,13 @@ export function resetStyleUniform(style: StyleUniform): void {
   style.perimeter = 1;
 }
 
+/** The bottom row (g, h, i) of a layer's projective matrix (spec §21.15): (0, 0, 1) for a flat layer. */
+export type WRow = [g: number, h: number, i: number];
+
 export interface LayerUniform {
   transform: Mat3;
+  /** With `transform`, the 3x3 projective map of the unit quad (a 2.5D layer, render/projection.ts): w = g x + h y + i. */
+  wRow: WRow;
   uv: UvRect;
   /** Straight alpha (solids; a gradient's top); ignored by textured layers. */
   color: RGBA;
@@ -104,16 +109,18 @@ export interface LayerUniform {
   sides: { from: number; to: number };
 }
 
-/** Writes `m` as three vec4 columns (WGSL mat3x3 padding) at `offset` (in floats). Allocates nothing. */
-export function packMat3(out: Float32Array, offset: number, m: Mat3): void {
-  write4(out, offset, m[0], m[1], 0, 0);
-  write4(out, offset + 4, m[2], m[3], 0, 0);
-  write4(out, offset + 8, m[4], m[5], 1, 0);
+/** Writes `m` as three vec4 columns (WGSL mat3x3 padding) at `offset` (in floats), with the bottom row `w` (flat: 0, 0, 1). Allocates nothing. */
+export function packMat3(out: Float32Array, offset: number, m: Mat3, w: Readonly<WRow> = FLAT_ROW): void {
+  write4(out, offset, m[0], m[1], w[0], 0);
+  write4(out, offset + 4, m[2], m[3], w[1], 0);
+  write4(out, offset + 8, m[4], m[5], w[2], 0);
 }
+
+const FLAT_ROW: Readonly<WRow> = [0, 0, 1];
 
 export function packLayer(out: Float32Array, index: number, layer: LayerUniform): void {
   const o = index * STRIDE_FLOATS;
-  packMat3(out, o, layer.transform);
+  packMat3(out, o, layer.transform, layer.wRow);
   write4(out, o + 12, layer.uv.u0, layer.uv.v0, layer.uv.u1, layer.uv.v1);
   write4(out, o + 16, layer.color.r, layer.color.g, layer.color.b, layer.color.a);
   write4(out, o + 20, clamp01(layer.opacity), layer.flipX ? 1 : 0, layer.flipY ? 1 : 0, clamp01(layer.mix));

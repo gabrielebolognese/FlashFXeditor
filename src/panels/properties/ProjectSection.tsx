@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
-import { History, LayoutTemplate } from "lucide-react";
+import { History, LayoutTemplate, Rotate3d } from "lucide-react";
 import { changeFrameRate, changeResolution } from "../../app/conversionController.js";
-import { changeBackground, previewBackground } from "../../app/propertiesController.js";
+import { changeBackground, changePerspective, previewBackground } from "../../app/propertiesController.js";
+import { IconButton } from "../../ui/IconButton.js";
+import { DEFAULT_PERSPECTIVE } from "../../render/projection.js";
 import { appSettings, documentStore } from "../../app/services.js";
-import { MAX_DIMENSION, MAX_PROJECT_NAME, MIN_DIMENSION, renameProject } from "../../core/commands/projectCommands.js";
+import { MAX_DIMENSION, MAX_PERSPECTIVE, MAX_PROJECT_NAME, MIN_DIMENSION, MIN_PERSPECTIVE, renameProject } from "../../core/commands/projectCommands.js";
 import type { Project, RGBA } from "../../core/document/types.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import type { AppSettings } from "../../project/appSettings.js";
@@ -26,6 +28,8 @@ import notice from "./StandInNotice.module.css";
 // undoable command; the rest are app settings shared with Settings > General (settings/SettingFields).
 // A new frame size asks Adapt layout or Keep; a new frame rate converts every frame value, asking first
 // when the conversion rounds timings (app/conversionController.ts).
+// Perspective (spec §21.15, Batch 70): the viewing distance of the 2.5D layers in px (1600 when unset),
+// or none (a parallel view); inside an open compound it is the compound's own.
 
 const selectName = (p: Project) => p.name;
 const selectWidth = (p: Project) => p.settings.width;
@@ -38,6 +42,13 @@ const selectBakedCount = (p: Project) => standIns(p).length;
 const selectNotes = (notes: readonly GeneratorNote[]) => notes;
 const selectBackground = (p: Project): RGBA => p.settings.background;
 const selectRecent = (s: AppSettings) => s.recentColors;
+const selectPerspectiveOff = (p: Project) => p.settings.perspective === null;
+
+/** The Perspective field: the viewing distance (the default when unset; the last one shown while off). */
+const PERSPECTIVE = valueBinding(
+  { read: () => documentStore.getState().settings.perspective ?? DEFAULT_PERSPECTIVE, subscribe: (listener) => documentStore.subscribe(() => listener(), { affects: ["settings"] }) },
+  (value) => changePerspective(value),
+);
 
 const RESOLUTION_OPTIONS = [...RESOLUTION_PRESETS.map((p) => ({ value: p.id, label: p.label })), { value: CUSTOM_RESOLUTION, label: "Custom" }];
 
@@ -65,6 +76,7 @@ export function ProjectSection() {
   const height = useStoreSelector(documentStore, selectHeight);
   const fps = useStoreSelector(documentStore, selectFps);
   const background = useStoreSelector(documentStore, selectBackground);
+  const perspectiveOff = useStoreSelector(documentStore, selectPerspectiveOff);
   const generator = useStoreSelector(documentStore, selectGenerator);
   const generatorDetail = useStoreSelector(documentStore, selectGeneratorDetail);
   const baked = useStoreSelector(documentStore, selectBakedCount);
@@ -129,6 +141,12 @@ export function ProjectSection() {
       <span className={styles.hint}>Clips, keyframes, captions and markers convert to the new rate.</span>
       <Row label="Background">
         <ColorField value={background} onChange={changeBackground} onPreview={previewBackground} recent={recent} ariaLabel="Background color" />
+      </Row>
+      <Row label="Perspective">
+        <div className={styles.locked}>
+          <NumberField label={<Rotate3d aria-hidden="true" />} unit="px" binding={PERSPECTIVE} min={MIN_PERSPECTIVE} max={MAX_PERSPECTIVE} step={10} disabled={perspectiveOff} ariaLabel="Perspective" />
+          <IconButton control icon={Rotate3d} label={perspectiveOff ? "Turn perspective on" : "Turn perspective off"} pressed={!perspectiveOff} onClick={() => changePerspective(perspectiveOff ? DEFAULT_PERSPECTIVE : null)} />
+        </div>
       </Row>
       <DurationRow label="Still image" setting="stillDurationMs" ariaLabel="Default still image duration" />
       <DurationRow label="Title" setting="titleDurationMs" ariaLabel="Default title duration" />

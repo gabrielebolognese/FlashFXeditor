@@ -30,6 +30,10 @@ export class DrawListSnapshot {
     for (const layer of list.layers) {
       this.push(KIND_CODE[layer.kind]);
       for (let i = 0; i < 6; i++) this.push(layer.transform[i] as number);
+      // A 2.5D layer's projection (spec §21.15): 0 when flat.
+      const persp = layer.persp;
+      this.push(persp ? 1 : 0);
+      if (persp) for (let i = 0; i < 9; i++) this.push(persp[i] as number);
       this.push(layer.opacity);
       switch (layer.kind) {
         case "texture":

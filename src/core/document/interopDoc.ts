@@ -18,7 +18,7 @@ function typeLabel(type: FieldType): string {
       const low = type.min !== undefined ? `${type.exclusiveMin ? ">" : ">="} ${type.min}` : "";
       const high = type.max !== undefined ? `<= ${type.max}` : "";
       const bounds = [low, high].filter(Boolean).join(", ");
-      return bounds ? `${base} (${bounds})` : base;
+      return `${bounds ? `${base} (${bounds})` : base}${type.nullable ? " or null" : ""}`;
     }
     case "enum":
       return type.values.map((value) => `\`${JSON.stringify(value)}\``).join(" \| ");

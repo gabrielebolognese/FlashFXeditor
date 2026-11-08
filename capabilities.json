@@ -2,8 +2,8 @@
   "manifestVersion": 1,
   "app": "shorts-editor",
   "appVersion": "1.1.0",
-  "lastBatch": 69,
-  "schemaVersion": 13,
+  "lastBatch": 70,
+  "schemaVersion": 14,
   "project": {
     "file": "project.json",
     "fontsManifest": "fonts/fonts.json",
@@ -62,7 +62,7 @@
     "null"
   ],
   "transform": {
-    "rotation3d": false,
+    "rotation3d": true,
     "parenting": true,
     "motionPaths": true,
     "autoOrient": true
@@ -98,7 +98,10 @@
       "style.letterSpacing",
       "style.fill",
       "text.counter.value",
-      "transform.position"
+      "transform.position",
+      "transform.rotationX",
+      "transform.rotationY",
+      "transform.z"
     ],
     "eases": [
       "linear",

@@ -27,6 +27,8 @@ export type Key = KeyData;
 
 /** The properties of the Transform, Opacity and Volume sections (Batches 35 to 37). */
 const SECTION_KEYFRAME_PROPS = ["transform.x", "transform.y", "transform.scale", "transform.scaleY", "transform.rotation", "opacity", "volume.gainDb"] as const;
+/** The 2.5D properties of Batch 70 (spec §21.15): keyed by the Transform section's stopwatch. */
+export const DEPTH_KEYFRAME_PROPS = ["transform.rotationX", "transform.rotationY", "transform.z"] as const;
 /** The properties added in Batch 60 (spec §21.9): their stopwatches and lanes follow in Batch 61. */
 export const EXTRA_KEYFRAME_PROPS = [
   "transform.anchor.x", "transform.anchor.y",
@@ -40,7 +42,7 @@ export const EXTRA_KEYFRAME_PROPS = [
 export const TEXT_KEYFRAME_PROPS = ["text.counter.value"] as const;
 /** The motion path of Batch 69 (spec §21.14): `transform.position` is a vector [x, y] whose keys may carry spatial tangents. */
 export const MOTION_KEYFRAME_PROPS = ["transform.position"] as const;
-export const KEYFRAME_PROPS = [...SECTION_KEYFRAME_PROPS, ...EXTRA_KEYFRAME_PROPS, ...TEXT_KEYFRAME_PROPS, ...MOTION_KEYFRAME_PROPS] as const;
+export const KEYFRAME_PROPS = [...SECTION_KEYFRAME_PROPS, ...EXTRA_KEYFRAME_PROPS, ...TEXT_KEYFRAME_PROPS, ...MOTION_KEYFRAME_PROPS, ...DEPTH_KEYFRAME_PROPS] as const;
 export type KeyframeProp = (typeof KEYFRAME_PROPS)[number];
 /** The properties of the Transform, Opacity and Volume sections (the ones the panel's stopwatches key). */
 export type SectionKeyframeProp = (typeof SECTION_KEYFRAME_PROPS)[number];
@@ -124,7 +126,7 @@ export const KEYFRAME_SECTIONS = ["transform", "opacity", "volume", "anchor", "s
 export type KeyframeSection = (typeof KEYFRAME_SECTIONS)[number];
 
 export const SECTION_PROPS: Readonly<Record<KeyframeSection, readonly KeyframeProp[]>> = {
-  transform: ["transform.x", "transform.y", "transform.scale", "transform.scaleY", "transform.rotation", "transform.position"],
+  transform: ["transform.x", "transform.y", "transform.scale", "transform.scaleY", "transform.rotation", "transform.position", ...DEPTH_KEYFRAME_PROPS],
   opacity: ["opacity"],
   volume: ["volume.gainDb"],
   /** The stopwatch groups of Batch 61 (spec §21.9, §11): each sits in the panel's Transform, Crop, Solid, Frame or Text section. */
@@ -421,6 +423,9 @@ export function animatedTransform(clip: Keyed, rel: number, out?: Transform): Tr
   else delete target.scaleY;
   target.rotation = propValue(keyframes, "transform.rotation", rel, base.rotation);
   if (clip.autoOrient && heading !== null) target.rotation += heading;
+  depthProp(target, base, keyframes, "rotationX", rel);
+  depthProp(target, base, keyframes, "rotationY", rel);
+  depthProp(target, base, keyframes, "z", rel);
   const anchorX = keyframes?.["transform.anchor.x"];
   const anchorY = keyframes?.["transform.anchor.y"];
   if ((anchorX && anchorX.length > 0) || (anchorY && anchorY.length > 0)) {
@@ -437,6 +442,14 @@ export function animatedTransform(clip: Keyed, rel: number, out?: Transform): Tr
   target.flipH = base.flipH;
   target.flipV = base.flipV;
   return target;
+}
+
+/** A 2.5D field of `target` at `rel`: keyed, the keys; else the base value (absent stays absent). */
+function depthProp(target: Transform, base: Transform, keyframes: Keyframes | undefined, field: "rotationX" | "rotationY" | "z", rel: number): void {
+  const keys = keyframes?.[`transform.${field}`];
+  if (keys && keys.length > 0) target[field] = sampleKeys(keys, rel);
+  else if (base[field] !== undefined) target[field] = base[field];
+  else delete target[field];
 }
 
 /** The opacity of `clip` at `rel` (its own when it has no opacity keys). */
@@ -493,6 +506,10 @@ export function transformValues(transform: Transform): Partial<Record<KeyframePr
     "transform.scale": transform.scale,
     "transform.scaleY": transform.scaleY ?? transform.scale,
     "transform.rotation": transform.rotation,
+    // The 2.5D fields only once a layer has them (a flat layer's keys stay what they were).
+    ...(transform.rotationX !== undefined && { "transform.rotationX": transform.rotationX }),
+    ...(transform.rotationY !== undefined && { "transform.rotationY": transform.rotationY }),
+    ...(transform.z !== undefined && { "transform.z": transform.z }),
   };
 }
 

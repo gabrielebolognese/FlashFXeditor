@@ -80,7 +80,7 @@ describe("migration hook", () => {
   it("leaves a current file alone", () => {
     const raw = v1();
     expect(migrateProject(raw)).toEqual(raw);
-    expect(SCHEMA_VERSION).toBe(13);
+    expect(SCHEMA_VERSION).toBe(14);
   });
 
   it("opens a schema 1 project (Batch 41): no bins yet, media without sizes", () => {
@@ -115,10 +115,28 @@ describe("migration hook", () => {
     const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
     raw.schemaVersion = 3;
     const parsed = parseProjectFile(JSON.stringify(raw));
-    expect(parsed.schemaVersion).toBe(13);
+    expect(parsed.schemaVersion).toBe(14);
     expect(parsed.meta).not.toHaveProperty("generator");
     expect(parsed.clips).toEqual(project.clips);
     expect(parsed.media).toEqual(project.media);
+  });
+
+  it("opens a schema 13 project (before Batch 70) unchanged: flat layers, no perspective; keeps the 2.5D fields through save and open", () => {
+    const project = richProject();
+    const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
+    raw.schemaVersion = 13;
+    const parsed = parseProjectFile(JSON.stringify(raw));
+    expect(parsed.schemaVersion).toBe(14);
+    expect(parsed.settings).not.toHaveProperty("perspective");
+    expect(parsed.clips).toEqual(project.clips);
+    const clip = Object.values(project.clips).find((c) => "transform" in c) as Project["clips"][string] & { transform: Record<string, unknown> };
+    const turned = { ...project, settings: { ...project.settings, perspective: null }, clips: { ...project.clips, [clip.id]: { ...clip, backfaceHidden: true, transform: { ...clip.transform, rotationX: 12.5, rotationY: -60, z: 300 } } } } as Project;
+    const back = parseProjectFile(serializeProject(turned, STAMP));
+    expect(back.settings.perspective).toBeNull();
+    expect(back.clips[clip.id]).toMatchObject({ backfaceHidden: true, transform: { rotationX: 12.5, rotationY: -60, z: 300 } });
+    const bad = JSON.parse(serializeProject(turned, STAMP)) as { settings: Record<string, unknown> };
+    bad.settings.perspective = -5;
+    expect(() => parseProjectFile(JSON.stringify(bad))).toThrow(/perspective/);
   });
 
   it("keeps meta.generator and a clip's fallbackOf through save and open, and refuses malformed ones", () => {

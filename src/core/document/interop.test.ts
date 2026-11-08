@@ -157,7 +157,7 @@ describe("validateStrict", () => {
     delete old.clips["c-standin"].fallbackOf;
     const result = validateStrict(old);
     expect(result.errors).toEqual([]);
-    expect(result.project?.schemaVersion).toBe(13);
+    expect(result.project?.schemaVersion).toBe(14);
     expect(result.project?.clips["c-video"]).toEqual(old.clips["c-video"]);
   });
 
@@ -273,7 +273,7 @@ describe("fixtures/interop/keyframes (Batch 60)", () => {
     old.tracks = old.tracks.filter((track: { id: string }) => ["v1", "v6"].includes(track.id));
     const result = validateStrict(old);
     expect(result.errors).toEqual([]);
-    expect(result.project?.schemaVersion).toBe(13);
+    expect(result.project?.schemaVersion).toBe(14);
     expect((result.project?.clips.label as { keyframes?: unknown } | undefined)?.keyframes).toEqual(old.clips.label.keyframes);
   });
 
