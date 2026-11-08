@@ -28,8 +28,9 @@ import type { Command } from "../../core/commands/command.js";
 import { clipRel } from "../../core/document/keyframes.js";
 import { lookAtFrame, showKeyed } from "../../core/document/keyProps.js";
 import { emptyTrack, nextTrackName } from "../../core/document/project.js";
-import type { ClipId, Frame, Project, TextAnim, TextBox, TextClip, TextContent, TextStyle, Track, Transform } from "../../core/document/types.js";
-import { textLayout } from "../../render/text/layoutCache.js";
+import type { ClipId, Frame, Project, TextAnim, TextBox, TextClip, TextContent, TextSpan, TextStyle, Track, Transform } from "../../core/document/types.js";
+import { textLayout, withSpans } from "../../render/text/layoutCache.js";
+import { editSpans } from "../../text/spans.js";
 import { DEFAULT_TEXT_BOX, DEFAULT_TEXT_STYLE, textClipName, textContent, titleDefaults, type TitleKind } from "../../text/style.js";
 import { clipAtFrame, clipsInRange, isClipLocked } from "../model/queries.js";
 import { defaultFrames, editDefaults } from "./editDefaults.js";
@@ -38,10 +39,13 @@ import { applyTransformWrite, editedTransform, IDENTITY_TRANSFORM, layerContent,
 export interface TextEdit {
   text: TextContent;
   style: TextStyle;
+  /** The styled runs (Batch 67); absent: none. An edit that leaves it out keeps the clip's, moved with the text when the words change. */
+  spans?: TextSpan[] | undefined;
 }
 
-/** A text clip's edit for `setTexts`: new content and/or style, and the transform to take (else the anchored one). */
-export interface TextEditInput extends Partial<TextEdit> {
+/** A text clip's edit for `setTexts`: new content and/or style, and the transform to take (else the anchored one). `spans: null` clears them. */
+export interface TextEditInput extends Partial<Omit<TextEdit, "spans">> {
+  spans?: TextSpan[] | null | undefined;
   transform?: Transform;
 }
 
@@ -66,10 +70,13 @@ export function keepAnchored(transform: Transform, before: Size, after: Size, st
 export function textEdit(project: Project, clip: TextClip, edit: TextEditInput, transform: Transform = clip.transform): TextEdit & { transform: Transform } {
   const text = edit.text ?? clip.text;
   const style = edit.style ?? clip.style;
-  if (edit.transform) return { text, style, transform: edit.transform };
-  const before = textLayout(clip.text, clip.style);
-  const after = textLayout(text, style);
-  return { text, style, transform: keepAnchored(transform, before, after, style, project.settings) };
+  // The spans: the edit's own, else the clip's kept on their words through the change of text.
+  const spans = edit.spans === null ? undefined : edit.spans ?? (text.value === clip.text.value ? clip.spans : editSpans(clip.spans, clip.text.value, text.value));
+  const out = spans && spans.length > 0 ? { text, style, spans } : { text, style };
+  if (edit.transform) return { ...out, transform: edit.transform };
+  const before = textLayout(withSpans(clip.text, clip.spans), clip.style);
+  const after = textLayout(withSpans(text, spans), style);
+  return { ...out, transform: keepAnchored(transform, before, after, style, project.settings) };
 }
 
 /** Whether a text change shows on the timeline (the body's first line, the missing font badge). */
@@ -95,9 +102,9 @@ export function setTexts(project: Project, edits: ReadonlyMap<ClipId, TextEditIn
     const lookClip = lookAtFrame(clip, options.at);
     const next = textEdit(project, lookClip, edit, shown);
     const write = edit.transform ? transformWrite(clip, edit.transform, options.at) : shiftedWrite(clip, next.transform.x - shown.x, next.transform.y - shown.y);
-    if (sameJson(lookClip.text, next.text) && sameJson(lookClip.style, next.style) && !write) continue;
+    if (sameJson(lookClip.text, next.text) && sameJson(lookClip.style, next.style) && sameJson(lookClip.spans, next.spans) && !write) continue;
     if (showsOnTimeline(clip, next) || (write && "keyframes" in write)) timeline = true;
-    writes.push([id, { text: next.text, style: next.style }, write]);
+    writes.push([id, { text: next.text, style: next.style, spans: next.spans }, write]);
   }
   if (writes.length === 0) return null;
   return {
@@ -114,6 +121,8 @@ export function setTexts(project: Project, edits: ReadonlyMap<ClipId, TextEditIn
         if (clip.name === textClipName(clip.text, clip.style)) clip.name = textClipName(next.text, next.style);
         clip.text = structuredClone(next.text);
         clip.style = structuredClone(next.style);
+        if (next.spans && next.spans.length > 0) clip.spans = structuredClone(next.spans);
+        else delete clip.spans;
         if (write) applyTransformWrite(clip, write);
       }
     },

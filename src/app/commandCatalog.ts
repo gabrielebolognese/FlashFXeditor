@@ -5,6 +5,11 @@
 import {
   Activity,
   ArrowUpDown,
+  Bold,
+  Italic,
+  RemoveFormatting,
+  Strikethrough,
+  Underline,
   AudioLines,
   AudioWaveform,
   Blend,
@@ -451,6 +456,12 @@ export const COMMANDS: readonly CommandInfo[] = [
   text("text.edit", "Edit text", { icon: Type, keywords: "inline typing" }),
   text("text.commit", "Finish editing text", { palette: false }),
   text("text.cancel", "Leave text editing", { palette: false }),
+  // Styled spans (spec §21.13, Batch 67): they act on the selection while a text is edited inline and decline otherwise.
+  text("text.bold", "Bold", { icon: Bold, keywords: "weight strong span format selection" }),
+  text("text.italic", "Italic", { icon: Italic, keywords: "slant emphasis span format selection" }),
+  text("text.underline", "Underline", { icon: Underline, keywords: "line span format selection" }),
+  text("text.strike", "Strikethrough", { icon: Strikethrough, keywords: "cross out line through span format selection" }),
+  text("text.clearFormat", "Clear formatting", { icon: RemoveFormatting, keywords: "plain remove span color highlight selection" }),
   // The font browser (spec §20.1, Batch 51)
   text("text.fontBrowser", "Open font browser", { icon: TypeOutline, keywords: "fonts typeface family weight library luxury bold handwritten picker" }),
   text("fonts.add", "Add fonts…", { icon: FilePlus2, keywords: "my fonts import ttf otf woff woff2 upload own font file" }),

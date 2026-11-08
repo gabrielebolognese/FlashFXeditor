@@ -224,7 +224,7 @@ export const canvasInput: CanvasEditInput = new CanvasEditInput({
 /** Where a press or focus keeps inline text editing on: the canvas, the properties panel and the popovers and menus over the app. */
 function keepsTextEditing(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
-  return target === previewOverlay.element || target.closest('[data-scope="properties"], [role="dialog"], [role="menu"], [role="listbox"]') !== null;
+  return target === previewOverlay.element || target.closest('[data-scope="properties"], [data-text-format-bar], [role="dialog"], [role="menu"], [role="listbox"]') !== null;
 }
 
 /** Inline text editing on the canvas (spec §7.7, §10.2). */

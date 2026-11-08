@@ -5,6 +5,7 @@
 import { extendedEnd, extendedStart } from "../core/document/transitions.js";
 import type { Frame, MediaId, Project, TextStyle, Track } from "../core/document/types.js";
 import { defaultCaptionStyle, effectiveCaptionStyle } from "../text/captions.js";
+import { spanFaceStyles } from "../text/spans.js";
 
 export interface ExportNeeds {
   /** Media of video and image clips on video tracks in the range, in track order. */
@@ -26,7 +27,10 @@ export function exportNeeds(project: Project, range: { start: Frame; end: Frame 
         const clip = project.clips[id];
         if (!clip || extendedEnd(clip) <= window.start || extendedStart(clip) >= window.end) continue;
         if ((clip.kind === "video" || clip.kind === "image") && track.kind === "video") media.add(clip.mediaId);
-        else if (clip.kind === "text") texts.push({ style: clip.style, text: clip.text.value });
+        else if (clip.kind === "text") {
+          texts.push({ style: clip.style, text: clip.text.value });
+          for (const style of spanFaceStyles(clip.style, clip.spans)) texts.push({ style, text: clip.text.value });
+        }
         else if (clip.kind === "caption" && captionStyle) texts.push({ style: effectiveCaptionStyle(captionStyle, clip.styleOverride).text, text: clip.text });
         else if (clip.kind === "compound" && track.kind === "video") {
           // The sequence frames the compound shows in the window (every instance and window once).

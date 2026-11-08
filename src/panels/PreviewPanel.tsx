@@ -36,6 +36,7 @@ import { MenuButton } from "../ui/MenuButton.js";
 import { Select } from "../ui/Select.js";
 import { CanvasContextMenu } from "./CanvasContextMenu.js";
 import { CropChip } from "./CropChip.js";
+import { TextFormatBar } from "./TextFormatBar.js";
 import { PresetBar } from "./PresetBar.js";
 import styles from "./PreviewPanel.module.css";
 import wellStyles from "./Well.module.css";
@@ -435,6 +436,7 @@ export function PreviewPanel() {
         <CanvasHost panel="preview">
           <div ref={canvasRef} className={styles.canvas} />
           <CropChip />
+          <TextFormatBar />
           {stats && <StatsOverlay />}
         </CanvasHost>
       </div>

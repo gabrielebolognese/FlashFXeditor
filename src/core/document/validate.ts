@@ -7,7 +7,7 @@ import { usPerFrame } from "./time.js";
 import { sequenceDurationUs, sequenceRecordIssues } from "./sequence.js";
 import { pathDataIssue } from "../shapes/pathData.js";
 import { PRIMITIVE_LIMITS, PRIMITIVE_PARAMS } from "../shapes/primitives.js";
-import { CAPTION_HIGHLIGHTS, CUE_ANIM_KINDS, FILL_RULES, isFreeze, isMediaClip, LABEL_COLORS, LINE_CAPS, LINE_JOINS, PRIMITIVE_KINDS, SOLID_SHAPE_IDS, type PrimitiveKind, type ShapeClip, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type CompoundClip, type Sequence, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
+import { CAPTION_HIGHLIGHTS, CUE_ANIM_KINDS, FILL_RULES, isFreeze, isMediaClip, LABEL_COLORS, LINE_CAPS, LINE_JOINS, PRIMITIVE_KINDS, SOLID_SHAPE_IDS, type PrimitiveKind, type ShapeClip, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type CompoundClip, type Sequence, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextSpan, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
 
 export class DocumentInvariantError extends Error {
   readonly issues: readonly string[];
@@ -189,6 +189,39 @@ function textIssues(clip: TextClip, label: string): string[] {
   if (text?.box?.mode !== "auto" && text?.box?.mode !== "fixed") issues.push(`${label}: text box mode must be auto or fixed`);
   if (!isPositive(text?.box?.width)) issues.push(`${label}: text box width ${String(text?.box?.width)} must be > 0`);
   issues.push(...styleIssues(clip.style, label));
+  if (typeof text?.value === "string") issues.push(...spanIssues(clip.spans, text.value.length).map((issue) => `${label}: ${issue}`));
+  return issues;
+}
+
+/** The problems of `spans` against a text of `length` units (empty when valid). */
+function spanIssues(spans: unknown, length: number): string[] {
+  if (spans === undefined) return [];
+  if (!Array.isArray(spans)) return ["spans must be a list"];
+  const issues: string[] = [];
+  let last = 0;
+  spans.forEach((span: unknown, i) => {
+    const s = span as Partial<TextSpan> | null;
+    if (typeof s !== "object" || s === null) {
+      issues.push(`span ${i} must be an object`);
+      return;
+    }
+    const { start, end, style } = s;
+    if (!Number.isInteger(start) || !Number.isInteger(end) || (start as number) < 0 || (end as number) <= (start as number)) issues.push(`span ${i} must have integer offsets 0 <= start < end (${String(start)}, ${String(end)})`);
+    else {
+      if ((end as number) > length) issues.push(`span ${i} ends at ${end}, past the text (${length})`);
+      if ((start as number) < last) issues.push(`span ${i} starts at ${start}, before the previous span ends (${last}): spans must be sorted and must not overlap`);
+      last = end as number;
+    }
+    if (typeof style !== "object" || style === null || Array.isArray(style)) issues.push(`span ${i} style must be an object`);
+    else {
+      const st = style as Record<string, unknown>;
+      if (st.fill !== undefined && fillIssue(st.fill) !== null) issues.push(`span ${i} fill is not a color or gradient`);
+      if (st.fontFamily !== undefined && (typeof st.fontFamily !== "string" || st.fontFamily === "")) issues.push(`span ${i} font family must be a name`);
+      if (st.fontWeight !== undefined && !(typeof st.fontWeight === "number" && st.fontWeight >= 1 && st.fontWeight <= 1000)) issues.push(`span ${i} font weight must be in 1..1000`);
+      for (const key of ["italic", "underline", "strike"] as const) if (st[key] !== undefined && typeof st[key] !== "boolean") issues.push(`span ${i} ${key} must be true or false`);
+      if (st.highlight !== undefined && !isColor(st.highlight)) issues.push(`span ${i} highlight must be RGBA`);
+    }
+  });
   return issues;
 }
 

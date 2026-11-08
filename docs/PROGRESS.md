@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 66
+last_completed_batch: 67
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -6873,3 +6873,30 @@ Why each dependency exists (Batch rule 8).
 - review: accepted
   - Earlier rejection 2, item 1 is fixed. `dropMediaOnCanvas` takes `{ offer }` (`src/app/dropController.ts:142,151`), and `importAsShapes` places its image fallback with `offer: false` (`src/app/shapeController.ts:58`). So Import as shapes on `filter.svg` shows only the warning naming the filter, and pressing "Make shapes" on a dropped unsupported SVG ends with one image clip and no new offer, so the loop is gone. `+ Image` also places with `offer: false`, and the reason is written down (its placement shares the undo step with the import, as OS file drops do). The new `src/app/shapeController.test.ts` (5 tests) covers what was asked: one offer for a dropped SVG; pressing it gives one shape clip, no image clip, and one undo back to before the drop; an unsupported SVG ends with one image clip and only the warning; Import as shapes covers both the fallback and the supported case. Minor, not a defect: the comment at the undo assertion in that test says "back to the image clip ... not to an empty timeline", but the assertion (correctly) expects an empty timeline.
   - Earlier rejection 1, items 1, 3 and 4 were confirmed fixed by the second review. `npm run check` green (290 files passed, 1 skipped; 2950 tests passed, 1 skipped (the fixture writer behind `WRITE_SVG_FIXTURE`); perf 4/4; build). No new color or size literals and no untagged TODOs in the fix. Nothing from "Do not build yet". Pending manual checks 1-4 still list their exact steps.
+
+### Batch 67: Text v2 I: styled spans
+- status: done
+- date: 2026-11-08
+- notes:
+  - Built in auto mode (lean run, resumed after a context compaction).
+  - Model: `TextClip.spans` (sorted, non-overlapping `[start, end)` UTF-16 offsets into `text.value`; style: fill, fontFamily, fontWeight, italic, underline, strike, highlight). Schema 10 -> 11 (identity migration), validation, field table, INTEROP.md section 5.6, manifest key `text.spans`.
+  - `text/spans.ts`: normalize, `editSpans` (spans stay on their words; typing at a span's end extends it), apply, toggle, clear, pieces, run style.
+  - Engine: layout, atlas, caret and raster are run-aware (each piece measured and drawn in its own font; underline, strike, highlight boxes from `decorationBoxes`, added to the raster rect). Content identity from `withSpans` keeps the layout cache (P11) per (content, spans); `contentKey` includes the spans. Spans are content, not look: presets leave them alone.
+  - Inline editing: spans maintained per input event, committed with the text in one command; format bar (Bold, Italic, Underline, Strike, Color, Highlight, Clear), `Mod+B`, `Mod+I`, `Mod+U` in the textEditing scope.
+  - Span faces are loaded for preview and export (a font-load race made frame widths differ before).
+  - `fixtures/interop/spans` (five titles, wordPop row) with expected frames 0, 6, 20. `npm run test:render` passes incl. spans (webgpu vs expected SSIM >= 0.98, webgl2 vs webgpu >= 0.97).
+  - Tests: spans (19), run-aware layout (11), fixture, validate, setTexts span maintenance, preset keeps spans. `npm run check` green (2993 passed).
+- deviations:
+  - Color and Highlight pickers are panel-only (parameterized), not registry commands; Bold, Italic, Underline, Strike and Clear are commands.
+  - Spans are ignored when `textCase` changes the text length.
+  - Kerning is not applied across run boundaries.
+  - A gradient span fill is laid over the block box, not the span's own box.
+  - The Batch 47 property tests were not extended to spans; the span functions have their own unit tests.
+  - P11 and the typing flow (`SAVE 3 HOURS`) are covered by unit tests of the layout cache and edit commands, not a Profiler/CDP run.
+- follow-ups:
+  - [from Batch 67 -> Batch 68] Counters and range-selector animators work per word/char unit through the atlas, which is already span-aware; spans survive there.
+- design gaps:
+  - The format bar has no DESIGN_SYSTEM.md definition; it reuses the crop chip material.
+- pending manual checks:
+  - Select text in the preview, double-click to edit `SAVE 3 HOURS`, select `3 HOURS`, pick coral: one span; type before it and the span stays on the words; Ctrl+Z undoes per edit.
+  - Profiler: editing a span-styled title shows one layer rasterized; playback rasterizes nothing.

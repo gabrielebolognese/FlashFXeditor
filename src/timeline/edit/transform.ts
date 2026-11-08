@@ -18,7 +18,7 @@ import { animatedTransform, clipRel, hasSectionKeys, mapKeyValues, transformValu
 import type { Clip, ClipId, CompoundClip, Crop, Frame, Keyframes, MediaClip, Project, ShapeClip, SolidClip, TextClip, Transform } from "../../core/document/types.js";
 import { IDENTITY_TRANSFORM } from "../../core/document/placement.js";
 import { displaySize } from "../../media/probe/rotation.js";
-import { textLayout } from "../../render/text/layoutCache.js";
+import { spannedContent, textLayout } from "../../render/text/layoutCache.js";
 import { isClipLocked } from "../model/queries.js";
 import { defaultTransform } from "./insertMedia.js";
 
@@ -79,7 +79,7 @@ export function layerContent(project: Project, clip: Clip, crop?: Crop): Content
     return { width: w, height: h, left: 0, top: 0, right: w, bottom: h };
   }
   if (clip.kind === "text") {
-    const { width, height } = textLayout(clip.text, clip.style);
+    const { width, height } = textLayout(spannedContent(clip), clip.style);
     return { width, height, left: 0, top: 0, right: width, bottom: height };
   }
   if (clip.kind === "compound") {

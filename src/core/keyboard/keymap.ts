@@ -153,6 +153,10 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   { id: "text.edit", keys: ["Enter"], scopes: TL_PV },
   { id: "text.commit", keys: ["Mod+Enter"], scopes: ["textEditing"] },
   { id: "text.cancel", keys: ["Escape"], scopes: ["textEditing"] },
+  // Styled spans (Batch 67): the textEditing scope is isolated, so Mod+I does not import media here.
+  { id: "text.bold", keys: ["Mod+B"], scopes: ["textEditing"] },
+  { id: "text.italic", keys: ["Mod+I"], scopes: ["textEditing"] },
+  { id: "text.underline", keys: ["Mod+U"], scopes: ["textEditing"] },
 
   // Media into the timeline (spec §6.14: `,` insert / `.` overwrite at the playhead, Premiere style;
   // over a hovered card they take that card, see panels/media/hoverScrub.ts)

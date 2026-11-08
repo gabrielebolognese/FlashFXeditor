@@ -174,6 +174,12 @@ export function installTextController(): () => void {
     // Esc and Mod+Enter both commit and exit (spec §7.7); declined (the key goes on) when not editing.
     actions.register("text.commit", () => textEditor.end(true)),
     actions.register("text.cancel", () => textEditor.end(true)),
+    // Format the selection while editing (Batch 67); declined (the key goes on) without a selection.
+    actions.register("text.bold", () => textEditor.formatToggle("bold")),
+    actions.register("text.italic", () => textEditor.formatToggle("italic")),
+    actions.register("text.underline", () => textEditor.formatToggle("underline")),
+    actions.register("text.strike", () => textEditor.formatToggle("strike")),
+    actions.register("text.clearFormat", () => textEditor.formatClear()),
   ];
   if (import.meta.env.DEV) {
     stops.push(actions.register("dev.addText", () => void addDevText()));

@@ -161,7 +161,8 @@ const styleKeys = new WeakMap<TextStyle, string>();
 export function contentKey(content: TextContent): string {
   let key = contentKeys.get(content);
   if (key === undefined) {
-    key = JSON.stringify([content.value, content.box.mode, content.box.width]);
+    // A content with spans (render/text/layoutCache.ts `withSpans`) names them too.
+    key = JSON.stringify([content.value, content.box.mode, content.box.width, (content as { spans?: unknown }).spans ?? null]);
     contentKeys.set(content, key);
   }
   return key;

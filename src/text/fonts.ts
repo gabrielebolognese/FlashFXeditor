@@ -6,6 +6,7 @@
 // 2; version 1 manifests held system faces only and read as such). Pure.
 import type { Project, TextStyle } from "../core/document/types.js";
 import { effectiveCaptionStyle } from "./captions.js";
+import { spanFaceStyles } from "./spans.js";
 
 /** The project folder's font files and their manifest (spec §10.1). */
 export const FONTS_DIR = "fonts";
@@ -206,7 +207,11 @@ export function fontExtension(header: Uint8Array): string {
 export function projectTextStyles(project: Pick<Project, "clips" | "captionTracks">): TextStyle[] {
   const styles: TextStyle[] = [];
   for (const clip of Object.values(project.clips)) {
-    if (clip.kind === "text") styles.push(clip.style);
+    if (clip.kind === "text") {
+      styles.push(clip.style);
+      // A span with its own family, weight or italic (Batch 67) draws with that face: it must be loaded too.
+      styles.push(...spanFaceStyles(clip.style, clip.spans));
+    }
     // A cue's own style (spec §20.3): its fonts are the project's too.
     else if (clip.kind === "caption" && clip.styleOverride?.text) {
       const track = project.captionTracks[clip.trackId]?.style;
@@ -220,6 +225,10 @@ export function projectTextStyles(project: Pick<Project, "clips" | "captionTrack
 /** The families used by the text clips of a document's clip list, sorted. */
 export function usedFamilies(clips: Iterable<{ kind: string; style?: Pick<TextStyle, "fontFamily"> }>): string[] {
   const families = new Set<string>();
-  for (const clip of clips) if (clip.kind === "text" && clip.style) families.add(clip.style.fontFamily);
+  for (const clip of clips) {
+    if (clip.kind !== "text" || !clip.style) continue;
+    families.add(clip.style.fontFamily);
+    for (const span of (clip as { spans?: readonly { style: { fontFamily?: string } }[] }).spans ?? []) if (span.style.fontFamily) families.add(span.style.fontFamily);
+  }
   return [...families].sort((a, b) => a.localeCompare(b));
 }

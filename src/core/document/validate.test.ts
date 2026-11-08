@@ -283,3 +283,28 @@ describe("media items", () => {
     ]);
   });
 });
+
+describe("text spans (Batch 67)", () => {
+  const withSpans = (spans: unknown): string[] => {
+    const project = base();
+    const clip = { ...makeTextClip({ id: "t", trackId: "v1", start: 0, duration: 30, value: "abcdef" }), spans } as never;
+    return validateProject(withClips(project, [clip]));
+  };
+  const bold = { fontWeight: 700 };
+
+  it("accepts sorted, non-overlapping spans inside the text", () => {
+    expect(withSpans([{ start: 0, end: 2, style: bold }, { start: 2, end: 6, style: { underline: true } }])).toEqual([]);
+  });
+
+  it.each([
+    ["past the text", [{ start: 4, end: 9, style: bold }]],
+    ["overlapping", [{ start: 0, end: 3, style: bold }, { start: 2, end: 4, style: bold }]],
+    ["unsorted", [{ start: 3, end: 4, style: bold }, { start: 0, end: 1, style: bold }]],
+    ["empty", [{ start: 2, end: 2, style: bold }]],
+    ["fractional", [{ start: 0.5, end: 2, style: bold }]],
+    ["a bad weight", [{ start: 0, end: 2, style: { fontWeight: 0 } }]],
+    ["a bad highlight", [{ start: 0, end: 2, style: { highlight: "red" } }]],
+  ])("rejects spans that are %s", (_name, spans) => {
+    expect(withSpans(spans).length).toBeGreaterThan(0);
+  });
+});

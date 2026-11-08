@@ -75,7 +75,8 @@ import { DEFAULT_TEXT_STYLE, textContent } from "../../text/style.js";
 import type { AtlasUnitKind } from "../text/atlas.js";
 import { layoutStops, layoutUnits } from "../text/animUnits.js";
 import type { TextLayout } from "../text/layout.js";
-import { textLayout } from "../text/layoutCache.js";
+import { textLayout, withSpans } from "../text/layoutCache.js";
+import { editSpans } from "../../text/spans.js";
 import { captionLook, captionPlan, HIGHLIGHT_SCALE, hasWordPaint, type CaptionLook } from "../text/captionLayout.js";
 import { cueAnimAt, newCueAnimState } from "../../text/cueAnim.js";
 import { TEXT_RASTER_MAX, type TextHighlight } from "../text/raster.js";
@@ -436,7 +437,7 @@ export class Compositor {
         const layer = (this.textPool[textLayers] ??= newTextLayer());
         // Live transforms (a gesture) raster at their own scale; keyed ones at the largest they reach.
         const rasterScale = transforms?.has(clip.id) ? null : maxKeyedScale(clip.keyframes, clip.transform);
-        const shown = texts?.get(clip.id) ?? clip;
+        const shown = this.spannedText(clip, texts?.get(clip.id));
         // Keyed font size, letter spacing and fill (Batch 60; not while the text is edited inline).
         const motion = ("editing" in shown && shown.editing) ? null : textMotion(clip.keyframes, shown.style, rel, this.motion);
         let drawn = transform;
@@ -540,7 +541,7 @@ export class Compositor {
         for (let v = 0; v < variants; v++) {
           const item = (this.upcomingPool[list.length] ??= { clipId: "", text: clip.text, style: clip.style, scale: 1, parts: [] });
           item.clipId = v === 0 ? clip.id : `${clip.id}${FILL_SLOT}${v}`;
-          item.text = clip.text;
+          item.text = withSpans(clip.text, clip.spans);
           item.style = keyed ? styleVariant(clip.style, size, colors[v] ?? null) : clip.style;
           item.scale = scale;
           item.parts.length = 0;
@@ -720,6 +721,34 @@ export class Compositor {
     layer.timeUs = layer.still || sequence ? imageTimeUs(clip, frame, fps, item.durationUs) : handles ? handleTimeUs(clip, frame, fps, item.durationUs) : sourceTimeUs(clip, frame, fps);
     layer.opacity = clamp01(opacity) * fadeFactor(clip, frame);
     return true;
+  }
+
+  private readonly spannedClips = new WeakMap<TextClip, LiveText>();
+  private readonly spannedLive = new WeakMap<LiveText, { spans: TextClip["spans"]; value: string; shown: LiveText }>();
+
+  /**
+   * What a text clip shows (Batch 67): its own content, or the live edit's, with the clip's spans in the content so the
+   * layout and the raster draw them. A live text that brings its own `spans` (inline editing) is used as it is; one
+   * that does not keeps the clip's while it says the same text. Memoized: no allocation per frame.
+   */
+  private spannedText(clip: TextClip, live: LiveText | undefined): LiveText {
+    if (!live) {
+      if (!clip.spans || clip.spans.length === 0) return clip;
+      let shown = this.spannedClips.get(clip);
+      if (!shown) {
+        shown = { text: withSpans(clip.text, clip.spans), style: clip.style };
+        this.spannedClips.set(clip, shown);
+      }
+      return shown;
+    }
+    if ("spans" in live.text || !clip.spans || clip.spans.length === 0) return live;
+    const memo = this.spannedLive.get(live);
+    if (memo && memo.spans === clip.spans && memo.value === live.text.value) return memo.shown;
+    // A live text with other words (a field being typed in) keeps the spans on their words, as the commit will.
+    const spans = live.text.value === clip.text.value ? clip.spans : editSpans(clip.spans, clip.text.value, live.text.value);
+    const shown = { ...live, text: withSpans(live.text, spans) };
+    this.spannedLive.set(live, { spans: clip.spans, value: live.text.value, shown });
+    return shown;
   }
 
   /** `rasterScale`: the scale the raster is made at (the largest keyed scale), null for the transform's own. */

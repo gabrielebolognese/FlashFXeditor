@@ -25,7 +25,7 @@ import type { LiveCaptions, LiveText } from "../compositor/Compositor.js";
 import { cueGeometry } from "./captionGizmo.js";
 import type { SolidLook } from "../../timeline/edit/solid.js";
 import type { Rect as TextRect } from "../text/layout.js";
-import { textLayout } from "../text/layoutCache.js";
+import { spannedContent, textLayout } from "../text/layoutCache.js";
 import { drawnReach } from "./drawnBounds.js";
 
 /** Text glyph bounds are hit this far around them, in project px (spec §7.2 "padded by 4 px"). */
@@ -103,7 +103,7 @@ function layersAt(
     // A keyed transform as it is at the frame (spec §7.3: the gizmo edits the keyframe there).
     const transform = transforms?.get(clip.id) ?? animatedTransform(clip, frame - clip.start);
     const layer: CanvasLayer = { clipId: clip.id, trackId: track.id, transform, box, quad: layerCorners(transform, box, project.settings) };
-    if (clip.kind === "text") layer.hits = textHits(clip.text, clip.style, transform, box, project.settings);
+    if (clip.kind === "text") layer.hits = textHits(spannedContent(clip), clip.style, transform, box, project.settings);
     const reach = drawnReach(clip);
     if (reach) {
       const { settings } = project;

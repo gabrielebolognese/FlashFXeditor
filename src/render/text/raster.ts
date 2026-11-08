@@ -14,11 +14,12 @@
 // - At most TEXT_RASTER_MAX px on the long side: the scale is lowered to fit (implementation notes).
 // Browser only (OffscreenCanvas); the geometry it draws is layout.ts's and atlas.ts's.
 import { formatHexColor } from "../../core/document/color.js";
-import type { TextStyle } from "../../core/document/types.js";
+import type { RGBA, TextSpanStyle, TextStyle } from "../../core/document/types.js";
+import { pieces, runStyle } from "../../text/spans.js";
 import { fontShorthand } from "../../text/fonts.js";
 import { isGradientFill, isTwoStop } from "../../core/document/fill.js";
 import { atlasUnits, packShelves, type AtlasUnit, type AtlasUnitKind } from "./atlas.js";
-import type { Rect, TextLayout, TextLine } from "./layout.js";
+import { decorationBoxes, type Rect, type TextLayout, type TextLine } from "./layout.js";
 import { currentMeasurer, textFallback } from "./layoutCache.js";
 
 /** Long-side cap of a text raster (implementation notes: "cap at 4096 px"). */
@@ -83,6 +84,14 @@ interface Run {
   /** Left of the advance box and baseline, in canvas px. */
   x: number;
   y: number;
+  /** A span's run: its own font (the clip style with the span's family, weight and italic), fill and decorations. */
+  style?: TextStyle;
+  fill?: TextStyle["fill"];
+  span?: TextSpanStyle;
+  /** The advance of the run, and the font's em box above and below the baseline, in canvas px. */
+  width?: number;
+  ascent?: number;
+  descent?: number;
 }
 
 /** Sets the text state of `ctx` for `style` at `scale`. */
@@ -136,20 +145,52 @@ function fillStyleOf(ctx: Ctx, fill: TextStyle["fill"], box: FillBox): string | 
 /** Draws `runs`: the stroke outside the glyphs, then the fill (`box`: the gradient's span in canvas px). */
 function drawRuns(ctx: Ctx, runs: readonly Run[], style: TextStyle, scale: number, box: FillBox): void {
   const stroke = style.stroke;
+  /** A span's run has its own font; the others keep the one set by the caller. */
+  const font = (run: Run) => {
+    if (run.style) applyFont(ctx, run.style, scale);
+  };
   if (stroke.enabled && stroke.width > 0 && stroke.color.a > 0) {
     ctx.lineJoin = "round";
     ctx.miterLimit = 2;
     ctx.lineWidth = 2 * stroke.width * scale;
     ctx.strokeStyle = formatHexColor(stroke.color);
-    for (const run of runs) ctx.strokeText(run.text, run.x, run.y);
+    for (const run of runs) {
+      font(run);
+      ctx.strokeText(run.text, run.x, run.y);
+    }
     // The inner half goes: the stroke lies outside the glyphs.
     ctx.globalCompositeOperation = "destination-out";
     ctx.fillStyle = formatHexColor({ r: 0, g: 0, b: 0, a: 1 });
-    for (const run of runs) ctx.fillText(run.text, run.x, run.y);
+    for (const run of runs) {
+      font(run);
+      ctx.fillText(run.text, run.x, run.y);
+    }
     ctx.globalCompositeOperation = "source-over";
   }
-  ctx.fillStyle = fillStyleOf(ctx, style.fill, box);
-  for (const run of runs) ctx.fillText(run.text, run.x, run.y);
+  const base = fillStyleOf(ctx, style.fill, box);
+  for (const run of runs) {
+    font(run);
+    ctx.fillStyle = run.fill ? fillStyleOf(ctx, run.fill, box) : base;
+    ctx.fillText(run.text, run.x, run.y);
+    // Underline and strike are lines in the run's fill.
+    const span = run.span;
+    if (span && (span.underline || span.strike) && run.width !== undefined) {
+      const lines = decorationBoxes(span, run.x, run.width, run.y, 0, 0, style.fontSize * scale);
+      for (const rect of [lines.underline, lines.strike]) if (rect) ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+    }
+  }
+}
+
+/** Fills the highlight boxes behind the spans' runs. */
+function drawHighlights(ctx: Ctx, runs: readonly Run[], style: TextStyle, scale: number): void {
+  for (const run of runs) {
+    const span = run.span;
+    if (!span?.highlight || span.highlight.a <= 0 || run.width === undefined) continue;
+    const box = decorationBoxes(span, run.x, run.width, run.y, run.ascent ?? 0, run.descent ?? 0, style.fontSize * scale).highlight;
+    if (!box) continue;
+    ctx.fillStyle = formatHexColor(span.highlight as RGBA);
+    ctx.fillRect(box.x, box.y, box.width, box.height);
+  }
 }
 
 /**
@@ -178,21 +219,54 @@ function paintText(ctx: Ctx, width: number, height: number, style: TextStyle, sc
   ctx.restore();
 }
 
-/** Where `line` starts at `scale` (canvas px, the raster's origin at content 0): aligned by its width measured at that size. `ctx` has the font. */
-function lineRunX(ctx: Ctx, line: TextLine, style: TextStyle, scale: number): number {
-  const width = Math.max(0, ctx.measureText(line.text).width - style.letterSpacing * scale);
+/** The advance of `line`'s characters [from, to) at `scale`, run by run in each span's font (the base font when there are none). */
+function rangeWidth(ctx: Ctx, layout: TextLayout, line: TextLine, style: TextStyle, scale: number, from: number, to: number): number {
+  if (to <= from) return 0;
+  let width = 0;
+  for (const cut of pieces(layout.spans, line.start + from, line.start + to)) {
+    applyFont(ctx, runStyle(style, cut.span), scale);
+    width += ctx.measureText(line.text.slice(from + cut.from, from + cut.to)).width;
+  }
+  return width;
+}
+
+/** Where `line` starts at `scale` (canvas px, the raster's origin at content 0): aligned by its width measured at that size. */
+function lineRunX(ctx: Ctx, layout: TextLayout, line: TextLine, style: TextStyle, scale: number): number {
+  const width = Math.max(0, rangeWidth(ctx, layout, line, style, scale, 0, line.text.length) - style.letterSpacing * scale);
   const left = line.x * scale;
   return style.align === "left" ? left : style.align === "right" ? (line.x + line.width) * scale - width : (line.x + line.width / 2) * scale - width / 2;
 }
 
+/** The runs of `line`'s characters [from, to), whose first starts at canvas x `x`, baseline `y`: one, or one per span piece. */
+function pieceRuns(ctx: Ctx, layout: TextLayout, line: TextLine, style: TextStyle, scale: number, from: number, to: number, x: number, y: number): Run[] {
+  if (!layout.spans) return [{ text: line.text.slice(from, to), x, y }];
+  const runs: Run[] = [];
+  let at = x;
+  for (const cut of pieces(layout.spans, line.start + from, line.start + to)) {
+    const st = runStyle(style, cut.span);
+    applyFont(ctx, st, scale);
+    const text = line.text.slice(from + cut.from, from + cut.to);
+    const m = ctx.measureText(text);
+    const run: Run = { text, x: at, y, style: st, width: m.width, ascent: m.fontBoundingBoxAscent ?? st.fontSize * scale * 0.8, descent: m.fontBoundingBoxDescent ?? st.fontSize * scale * 0.2 };
+    if (cut.span) {
+      run.span = cut.span;
+      if (cut.span.fill) run.fill = cut.span.fill;
+    }
+    runs.push(run);
+    at += m.width;
+  }
+  return runs;
+}
+
 /** The runs of `layout`'s lines at `scale`, offset by (`ox`, `oy`) canvas px; each line aligned by its width measured at that size. */
 function lineRuns(ctx: Ctx, layout: TextLayout, style: TextStyle, scale: number, ox: number, oy: number): Run[] {
-  applyFont(ctx, style, scale);
   const runs: Run[] = [];
   for (const line of layout.lines) {
     if (line.text === "") continue;
-    runs.push({ text: line.text, x: lineRunX(ctx, line, style, scale) + ox, y: line.baseline * scale + oy });
+    const left = lineRunX(ctx, layout, line, style, scale);
+    runs.push(...pieceRuns(ctx, layout, line, style, scale, 0, line.text.length, left + ox, line.baseline * scale + oy));
   }
+  applyFont(ctx, style, scale);
   return runs;
 }
 
@@ -283,7 +357,12 @@ export function rasterizeText(layout: TextLayout, style: TextStyle, scale: numbe
   }
   if (layout.glyphs.length > 0) {
     const box: FillBox = { left: layout.block.x * s + ox, top: layout.block.y * s + oy, right: (layout.block.x + layout.block.width) * s + ox, bottom: (layout.block.y + layout.block.height) * s + oy };
-    paintText(ctx, width, height, style, s, (target) => drawRuns(target, lineRuns(target, layout, style, s, ox, oy), style, s, box));
+    const runs = lineRuns(ctx, layout, style, s, ox, oy);
+    if (layout.spans) drawHighlights(ctx, runs, style, s);
+    paintText(ctx, width, height, style, s, (target) => {
+      applyFont(target, style, s);
+      drawRuns(target, runs, style, s, box);
+    });
   }
   return { canvas, width, height, scale: s, rect };
 }
@@ -324,23 +403,31 @@ export function buildTextAtlas(layout: TextLayout, style: TextStyle, scale: numb
     const at = packed.positions[i] as { x: number; y: number };
     return { ...unit, cell: { x: at.x, y: at.y, width: Math.ceil(unit.rect.width * s), height: Math.ceil(unit.rect.height * s) } };
   });
+  applyFont(ctx, style, s);
+  const starts = layout.lines.map((line) => (line.text === "" ? 0 : lineRunX(ctx, layout, line, style, s)));
+  /** Each unit's runs where the layer raster draws them (its prefix measured run by run), moved into its cell. */
+  const unitRuns = cells.map((unit) => {
+    const line = layout.lines[unit.line];
+    if (!line) return [];
+    const x = (starts[unit.line] ?? unit.x * s) + rangeWidth(ctx, layout, line, style, s, 0, unit.offset);
+    const dx = unit.cell.x - unit.rect.x * s;
+    const dy = unit.cell.y - unit.rect.y * s;
+    return pieceRuns(ctx, layout, line, style, s, unit.offset, unit.offset + unit.text.length, x + dx, unit.baseline * s + dy);
+  });
+  applyFont(ctx, style, s);
+  if (layout.spans) for (const runs of unitRuns) drawHighlights(ctx, runs, style, s);
   paintText(ctx, canvas.width, canvas.height, style, s, (target) => {
     applyFont(target, style, s);
-    const starts = layout.lines.map((line) => (line.text === "" ? 0 : lineRunX(target, line, style, s)));
-    for (const unit of cells) {
-      // The unit where the layer raster draws it, moved into its cell and clipped to it.
-      const line = layout.lines[unit.line];
-      const prefix = line && unit.offset > 0 ? target.measureText(line.text.slice(0, unit.offset)).width : 0;
-      const x = (starts[unit.line] ?? unit.x * s) + prefix;
+    cells.forEach((unit, i) => {
       const dx = unit.cell.x - unit.rect.x * s;
       const dy = unit.cell.y - unit.rect.y * s;
       target.save();
       target.beginPath();
       target.rect(unit.cell.x, unit.cell.y, unit.cell.width, unit.cell.height);
       target.clip();
-      drawRuns(target, [{ text: unit.text, x: x + dx, y: unit.baseline * s + dy }], style, s, { left: blockLeft + dx, top: top + dy, right: blockRight + dx, bottom: bottom + dy });
+      drawRuns(target, unitRuns[i] as Run[], style, s, { left: blockLeft + dx, top: top + dy, right: blockRight + dx, bottom: bottom + dy });
       target.restore();
-    }
+    });
   });
   return { canvas, width: canvas.width, height: canvas.height, scale: s, units: cells };
 }

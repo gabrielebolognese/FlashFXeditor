@@ -8,7 +8,8 @@
 // Pure: the drawing is in raster.ts (`buildTextAtlas`).
 import type { TextStyle } from "../../core/document/types.js";
 import { graphemeBoundaries } from "./caret.js";
-import { SHADOW_REACH, type Rect, type TextLayout, type TextMeasurer } from "./layout.js";
+import { pieces } from "../../text/spans.js";
+import { SHADOW_REACH, STRIKE_OFFSET, UNDERLINE_OFFSET, UNDERLINE_THICKNESS, measureStyled, type Rect, type TextLayout, type TextLine, type TextMeasurer } from "./layout.js";
 
 export type AtlasUnitKind = "char" | "word" | "line";
 
@@ -63,13 +64,27 @@ export function atlasUnits(layout: TextLayout, style: TextStyle, measurer: TextM
   const stroke = style.stroke.enabled ? Math.max(0, style.stroke.width) : 0;
   const shadow = style.shadow.enabled && style.shadow.color.a > 0 ? style.shadow : null;
   const units: AtlasUnit[] = [];
+  const range = (line: TextLine, from: number, to: number) => measureStyled(measurer, layout.spans, style, layout.fallback, size, spacing, line.text.slice(from, to), line.start + from);
+  const em = measurer.fontMetrics(layout.font, size);
   const add = (line: number, text: string, offset: number, x: number, baseline: number) => {
-    const m = measurer.measure(text, layout.font, size, spacing);
+    const source = layout.lines[line] as TextLine;
+    const m = range(source, offset, offset + text.length);
     if (m.left + m.right <= 0 || m.ascent + m.descent <= 0) return;
     let x0 = x - m.left - stroke;
     let y0 = baseline - m.ascent - stroke;
     let x1 = x + m.right + stroke;
     let y1 = baseline + m.descent + stroke;
+    // The highlight, underline and strike of the unit's spans reach past its ink.
+    for (const cut of pieces(layout.spans, source.start + offset, source.start + offset + text.length)) {
+      if (!cut.span) continue;
+      if (cut.span.highlight) {
+        y0 = Math.min(y0, baseline - em.ascent);
+        y1 = Math.max(y1, baseline + em.descent);
+      }
+      if (cut.span.underline) y1 = Math.max(y1, baseline + size * (UNDERLINE_OFFSET + UNDERLINE_THICKNESS) + 1);
+      if (cut.span.strike) y0 = Math.min(y0, baseline - size * STRIKE_OFFSET - 1);
+      if (cut.span.highlight || cut.span.underline || cut.span.strike) x1 = Math.max(x1, x + m.width);
+    }
     if (shadow) {
       const reach = Math.max(0, shadow.blur) * SHADOW_REACH;
       x0 = Math.min(x0, x0 + shadow.x - reach);
@@ -92,7 +107,7 @@ export function atlasUnits(layout: TextLayout, style: TextStyle, measurer: TextM
       originY: baseline + (m.descent - m.ascent) / 2,
     });
   };
-  const advance = (text: string) => (text === "" ? 0 : measurer.measure(text, layout.font, size, spacing).width);
+  const advance = (line: TextLine, upto: number) => (upto <= 0 ? 0 : range(line, 0, upto).width);
   layout.lines.forEach((line, lineIndex) => {
     if (line.text === "") return;
     if (kind === "line") {
@@ -101,7 +116,7 @@ export function atlasUnits(layout: TextLayout, style: TextStyle, measurer: TextM
     }
     if (kind === "word") {
       const pattern = /\S+/g;
-      for (let match = pattern.exec(line.text); match; match = pattern.exec(line.text)) add(lineIndex, match[0], match.index, line.x + advance(line.text.slice(0, match.index)), line.baseline);
+      for (let match = pattern.exec(line.text); match; match = pattern.exec(line.text)) add(lineIndex, match[0], match.index, line.x + advance(line, match.index), line.baseline);
       return;
     }
     const bounds = graphemeBoundaries(line.text);
@@ -109,7 +124,7 @@ export function atlasUnits(layout: TextLayout, style: TextStyle, measurer: TextM
       const from = bounds[i] as number;
       const grapheme = line.text.slice(from, bounds[i + 1]);
       if (grapheme.trim() === "") continue;
-      add(lineIndex, grapheme, from, line.x + advance(line.text.slice(0, from)), line.baseline);
+      add(lineIndex, grapheme, from, line.x + advance(line, from), line.baseline);
     }
   });
   return units;
@@ -121,6 +136,6 @@ export function atlasUnits(layout: TextLayout, style: TextStyle, measurer: TextM
  */
 export function lineStops(layout: TextLayout, style: TextStyle, measurer: TextMeasurer): number[][] {
   return layout.lines.map((line) =>
-    graphemeBoundaries(line.text).map((b) => (b === 0 ? line.x : line.x + measurer.measure(line.text.slice(0, b), layout.font, style.fontSize, style.letterSpacing).width)),
+    graphemeBoundaries(line.text).map((b) => (b === 0 ? line.x : line.x + measureStyled(measurer, layout.spans, style, layout.fallback, style.fontSize, style.letterSpacing, line.text.slice(0, b), line.start).width)),
   );
 }

@@ -5,8 +5,8 @@
 // tells the listeners (the preview, the canvas, the timeline redraw).
 // Measuring uses a 2D canvas context (`ctx.letterSpacing`, `fontKerning`) where there is one; elsewhere
 // (unit tests, no OffscreenCanvas) an approximate measurer. Tests install their own.
-import type { TextContent, TextStyle } from "../../core/document/types.js";
-import { layoutText, type RunMetrics, type TextLayout, type TextMeasurer } from "./layout.js";
+import type { TextContent, TextSpan, TextStyle } from "../../core/document/types.js";
+import { layoutText, type RunMetrics, type StyledContent, type TextLayout, type TextMeasurer } from "./layout.js";
 
 /** A deterministic measurer without a canvas: every character 0.55 em wide, letter spacing after each. */
 export const approximateMeasurer: TextMeasurer = {
@@ -75,6 +75,38 @@ interface Entry {
 }
 
 let cache = new WeakMap<TextContent, WeakMap<TextStyle, Entry>>();
+
+/** The spans of a content that says it has none (an edit that removed them all: the clip's own must not show through). */
+const NO_SPANS: readonly TextSpan[] = [];
+const styled = new WeakMap<TextContent, WeakMap<readonly TextSpan[], StyledContent>>();
+
+/**
+ * `content` with the clip's `spans` (Batch 67): one object per (content, spans) pair, so layouts and rasters
+ * keyed on the content object stay cached while neither changes. No spans: `content` itself, unless `keepKey`
+ * (then a content that carries an empty `spans`, which the compositor takes as "none", not as "the clip's").
+ */
+export function withSpans(content: TextContent, spans: readonly TextSpan[] | undefined, keepKey = false): TextContent {
+  if (!spans || spans.length === 0) {
+    if (!keepKey) return content;
+    spans = NO_SPANS;
+  }
+  let bySpans = styled.get(content);
+  if (!bySpans) {
+    bySpans = new WeakMap();
+    styled.set(content, bySpans);
+  }
+  let out = bySpans.get(spans);
+  if (!out) {
+    out = { ...content, spans };
+    bySpans.set(spans, out);
+  }
+  return out;
+}
+
+/** A text clip's content as laid out: with its spans, unless the content already carries them. */
+export function spannedContent(clip: { text: TextContent; spans?: readonly TextSpan[] | undefined }): TextContent {
+  return "spans" in clip.text ? clip.text : withSpans(clip.text, clip.spans);
+}
 
 /** The measurer layouts use (the atlas measures word positions with it). */
 export function currentMeasurer(): TextMeasurer {

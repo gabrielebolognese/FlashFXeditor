@@ -13,9 +13,8 @@
 //   their line.
 // Pure apart from the measurer (the canvas one in the browser, a fake in tests).
 import type { TextStyle } from "../../core/document/types.js";
-import { fontShorthand } from "../../text/fonts.js";
 import { applyTextCase } from "../../text/style.js";
-import type { Rect, TextLayout, TextLine, TextMeasurer } from "./layout.js";
+import { measureStyled, type Rect, type TextLayout, type TextLine, type TextMeasurer } from "./layout.js";
 
 let segmenter: Intl.Segmenter | null = null;
 
@@ -81,8 +80,7 @@ function stopsOf(layout: TextLayout, style: TextStyle, measurer: TextMeasurer, f
   if (!stops) {
     const size = style.fontSize * s;
     const spacing = style.letterSpacing * s;
-    const font = fontShorthand(style, size, fallback);
-    const advance = (text: string) => (text === "" ? 0 : measurer.measure(text, font, size, spacing).width);
+    const advance = (line: TextLine, from: number, to: number) => (to <= from ? 0 : measureStyled(measurer, layout.spans, style, fallback, size, spacing, line.text.slice(from, to), line.start + from).width);
     stops = layout.lines.map((line) => lineStops(line, style, advance, spacing, s));
     if (byKey.size > 8) byKey.clear();
     byKey.set(key, stops);
@@ -90,11 +88,11 @@ function stopsOf(layout: TextLayout, style: TextStyle, measurer: TextMeasurer, f
   return stops;
 }
 
-function lineStops(line: TextLine, style: TextStyle, advance: (text: string) => number, spacing: number, s: number): LineStops {
+function lineStops(line: TextLine, style: TextStyle, advance: (line: TextLine, from: number, to: number) => number, spacing: number, s: number): LineStops {
   const text = line.text;
   const bounds = graphemeBoundaries(text);
   // The line's width at this size and its left edge, aligned as raster.ts aligns the run.
-  const width = text === "" ? 0 : Math.max(0, advance(text) - spacing);
+  const width = text === "" ? 0 : Math.max(0, advance(line, 0, text.length) - spacing);
   const left = style.align === "left" ? line.x * s : style.align === "right" ? (line.x + line.width) * s - width : (line.x + line.width / 2) * s - width / 2;
   const offsets: number[] = [];
   const xs: number[] = [];
@@ -104,7 +102,7 @@ function lineStops(line: TextLine, style: TextStyle, advance: (text: string) => 
     else if (k === bounds.length - 1) x = width;
     else {
       const next = bounds[k + 1] as number;
-      x = advance(text.slice(0, next)) - advance(text.slice(b, next)) - spacing / 2;
+      x = advance(line, 0, next) - advance(line, b, next) - spacing / 2;
     }
     offsets.push(line.start + b);
     xs.push((left + x) / s);

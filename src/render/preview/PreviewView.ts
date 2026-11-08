@@ -40,10 +40,11 @@
 //   project size, whatever the quality mode and whatever is on screen.
 // - The backing store is resized inside `render`, so a resize never shows a cleared canvas.
 import { ShapeGeometryCache, workerBuilder, type ShapeGeometryStats } from "../shapes/ShapeGeometryCache.js";
-import type { ClipId, Crop, Frame, Project, RGBA, ShapeClip, TextStyle, Transform } from "../../core/document/types.js";
+import type { ClipId, Crop, Frame, Project, RGBA, ShapeClip, TextSpan, TextStyle, Transform } from "../../core/document/types.js";
 import { watchDevicePixelRatio } from "../../core/scheduler/devicePixelRatio.js";
 import type { FrameScheduler, RenderView } from "../../core/scheduler/FrameScheduler.js";
 import { createStore, type Store } from "../../core/store/createStore.js";
+import { spanFaceStyles } from "../../text/spans.js";
 import type { DocumentStore } from "../../core/store/DocumentStore.js";
 import type { LayoutState } from "../../core/store/layoutStore.js";
 import type { PreviewQuality, PreviewSession, SessionState } from "../../core/store/sessionStore.js";
@@ -662,7 +663,7 @@ export class PreviewView implements RenderView {
     // Text measured with a font that was still loading is laid out again once it is there.
     const loadFonts = this.deps.loadFonts;
     if (loadFonts) {
-      const waits = composite.layers.flatMap((layer) => (layer.kind === "text" ? [loadFonts(layer.style, layer.text.value)] : []));
+      const waits = composite.layers.flatMap((layer) => (layer.kind === "text" ? [loadFonts(layer.style, layer.text.value), ...spanFaceStyles(layer.style, (layer.text as { spans?: readonly TextSpan[] }).spans).map((style) => loadFonts(style, layer.text.value))] : []));
       if ((await Promise.all(waits)).includes(true)) composite = this.exportCompositor.evaluate(doc, frame);
     }
     const { list, release } = await this.textures.resolveExact(composite, Math.min(DETAIL_MAX_SIZE, renderer.maxTextureSize));

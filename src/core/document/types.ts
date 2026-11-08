@@ -1,7 +1,7 @@
 // The persistent document (spec §5.2). Plain JSON only: no classes, Maps, Sets or undefined-valued
 // keys, so a Project can be serialized as-is and diffed by Immer patches.
 
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: JsonValue };
@@ -549,6 +549,25 @@ export interface MediaClip extends ClipBase {
   transitionOut?: Transition;
 }
 
+/** What a span changes on its characters (spec §21.13): absent fields keep the clip style's. */
+export interface TextSpanStyle {
+  fill?: Fill;
+  fontFamily?: string;
+  fontWeight?: number;
+  italic?: boolean;
+  underline?: boolean;
+  strike?: boolean;
+  /** A box behind the span. */
+  highlight?: RGBA;
+}
+
+/** A styled run of a text clip: `[start, end)` in UTF-16 units of `text.value`. */
+export interface TextSpan {
+  start: number;
+  end: number;
+  style: TextSpanStyle;
+}
+
 export interface TextClip extends ClipBase {
   kind: "text";
   text: TextContent;
@@ -556,6 +575,8 @@ export interface TextClip extends ClipBase {
   animIn?: TextAnim;
   animOut?: TextAnim;
   presetId?: string;
+  /** Styled runs inside the text (spec §21.13, Batch 67): UTF-16 offsets into `text.value`, sorted, not overlapping. */
+  spans?: TextSpan[];
   transform: Transform;
   opacity: number;
   keyframes?: Keyframes;

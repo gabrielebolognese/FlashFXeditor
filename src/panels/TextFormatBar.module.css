@@ -1,0 +1,26 @@
+/* The text format bar (Batch 67; the DS has no tool strip): the crop chip's material (glass, hairline,
+   overlay shadow, radius-lg) centered at the top of the preview canvas, --space-3 down, holding compact
+   icon buttons, two color fields and hairline rules between the groups. */
+.bar {
+  position: absolute;
+  top: var(--space-3);
+  left: 50%;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-0) var(--space-1);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--material-menu-bg);
+  box-shadow: var(--shadow-overlay);
+  transform: translateX(-50%);
+  backdrop-filter: var(--material-menu-filter);
+}
+
+.rule {
+  width: 1px;
+  height: var(--icon-size);
+  margin: 0 var(--space-1);
+  background: var(--hairline);
+}

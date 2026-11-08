@@ -511,6 +511,59 @@ Edges are anti-aliased with 4 samples per pixel. Curves are flattened finely eno
 
 **SVG import (manifest key `vector.svgImport`, true).** The app's Import as shapes turns an SVG file into one shape clip: the `viewBox` (else `width` and `height`) becomes `size` and every drawable element one path. A generator that writes projects does the same by writing the `shape` clip itself; the app's import reads this subset: `path`, `rect` (with `rx` and `ry`), `circle`, `ellipse`, `line`, `polyline`, `polygon` and `g`, with `transform` (baked into the path data), `fill`, `stroke`, `stroke-width`, `stroke-linecap`, `stroke-linejoin`, `stroke-miterlimit`, `stroke-dasharray`, `stroke-dashoffset`, `fill-rule`, `fill-opacity`, `stroke-opacity` and `opacity` as attributes or `style` declarations, `currentColor`, and `linearGradient` and `radialGradient` fills (as gradient fills laid out in the path's box). Anything else (filters, masks, clip paths, text, images, patterns, `use`, style sheets, gradient strokes) keeps the SVG as an image clip, and a toast names what was not supported. `fixtures/interop/svg` holds icon SVGs and one with a filter, with the shape clips the import makes.
 
+### 5.6 Styled spans: colored, bold, italic, underlined, struck and highlighted words inside one text clip (manifest key `text.spans`; schema 11)
+
+A `text` clip may carry `spans`: runs of its text with a style of their own. A span is `{ start, end, style }` with `start` and `end` UTF-16 offsets into `text.value` (`end` exclusive, so `value.slice(start, end)` is the styled text). The list is sorted by `start`, its spans do not overlap, none is empty and none ends past the text; the strict validator refuses anything else.
+
+`style` changes only what it names, over the clip's `style`:
+
+| Field | Meaning |
+| --- | --- |
+| `fill` | Text color (a color, or a gradient fill like the clip's own `style.fill`, laid over the whole text block). |
+| `fontFamily`, `fontWeight`, `italic` | The font of the run (a family from the font manifest, 1 to 1000, true/false). A bold run is wider, so a line's width and its wrapping count each run in its own font. |
+| `underline`, `strike` | A line under, or through, the run in the run's fill. |
+| `highlight` | A box behind the run (the height of the font's em box). |
+
+Spans are content, not look: text presets never store them and applying a preset keeps them. Edits of the text move them with their words in the app (typing inside a span, or right after its last character, extends it; deleting shrinks it and removes it once empty). A generator writes the final offsets. `wordPop` and `wordFade` move each word with the style of its span; a word split by a span boundary is drawn in its pieces.
+
+```json TextSpan
+{ "start": 5, "end": 12, "style": { "fill": { "r": 1, "g": 0.42, "b": 0.32, "a": 1 }, "fontWeight": 800, "underline": true } }
+```
+
+```json Clip
+{
+  "id": "save",
+  "trackId": "v2",
+  "kind": "text",
+  "name": "SAVE 3 HOURS",
+  "start": 0,
+  "duration": 60,
+  "enabled": true,
+  "text": { "value": "SAVE 3 HOURS", "box": { "mode": "auto", "width": 700 } },
+  "style": {
+    "fontFamily": "Inter",
+    "fontWeight": 700,
+    "italic": false,
+    "fontSize": 72,
+    "fill": { "r": 1, "g": 1, "b": 1, "a": 1 },
+    "stroke": { "enabled": false, "width": 6, "color": { "r": 0, "g": 0, "b": 0, "a": 1 } },
+    "shadow": { "enabled": false, "x": 0, "y": 4, "blur": 12, "color": { "r": 0, "g": 0, "b": 0, "a": 0.5 } },
+    "background": { "enabled": false, "color": { "r": 0, "g": 0, "b": 0, "a": 0.6 }, "paddingX": 24, "paddingY": 12, "radius": 12, "mode": "line" },
+    "textCase": "none",
+    "letterSpacing": 0,
+    "lineHeight": 1.2,
+    "align": "center",
+    "verticalAnchor": "middle"
+  },
+  "spans": [{ "start": 5, "end": 12, "style": { "fill": { "r": 1, "g": 0.42, "b": 0.32, "a": 1 } } }],
+  "transform": { "x": 0, "y": 0, "scale": 1, "rotation": 0, "anchor": { "x": 0.5, "y": 0.5 }, "flipH": false, "flipV": false },
+  "opacity": 1,
+  "fades": { "in": 0, "out": 0 }
+}
+```
+
+`fixtures/interop/spans` is a complete project with every span field, a `wordPop` title and expected frames 0, 6 and 20.
+
 ## 6. Captions and word timings
 
 The caption track's `captionTracks[<track id>].style` styles every cue; a cue's `styleOverride` sets only the fields it changes. A cue is a `caption` clip with `text` (`\n` for line breaks) and optional `words`: `start` and `end` are integer frames relative to the cue's start, `end` after `start`. A word may start before the cue or end after it: an in-trim keeps the words it hides (negative frames), so a trim back shows them again. With word timings the active word is highlighted as the style's `highlight` says.
@@ -1245,7 +1298,7 @@ project.json.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `schemaVersion` | integer (>= 1) | yes | `10` | The schema version; this build writes and reads up to the current one. |
+| `schemaVersion` | integer (>= 1) | yes | `11` | The schema version; this build writes and reads up to the current one. |
 | `id` | string (not empty) | yes |  | Unique id, never changes (uuid v4 recommended). |
 | `name` | string | yes |  | Project name. |
 | `settings` | [Settings](#settings) | yes |  | Frame and time base. |
@@ -1401,10 +1454,35 @@ A text clip.
 | `animIn` | [TextAnim](#textanim) | no |  | In animation. |
 | `animOut` | [TextAnim](#textanim) | no |  | Out animation. |
 | `presetId` | string (not empty) | no |  | The preset it was made from. |
+| `spans` | [TextSpan](#textspan)[] | no |  | Styled runs inside the text, sorted by `start` and not overlapping (Batch 67). Content: presets never store them. |
 | `transform` | [Transform](#transform) | yes |  | Placement. |
 | `opacity` | number (>= 0, <= 1) | yes | `1` | Opacity. |
 | `keyframes` | [Keyframes](#keyframes) | no |  | Animated properties. |
 | `fades` | [Fades](#fades) | yes | `{"in":0,"out":0}` | Opacity fades. |
+
+#### TextSpan
+
+A styled run of a text clip: `[start, end)` in UTF-16 units of `text.value`.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `start` | integer (>= 0) | yes |  | First character, UTF-16 offset into `text.value`. |
+| `end` | integer (>= 1) | yes |  | After the last character; greater than `start`, at most the length of `text.value`. |
+| `style` | [TextSpanStyle](#textspanstyle) | yes |  | What it changes. |
+
+#### TextSpanStyle
+
+What a span changes on its characters; an absent field keeps the clip style's.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `fill` | [RGBA](#rgba) | [Gradient](#gradient) | [GradientFill](#gradientfill) | no |  | Text color. |
+| `fontFamily` | string (not empty) | no |  | Font family. |
+| `fontWeight` | number (>= 1, <= 1000) | no |  | Font weight. |
+| `italic` | boolean | no |  | Italic. |
+| `underline` | boolean | no |  | A line under the text. |
+| `strike` | boolean | no |  | A line through the text. |
+| `highlight` | [RGBA](#rgba) | no |  | A box behind the text. |
 
 #### Clip.solid
 

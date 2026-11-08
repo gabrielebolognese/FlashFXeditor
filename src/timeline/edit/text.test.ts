@@ -328,3 +328,35 @@ describe("text presets on clips", () => {
     expect(linkPreset(store.getState(), "gone", "p1", "x")).toBeNull();
   });
 });
+
+describe("styled spans (Batch 67)", () => {
+  const coral = { r: 1, g: 0.42, b: 0.36, a: 1 };
+  const spanned = () => project({ text: textContent("SAVE 3 HOURS"), spans: [{ start: 5, end: 12, style: { fill: coral } }] });
+
+  it("keeps a span on its words when text is typed before it, as one undo step", () => {
+    const p = spanned();
+    const store = new DocumentStore(p, { session: createSessionStore(), validate: true });
+    store.dispatch(setTexts(p, new Map([["t", { text: textContent("NOW SAVE 3 HOURS") }]]), { label: "Edit text" }) as NonNullable<ReturnType<typeof setTexts>>);
+    expect((store.getState().clips.t as TextClip).spans).toEqual([{ start: 9, end: 16, style: { fill: coral } }]);
+    expect(validateProject(store.getState())).toEqual([]);
+    store.undo();
+    expect((store.getState().clips.t as TextClip).spans).toEqual([{ start: 5, end: 12, style: { fill: coral } }]);
+  });
+
+  it("writes explicit spans and clears them with null", () => {
+    const p = spanned();
+    const store = new DocumentStore(p, { session: createSessionStore(), validate: true });
+    store.dispatch(setTexts(p, new Map([["t", { spans: null }]]), { label: "Clear" }) as NonNullable<ReturnType<typeof setTexts>>);
+    expect((store.getState().clips.t as TextClip).spans).toBeUndefined();
+  });
+
+  it("applying a preset leaves the spans alone", () => {
+    const p = spanned();
+    const preset = starterPresets().find((s) => s.id === "starter-lower-third") as TextPreset;
+    const look = presetLook(preset, p.settings);
+    const apply = { presetId: preset.id, style: look.style, box: look.box, position: null };
+    const store = new DocumentStore(p, { session: createSessionStore(), validate: true });
+    store.dispatch(applyPreset(p, ["t"], apply, "Apply") as NonNullable<ReturnType<typeof applyPreset>>);
+    expect((store.getState().clips.t as TextClip).spans).toEqual([{ start: 5, end: 12, style: { fill: coral } }]);
+  });
+});

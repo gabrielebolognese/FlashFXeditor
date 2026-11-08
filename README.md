@@ -271,6 +271,9 @@ The default keys (spec §18). Every key can be changed in Settings > Shortcuts; 
 | Edit text | `Enter` | `Enter` | Timeline, Preview |
 | Finish editing text | `Ctrl+Enter` | `⌘Enter` | Text editing |
 | Leave text editing | `Escape` | `Escape` | Text editing |
+| Bold | `Ctrl+B` | `⌘B` | Text editing |
+| Italic | `Ctrl+I` | `⌘I` | Text editing |
+| Underline | `Ctrl+U` | `⌘U` | Text editing |
 
 ### Presets
 

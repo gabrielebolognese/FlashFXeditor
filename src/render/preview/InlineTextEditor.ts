@@ -23,20 +23,21 @@
 //   lays a draft out as the caption draws it (refitted to its max lines, kept at its position), and
 //   the end is one "Edit caption" command on the cue's text.
 import type { Command } from "../../core/commands/command.js";
-import type { ClipId, TextContent, TextStyle, Transform } from "../../core/document/types.js";
+import type { ClipId, RGBA, TextContent, TextSpan, TextStyle, Transform } from "../../core/document/types.js";
 import type { Platform } from "../../core/keyboard/keys.js";
 import type { FrameScheduler, RenderView } from "../../core/scheduler/FrameScheduler.js";
 import { createStore } from "../../core/store/createStore.js";
 import type { DocumentStore } from "../../core/store/DocumentStore.js";
 import type { SessionStore } from "../../core/store/sessionStore.js";
 import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
+import { applySpanStyle, clearSpanStyles, editSpans, isFormatOn, rangeHas, toggleFormat, type FormatToggle } from "../../text/spans.js";
 import { keepAnchored, setTexts } from "../../timeline/edit/text.js";
 import { setCueText } from "../../timeline/edit/captions.js";
 import { layerPoint, rotationTrig, scaleYOf, type Point, type Size } from "../../timeline/edit/transform.js";
 import { isClipLocked } from "../../timeline/model/queries.js";
 import { caretAt, indexAtPoint, lineEdge, selectionRects, verticalMove, wordAt, type CaretContext } from "../text/caret.js";
 import type { TextLayout } from "../text/layout.js";
-import { currentMeasurer, textFallback, textLayout, textLayoutVersion } from "../text/layoutCache.js";
+import { currentMeasurer, textFallback, textLayout, textLayoutVersion, withSpans } from "../text/layoutCache.js";
 import { cappedScale, rasterRect, type TextHighlight } from "../text/raster.js";
 import { textScaleBucket } from "../text/TextRasterCache.js";
 import { toScreen } from "./gizmo.js";
@@ -91,9 +92,26 @@ export interface TextEditScene {
   underline: readonly [Point, Point][];
 }
 
+/** What the format bar shows for the selection (Batch 67): which toggles are on over all of it and its colors. */
+export interface FormatState {
+  /** A selection exists (the bar's buttons act on it). */
+  selection: boolean;
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  strike: boolean;
+  /** The span fill / highlight when the whole selection has the same one. */
+  color: RGBA | null;
+  highlight: RGBA | null;
+}
+
+const sameColor = (a: RGBA | null, b: RGBA | null) => (a === null || b === null ? a === b : a.r === b.r && a.g === b.g && a.b === b.b && a.a === b.a);
+
 interface Session {
   clipId: ClipId;
   value: string;
+  /** The styled runs of the draft (a text clip's; a cue has none): kept on their words as the value changes. */
+  spans: TextSpan[] | undefined;
   start: number;
   end: number;
   backward: boolean;
@@ -145,6 +163,8 @@ export class InlineTextEditor implements RenderView {
   private readonly stops: (() => void)[] = [];
   /** The edited clip and its draft, for React (the properties content field shows the draft). */
   readonly state = createStore<{ clipId: ClipId | null; value: string }>({ clipId: null, value: "" });
+  /** The format bar's state: null while not editing a text clip (a cue has no spans). */
+  readonly format = createStore<FormatState | null>(null);
 
   constructor(private readonly deps: InlineTextEditorDeps) {
     this.theme = deps.theme.theme;
@@ -262,7 +282,7 @@ export class InlineTextEditor implements RenderView {
     if (project.tracks.find((track) => track.id === clip.trackId)?.hidden) return false;
     if (!this.session) {
       const value = clip.kind === "text" ? clip.text.value : clip.text;
-      this.session = { clipId, value, start: 0, end: 0, backward: false, upstream: false, goalX: null, composition: null, own: null };
+      this.session = { clipId, value, spans: clip.kind === "text" ? clip.spans : undefined, start: 0, end: 0, backward: false, upstream: false, goalX: null, composition: null, own: null };
       this.memo = null;
       this.placed = "";
       textarea.value = value;
@@ -275,6 +295,7 @@ export class InlineTextEditor implements RenderView {
     textarea.focus({ preventScroll: true });
     if (at === "all") this.select(0, textarea.value.length, false);
     else this.press(at, false);
+    this.publishFormat();
     this.restartBlink();
     return true;
   }
@@ -286,8 +307,8 @@ export class InlineTextEditor implements RenderView {
     if (commit) {
       const project = this.deps.document.getState();
       const clip = project.clips[s.clipId];
-      if (clip?.kind === "text" && clip.text.value !== s.value) {
-        const command = setTexts(project, new Map([[s.clipId, { text: { ...clip.text, value: s.value } }]]), { label: "Edit text", at: this.deps.session.state.getState().playhead });
+      if (clip?.kind === "text" && (clip.text.value !== s.value || JSON.stringify(clip.spans ?? null) !== JSON.stringify(s.spans ?? null))) {
+        const command = setTexts(project, new Map([[s.clipId, { text: { ...clip.text, value: s.value }, spans: s.spans ?? null }]]), { label: "Edit text", at: this.deps.session.state.getState().playhead });
         if (command) this.deps.commit(command);
       } else if (clip?.kind === "caption") {
         const command = setCueText(project, s.clipId, s.value);
@@ -309,6 +330,7 @@ export class InlineTextEditor implements RenderView {
       this.placed = "";
     }
     this.state.set({ clipId: null, value: "" });
+    this.format.set(null);
     this.deps.onEditing?.(null);
     this.deps.scheduler.invalidate("preview");
     this.deps.scheduler.invalidate("gizmo");
@@ -324,7 +346,7 @@ export class InlineTextEditor implements RenderView {
     const frame = this.deps.document.getState().settings;
     // A caption lays its draft out itself (refitted, at its position); a text keeps its anchored point.
     const placed = base.place?.(s.value) ?? null;
-    const text = placed ? placed.text : this.draftContent(base.text, s.value);
+    const text = placed ? placed.text : this.draftContent(base.text, s.value, s.spans);
     const style = placed ? placed.style : base.style;
     const layout = textLayout(text, style);
     const scale = this.rasterScale(layout, placed ? placed.transform : base.transform);
@@ -528,6 +550,7 @@ export class InlineTextEditor implements RenderView {
       s.upstream = false;
       s.own = null;
     }
+    if (value !== s.value) s.spans = editSpans(s.spans, s.value, value);
     s.value = value;
     s.start = start;
     s.end = end;
@@ -537,9 +560,78 @@ export class InlineTextEditor implements RenderView {
   }
 
   private changed(): void {
+    this.publishFormat();
     this.restartBlink();
     this.deps.scheduler.invalidate("preview");
     this.deps.scheduler.invalidate("gizmo");
+  }
+
+  // --- Formatting (Batch 67) ---------------------------------------------------------------------
+
+  /** Publishes what the format bar shows (only when it changed: typing never commits a React render for the bar). */
+  private publishFormat(): void {
+    const s = this.session;
+    const shown = s ? this.deps.shown(s.clipId) : null;
+    const isText = s !== null && this.deps.document.getState().clips[s.clipId]?.kind === "text";
+    if (!s || !shown || !isText) {
+      if (this.format.getState() !== null) this.format.set(null);
+      return;
+    }
+    const from = Math.min(s.start, s.end);
+    const to = Math.max(s.start, s.end);
+    const selection = to > from;
+    const on = (kind: FormatToggle) => selection && isFormatOn(s.spans, from, to, kind, shown.style);
+    const uniform = (key: "fill" | "highlight"): RGBA | null => {
+      if (!selection) return null;
+      let found: RGBA | null | undefined;
+      const colors = rangeHas(s.spans, from, to, (style) => {
+        const raw = style[key];
+        const color = raw !== undefined && "r" in raw ? (raw as RGBA) : null;
+        if (found === undefined) found = color;
+        return sameColor(found, color);
+      });
+      return colors ? (found ?? null) : null;
+    };
+    const next: FormatState = { selection, bold: on("bold"), italic: on("italic"), underline: on("underline"), strike: on("strike"), color: uniform("fill"), highlight: uniform("highlight") };
+    const prev = this.format.getState();
+    if (prev && prev.selection === next.selection && prev.bold === next.bold && prev.italic === next.italic && prev.underline === next.underline && prev.strike === next.strike && sameColor(prev.color, next.color) && sameColor(prev.highlight, next.highlight)) return;
+    this.format.set(next);
+  }
+
+  /** Rewrites the spans over the selection (false without a selection or outside a text clip); the keyboard and the selection stay on the textarea. */
+  private reformat(change: (spans: TextSpan[] | undefined, from: number, to: number, length: number, style: TextStyle) => TextSpan[] | undefined): boolean {
+    const s = this.session;
+    const textarea = this.textarea;
+    const shown = s ? this.deps.shown(s.clipId) : null;
+    if (!s || !textarea || !shown || this.deps.document.getState().clips[s.clipId]?.kind !== "text") return false;
+    const from = Math.min(s.start, s.end);
+    const to = Math.max(s.start, s.end);
+    if (to <= from) return false;
+    s.spans = change(s.spans, from, to, s.value.length, shown.style);
+    textarea.focus({ preventScroll: true });
+    textarea.setSelectionRange(from, to, s.backward ? "backward" : "forward");
+    this.changed();
+    return true;
+  }
+
+  /** Bold, Italic, Underline or Strike over the selection: off when all of it has it, else on (the format bar, Mod+B, Mod+I). */
+  formatToggle(kind: FormatToggle): boolean {
+    return this.reformat((spans, from, to, length, style) => toggleFormat(spans, from, to, kind, style, length));
+  }
+
+  /** The selection's text color (null: the clip's own). */
+  formatColor(color: RGBA | null): boolean {
+    return this.reformat((spans, from, to, length) => applySpanStyle(spans, from, to, { fill: color ?? undefined }, length));
+  }
+
+  /** The box behind the selection (null: none). */
+  formatHighlight(color: RGBA | null): boolean {
+    return this.reformat((spans, from, to, length) => applySpanStyle(spans, from, to, { highlight: color ?? undefined }, length));
+  }
+
+  /** Every format removed from the selection. */
+  formatClear(): boolean {
+    return this.reformat((spans, from, to, length) => clearSpanStyles(spans, from, to, length));
   }
 
   // --- Session end -------------------------------------------------------------------------------
@@ -569,13 +661,14 @@ export class InlineTextEditor implements RenderView {
   // --- Helpers -------------------------------------------------------------------------------------
 
   /** The draft as content: the base text itself while the value is the same (its raster stays shared). */
-  private draftContent(base: TextContent, value: string): TextContent {
-    if (base.value === value) return base;
+  private draftContent(base: TextContent, value: string, spans: readonly TextSpan[] | undefined): TextContent {
+    // The spans always ride along (even none), so the compositor never lends the clip's own to a draft.
+    if (base.value === value) return withSpans(base, spans, true);
     const memo = this.textMemo;
-    if (memo && memo.base === base && memo.value === value) return memo.text;
+    if (memo && memo.base === base && memo.value === value) return withSpans(memo.text, spans, true);
     const text = { value, box: base.box };
     this.textMemo = { base, value, text };
-    return text;
+    return withSpans(text, spans, true);
   }
 
   /** The raster scale of the text as the preview draws it: the scale bucket of the render scale times the layer's, capped (raster.ts). */

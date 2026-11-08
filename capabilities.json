@@ -2,8 +2,8 @@
   "manifestVersion": 1,
   "app": "shorts-editor",
   "appVersion": "1.1.0",
-  "lastBatch": 66,
-  "schemaVersion": 10,
+  "lastBatch": 67,
+  "schemaVersion": 11,
   "project": {
     "file": "project.json",
     "fontsManifest": "fonts/fonts.json",
@@ -202,7 +202,7 @@
       "word",
       "line"
     ],
-    "spans": false,
+    "spans": true,
     "counter": false,
     "animators": false
   },

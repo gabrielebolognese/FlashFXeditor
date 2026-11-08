@@ -1,0 +1,665 @@
+{
+  "schemaVersion": 11,
+  "id": "5b7d9f31-4c2e-4a68-b1d3-7e9a0c4f2d65",
+  "name": "Interop spans",
+  "settings": {
+    "width": 800,
+    "height": 700,
+    "fps": {
+      "num": 30,
+      "den": 1
+    },
+    "background": {
+      "r": 0.1,
+      "g": 0.1,
+      "b": 0.12,
+      "a": 1
+    },
+    "sampleRate": 48000
+  },
+  "media": {},
+  "bins": [],
+  "tracks": [
+    {
+      "id": "v1",
+      "kind": "video",
+      "name": "V1",
+      "clipIds": [],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v2",
+      "kind": "video",
+      "name": "V2",
+      "clipIds": [
+        "save"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v3",
+      "kind": "video",
+      "name": "V3",
+      "clipIds": [
+        "kinds"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v4",
+      "kind": "video",
+      "name": "V4",
+      "clipIds": [
+        "mark"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v5",
+      "kind": "video",
+      "name": "V5",
+      "clipIds": [
+        "gradient"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v6",
+      "kind": "video",
+      "name": "V6",
+      "clipIds": [
+        "pop"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    }
+  ],
+  "clips": {
+    "save": {
+      "id": "save",
+      "trackId": "v2",
+      "kind": "text",
+      "name": "SAVE 3 HOURS",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "text": {
+        "value": "SAVE 3 HOURS",
+        "box": {
+          "mode": "auto",
+          "width": 700
+        }
+      },
+      "style": {
+        "fontFamily": "Inter",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 56,
+        "fill": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": false,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 0,
+        "y": -250,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "spans": [
+        {
+          "start": 5,
+          "end": 12,
+          "style": {
+            "fill": {
+              "r": 1,
+              "g": 0.42,
+              "b": 0.32,
+              "a": 1
+            }
+          }
+        }
+      ]
+    },
+    "kinds": {
+      "id": "kinds",
+      "trackId": "v3",
+      "kind": "text",
+      "name": "bold italic under strike",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "text": {
+        "value": "bold italic under strike",
+        "box": {
+          "mode": "auto",
+          "width": 700
+        }
+      },
+      "style": {
+        "fontFamily": "Inter",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 56,
+        "fill": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": false,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 0,
+        "y": -110,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "spans": [
+        {
+          "start": 0,
+          "end": 4,
+          "style": {
+            "fontWeight": 800
+          }
+        },
+        {
+          "start": 5,
+          "end": 11,
+          "style": {
+            "italic": true
+          }
+        },
+        {
+          "start": 12,
+          "end": 17,
+          "style": {
+            "underline": true
+          }
+        },
+        {
+          "start": 18,
+          "end": 24,
+          "style": {
+            "strike": true,
+            "fill": {
+              "r": 1,
+              "g": 0.42,
+              "b": 0.32,
+              "a": 1
+            }
+          }
+        }
+      ]
+    },
+    "mark": {
+      "id": "mark",
+      "trackId": "v4",
+      "kind": "text",
+      "name": "Marked words stand out",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "text": {
+        "value": "Marked words stand out",
+        "box": {
+          "mode": "auto",
+          "width": 700
+        }
+      },
+      "style": {
+        "fontFamily": "Inter",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 56,
+        "fill": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": false,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 0,
+        "y": 30,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "spans": [
+        {
+          "start": 7,
+          "end": 12,
+          "style": {
+            "highlight": {
+              "r": 1,
+              "g": 0.86,
+              "b": 0.2,
+              "a": 1
+            },
+            "fill": {
+              "r": 0.08,
+              "g": 0.08,
+              "b": 0.1,
+              "a": 1
+            }
+          }
+        }
+      ]
+    },
+    "gradient": {
+      "id": "gradient",
+      "trackId": "v5",
+      "kind": "text",
+      "name": "Gradient word inside",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "text": {
+        "value": "Gradient word inside",
+        "box": {
+          "mode": "auto",
+          "width": 700
+        }
+      },
+      "style": {
+        "fontFamily": "Inter",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 56,
+        "fill": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": false,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 0,
+        "y": 170,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "spans": [
+        {
+          "start": 9,
+          "end": 13,
+          "style": {
+            "fill": {
+              "from": {
+                "r": 1,
+                "g": 0.42,
+                "b": 0.32,
+                "a": 1
+              },
+              "to": {
+                "r": 1,
+                "g": 0.86,
+                "b": 0.2,
+                "a": 1
+              }
+            },
+            "fontWeight": 900
+          }
+        }
+      ]
+    },
+    "pop": {
+      "id": "pop",
+      "trackId": "v6",
+      "kind": "text",
+      "name": "POP EACH WORD",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "text": {
+        "value": "POP EACH WORD",
+        "box": {
+          "mode": "auto",
+          "width": 700
+        }
+      },
+      "style": {
+        "fontFamily": "Inter",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 56,
+        "fill": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": false,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 0,
+        "y": 290,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "animIn": {
+        "id": "wordPop",
+        "duration": 18,
+        "stagger": 4
+      },
+      "spans": [
+        {
+          "start": 4,
+          "end": 8,
+          "style": {
+            "fill": {
+              "r": 1,
+              "g": 0.42,
+              "b": 0.32,
+              "a": 1
+            },
+            "highlight": {
+              "r": 0.08,
+              "g": 0.08,
+              "b": 0.1,
+              "a": 1
+            }
+          }
+        }
+      ]
+    }
+  },
+  "markers": [],
+  "captionTracks": {},
+  "textPresetsLocal": [],
+  "sequences": {},
+  "meta": {
+    "createdAt": "2026-11-08T08:00:00.000Z",
+    "modifiedAt": "2026-11-08T08:00:00.000Z",
+    "appVersion": "1.1.0",
+    "generator": {
+      "name": "interop-fixture",
+      "version": "1",
+      "source": "fixtures/interop/spans (Batch 67)"
+    }
+  }
+}

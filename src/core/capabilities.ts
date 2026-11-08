@@ -11,7 +11,7 @@ import { CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, SCHEMA_VERSIO
 /** The `manifestVersion`: changes only when a key changes meaning (new keys do not change it). */
 export const MANIFEST_VERSION = 1;
 /** The last batch that touched the manifest (spec §21.1: each batch sets it to its own number). */
-export const LAST_BATCH = 66;
+export const LAST_BATCH = 67;
 
 /** The flags of the manifest: a batch that adds a capability flips its key here (spec §21.2 table). */
 export const FEATURES = {
@@ -20,7 +20,7 @@ export const FEATURES = {
   keyframes: { bezier: true, spring: true, vectorValues: true },
   solid: { stroke: true, shadow: true, cornerRadii: true },
   mediaFrame: { stroke: true, shadow: true, cornerRadius: true },
-  text: { spans: false, counter: false, animators: false, backgroundStroke: true, backgroundShadow: true },
+  text: { spans: true, counter: false, animators: false, backgroundStroke: true, backgroundShadow: true },
   captions: { perCueStyle: true, wordEmphasis: true, wordsImport: true },
   compositing: { compound: true, trackMatte: false, masks: false, adjustment: false },
   vector: { shapes: true, trimPaths: true, svgImport: true },
