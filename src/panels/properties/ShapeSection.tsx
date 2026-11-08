@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, Diamond, Timer } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, type MouseEvent } from "react";
-import { editShapes, shapeGoToKey, shapeStopwatch, shapeToggleKey } from "../../app/shapeController.js";
+import { editShapes, previewShapes, shapeGoToKey, shapeStopwatch, shapeToggleKey } from "../../app/shapeController.js";
+import { liveEdit } from "../../app/liveEdit.js";
 import { rememberColor } from "../../app/propertiesController.js";
 import { appSettings, documentStore, sessionStore } from "../../app/services.js";
 import { clipRel } from "../../core/document/keyframes.js";
@@ -14,12 +15,12 @@ import { defaultStroke, SHAPE_GROUP_LABELS, setPathFill, setShapeField, shapeKey
 import { ColorField } from "../../ui/ColorField.js";
 import { IconButton } from "../../ui/IconButton.js";
 import iconStyles from "../../ui/IconButton.module.css";
-import { NumberField, roundTo, valueBinding, type NumberBinding } from "../../ui/NumberField.js";
+import { NumberField, roundTo, type NumberBinding } from "../../ui/NumberField.js";
 import keyStyles from "./KeyframeControls.module.css";
 import { Row } from "./Section.js";
 import styles from "./Section.module.css";
 import shapeStyles from "./ShapeSection.module.css";
-import { shapeBinding, type ShapeBindingDeps, type ShapeNumberProp } from "./shapeBinding.js";
+import { liveShapeBinding, shapeBinding, type ShapeBindingDeps, type ShapeNumberProp } from "./shapeBinding.js";
 import { Choice, colorOf, type ChoiceProps } from "./StyleFields.js";
 
 // The Shape section (spec §21.12 "Tools", §11, Batch 66) of the selected shape clips: per path (the first
@@ -29,7 +30,7 @@ import { Choice, colorOf, type ChoiceProps } from "./StyleFields.js";
 // (per-path groups, see timeline/edit/shape.ts). Every edit is one undo step over all the selected
 // shapes; number fields are bound outside React (shapeBinding.ts).
 
-const DEPS: ShapeBindingDeps = { document: documentStore, playhead: { get: () => sessionStore.state.getState().playhead, subscribe: (listener) => sessionStore.state.select((state) => state.playhead, listener) } };
+const DEPS: ShapeBindingDeps = { document: documentStore, playhead: { get: () => sessionStore.state.getState().playhead, subscribe: (listener) => sessionStore.state.select((state) => state.playhead, listener) }, live: liveEdit };
 
 const WHITE: RGBA = { r: 1, g: 1, b: 1, a: 1 };
 const BLACK: RGBA = { r: 0, g: 0, b: 0, a: 1 };
@@ -197,31 +198,29 @@ const TRIM_OFFSET: ShapeNumberProp = { field: "trim.offset", label: "Trim offset
 const STROKE_WIDTH: ShapeNumberProp = { field: "stroke.width", label: "Stroke width", scale: 1, min: 0, max: 2048, precision: 1 };
 const DASH_OFFSET: ShapeNumberProp = { field: "stroke.dashOffset", label: "Dash offset", scale: 1, min: -16384, max: 16384, precision: 0 };
 
-/** A stroke number that is not keyable (miter limit, dash, gap): committed on release through `editShapes`. */
+/** A stroke number that is not keyable (miter limit, dash, gap): live while scrubbed, one command on release through `editShapes`. */
 function plainBinding(ids: readonly ClipId[], pathIndex: number, read: (stroke: PathStroke) => number, write: (stroke: PathStroke, value: number) => void, label: string, min: number, max: number): NumberBinding {
-  return valueBinding(
+  return liveShapeBinding(
+    DEPS,
     {
-      read() {
+      read(project, live) {
         const values: number[] = [];
         for (const id of ids) {
-          const clip = documentStore.getState().clips[id];
+          const clip = live?.get(id) ?? project.clips[id];
           const stroke = clip?.kind === "shape" ? clip.paths[pathIndex]?.stroke : undefined;
           if (stroke) values.push(read(stroke));
         }
         return values.length > 0 && values.every((v) => v === values[0]) ? (values[0] ?? null) : null;
       },
-      subscribe: (listener) => documentStore.subscribe(() => listener(), { affects: ["composite"] }),
+      clamp: (value) => roundTo(Math.min(max, Math.max(min, value)), 1),
+      edit: (value) => (clip) => {
+        const stroke = clip.paths[pathIndex]?.stroke;
+        if (stroke) write(stroke, value);
+      },
+      label,
+      coalesceKey: `properties.shape.${pathIndex}.${label}`,
     },
-    (value) =>
-      editShapes(
-        ids,
-        (clip) => {
-          const stroke = clip.paths[pathIndex]?.stroke;
-          if (stroke) write(stroke, roundTo(Math.min(max, Math.max(min, value)), 1));
-        },
-        label,
-        `properties.shape.${pathIndex}.${label}`,
-      ),
+    ids,
   );
 }
 
@@ -243,6 +242,10 @@ function PathBlock({ ids, clip, index }: { ids: readonly ClipId[]; clip: ShapeCl
     editShapes(ids, (draft, rel) => { const p = draft.paths[index]; if (p) setPathFill(draft, index, make(p), rel); }, label);
   const strokeEdit = (label: string, edit: (s: PathStroke) => void) =>
     editShapes(ids, (draft) => { const s = draft.paths[index]?.stroke; if (s) edit(s); }, label);
+  const previewFill = (make: (p: ShapePath, color: RGBA) => Fill | null) => (color: RGBA | null) =>
+    previewShapes(ids, color ? (draft, rel) => { const p = draft.paths[index]; if (p) setPathFill(draft, index, make(p, color), rel); } : null);
+  const previewStrokeColor = (color: RGBA | null) =>
+    previewShapes(ids, color ? (draft, rel) => { setShapeField(draft, draft.paths[index]?.id ?? "", "stroke.color", [color.r, color.g, color.b, color.a], rel); } : null);
   const kind = path.primitive ? shapeKindName(path.primitive.kind) : "Path";
   const params = path.primitive ? PRIMITIVE_PARAMS[path.primitive.kind] : [];
 
@@ -302,6 +305,7 @@ function PathBlock({ ids, clip, index }: { ids: readonly ClipId[]; clip: ShapeCl
           recent={recent}
           ariaLabel={isGradient ? `Gradient first color (path ${index + 1})` : `Fill color (path ${index + 1})`}
           disabled={path.fill === null}
+          onPreview={previewFill((p, color) => (p.fill ? fillWithFirst(p.fill, color) : p.fill))}
           onChange={(next) => {
             fillEdit("Change fill", (p) => (p.fill ? fillWithFirst(p.fill, next) : p.fill));
             rememberColor(next);
@@ -314,6 +318,7 @@ function PathBlock({ ids, clip, index }: { ids: readonly ClipId[]; clip: ShapeCl
           recent={recent}
           ariaLabel={`Gradient last color (path ${index + 1})`}
           disabled={!isGradient}
+          onPreview={previewFill((p, color) => (p.fill ? fillWithLast(p.fill, color) : p.fill))}
           onChange={(next) => {
             fillEdit("Change fill", (p) => (p.fill ? fillWithLast(p.fill, next) : p.fill));
             rememberColor(next);
@@ -336,6 +341,7 @@ function PathBlock({ ids, clip, index }: { ids: readonly ClipId[]; clip: ShapeCl
           recent={recent}
           ariaLabel={`Stroke color (path ${index + 1})`}
           disabled={!stroke}
+          onPreview={previewStrokeColor}
           onChange={(next) => {
             editShapes(ids, (draft, rel) => { setShapeField(draft, draft.paths[index]?.id ?? "", "stroke.color", [next.r, next.g, next.b, next.a], rel); }, "Change stroke color");
             rememberColor(next);

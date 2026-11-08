@@ -91,3 +91,15 @@ describe("Compositor: shape clips (spec §21.12)", () => {
     expect(shapeAt(compositor, empty, 20)).toBeUndefined();
   });
 });
+
+describe("live shape edits (Batch 66, P2)", () => {
+  it("draws the edited clip instead of the document's and leaves the document alone", () => {
+    const compositor = new Compositor();
+    const p = build();
+    const edited = structuredClone(p.clips["s"] as ShapeClip);
+    edited.paths[0]!.fill = { r: 0, g: 1, b: 0, a: 1 };
+    const live = compositor.evaluate(p, 20, null, null, null, null, null, null, null, new Map([["s", edited]])).layers.find((l): l is ShapeCompositeLayer => l.kind === "shape");
+    expect(live?.paths[0]?.fill).toMatchObject({ r: 0, g: 1, b: 0 });
+    expect(shapeAt(compositor, p, 20)?.paths[0]?.fill).toMatchObject({ r: 1, g: 1, b: 1 });
+  });
+});

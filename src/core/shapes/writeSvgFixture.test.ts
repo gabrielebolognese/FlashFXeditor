@@ -3,7 +3,9 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { it } from "vitest";
 import { buildSvgFixture, fixtureScale, SVG_FIXTURE_BACKGROUND, SVG_FIXTURE_ICONS } from "./svgFixture.js";
 
-it("writes", () => {
+// A generator, not a test: it rewrites the tracked fixture only when asked (`WRITE_SVG_FIXTURE=1 npx vitest run src/core/shapes/writeSvgFixture.test.ts`),
+// so a normal run never rewrites a file other tests read in parallel.
+it.skipIf(!process.env.WRITE_SVG_FIXTURE)("writes the svg interop fixture (project.json, reference.html)", () => {
   const svgs: Record<string, string> = {};
   for (const icon of SVG_FIXTURE_ICONS) svgs[icon.file] = readFileSync(`fixtures/interop/svg/icons/${icon.file}.svg`, "utf8");
   const { project, sizes } = buildSvgFixture(svgs);

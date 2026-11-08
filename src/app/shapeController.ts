@@ -6,11 +6,12 @@
 // - `editShapes` and the stopwatch calls are the Shape section's writes: each one command.
 import type { ClipId, MediaId, PrimitiveKind } from "../core/document/types.js";
 import { importSvgShapes } from "../core/shapes/svgImport.js";
+import { patchLiveEdit } from "./liveEdit.js";
 import { selectClips, toSnapshot } from "../core/store/selection.js";
 import { isSvgImage } from "../media/mediaKinds.js";
-import { adjacentShapeKey, addShape, defaultShape, editShapes as editShapesCommand, fitScale, SHAPE_KINDS, setShapeStopwatch, shapeKindName, toggleShapeKey, type ShapeEdit, type ShapeKeyGroup, type ShapeSpec } from "../timeline/edit/shape.js";
+import { adjacentShapeKey, addShape, defaultShape, editedShapes, editShapes as editShapesCommand, fitScale, SHAPE_KINDS, setShapeStopwatch, shapeKindName, toggleShapeKey, type ShapeEdit, type ShapeKeyGroup, type ShapeSpec } from "../timeline/edit/shape.js";
 import { showToast } from "../ui/toasts.js";
-import { dropMediaOnCanvas } from "./dropController.js";
+import { dropMediaOnCanvas, setSvgDropChoice } from "./dropController.js";
 import { selectedMedia } from "./mediaController.js";
 import { sourceFile } from "./mediaOffline.js";
 import { actions, documentStore, sessionStore } from "./services.js";
@@ -64,6 +65,12 @@ export function editShapes(ids: readonly ClipId[], edit: ShapeEdit, label: strin
   if (command) documentStore.dispatch(command);
 }
 
+/** `edit` shown live on the shape clips among `ids` (no document change, P2); null ends it. */
+export function previewShapes(ids: readonly ClipId[], edit: ShapeEdit | null): void {
+  const at = sessionStore.state.getState().playhead;
+  patchLiveEdit({ shapes: edit ? editedShapes(documentStore.getState(), ids, edit, at) : null });
+}
+
 /** The stopwatch of a path's group (the path by index in each shape). */
 export function shapeStopwatch(ids: readonly ClipId[], pathIndex: number, group: ShapeKeyGroup, on: boolean): void {
   const command = setShapeStopwatch(documentStore.getState(), ids, pathIndex, group, on, sessionStore.state.getState().playhead);
@@ -88,7 +95,10 @@ export function installShapeController(): () => void {
     ...SHAPE_KINDS.map((kind) => actions.register(`add.shape.${kind}`, () => void addShapeClip(kind))),
     actions.register("media.importAsShapes", () => void importAsShapes()),
   ];
+  // A dropped SVG offers "Make shapes" (spec §21.12).
+  setSvgDropChoice((mediaId) => void importAsShapes([mediaId]));
   return () => {
+    setSvgDropChoice(null);
     for (const stop of stops) stop();
   };
 }

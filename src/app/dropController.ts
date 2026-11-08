@@ -9,6 +9,7 @@ import { setSourceRange, type SourceRange } from "../core/store/sessionStore.js"
 import { applyMediaDrop, commitPlan, dropLabel, planAtPlayhead, planCanvasDrop, requestItems, stageDrop, type DropItem, type DropPlan, type MediaDropItem, type MediaDropRequest } from "../timeline/edit/dropMedia.js";
 import type { MoveMode, MoveResult } from "../timeline/edit/move.js";
 import { showToast } from "../ui/toasts.js";
+import { isSvgImage } from "../media/mediaKinds.js";
 import { filesFromTransfer, importMediaFiles, selectedMedia } from "./mediaController.js";
 import { actions, documentStore, sessionStore } from "./services.js";
 import { movePlayhead, reportMoveRefusal } from "./timelineController.js";
@@ -54,11 +55,46 @@ export function dropCompoundOnCanvas(id: SequenceId, point: { x: number; y: numb
 }
 
 /** Dispatches a placement (one undo step), selecting its clips; a refusal gets a toast. True when it landed. */
-function commit(result: MoveResult, plan: DropPlan): boolean {
+/**
+ * The drop choice for an SVG (spec §21.12): a dropped SVG lands as an image clip, and its toast offers
+ * "Make shapes". Set by the shape controller (it imports this module, so the call goes the other way).
+ */
+let svgDropChoice: ((mediaId: MediaId) => void) | null = null;
+
+export function setSvgDropChoice(choose: ((mediaId: MediaId) => void) | null): void {
+  svgDropChoice = choose;
+}
+
+/** `offer`: false when the drop also imported its media (undoing it would remove the media the choice needs). */
+function commit(result: MoveResult, plan: DropPlan, offer = true): boolean {
   if (result.kind === "refused") reportMoveRefusal(result.refusal);
   if (result.kind !== "ok") return false;
   documentStore.dispatch(result.command, { selection: toSnapshot(selectClips(plan.clips.map((clip) => clip.id), plan.clips[0]?.id ?? null)) });
+  if (offer) offerShapes(plan);
   return true;
+}
+
+/** A toast with "Make shapes" for the first SVG image among the dropped clips: one undo, then the shape import. */
+function offerShapes(plan: DropPlan): void {
+  const choose = svgDropChoice;
+  if (!choose) return;
+  const project = documentStore.getState();
+  const clip = plan.clips.find((candidate) => candidate.kind === "image" && project.media[candidate.mediaId] && isSvgImage(project.media[candidate.mediaId] as MediaItem));
+  if (!clip || clip.kind !== "image") return;
+  const mediaId = clip.mediaId;
+  const label = documentStore.history.getState().undoLabel;
+  showToast({
+    tone: "info",
+    message: `${project.media[mediaId]?.name ?? "SVG"} added as an image`,
+    detail: "Make shapes to get editable paths.",
+    action: {
+      label: "Make shapes",
+      run: () => {
+        if (documentStore.history.getState().undoLabel === label) documentStore.undo();
+        choose(mediaId);
+      },
+    },
+  });
 }
 
 function noDuration(items: readonly MediaDropItem[]): void {
@@ -130,7 +166,7 @@ export function dropFilesOnTimeline(transfer: DataTransfer, request: MediaDropRe
           request.lanes,
           newId,
         );
-        if (plan.clips.length > 0) commit(commitPlan(project, plan, request.mode, dropLabel(request.mode === "insert" ? "Insert" : "Add", added.length), newId), plan);
+        if (plan.clips.length > 0) commit(commitPlan(project, plan, request.mode, dropLabel(request.mode === "insert" ? "Insert" : "Add", added.length), newId), plan, false);
       },
     }),
   );

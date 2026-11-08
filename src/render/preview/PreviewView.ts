@@ -40,7 +40,7 @@
 //   project size, whatever the quality mode and whatever is on screen.
 // - The backing store is resized inside `render`, so a resize never shows a cleared canvas.
 import { ShapeGeometryCache, workerBuilder, type ShapeGeometryStats } from "../shapes/ShapeGeometryCache.js";
-import type { ClipId, Crop, Frame, Project, RGBA, TextStyle, Transform } from "../../core/document/types.js";
+import type { ClipId, Crop, Frame, Project, RGBA, ShapeClip, TextStyle, Transform } from "../../core/document/types.js";
 import { watchDevicePixelRatio } from "../../core/scheduler/devicePixelRatio.js";
 import type { FrameScheduler, RenderView } from "../../core/scheduler/FrameScheduler.js";
 import { createStore, type Store } from "../../core/store/createStore.js";
@@ -104,6 +104,8 @@ export interface PreviewViewDeps extends Omit<LayerTexturesDeps, "onChange" | "w
   captions?(): LiveCaptions | null;
   /** Ephemeral solid looks by clip id (a Solid field scrub, a color dragged, a size handle drag, Batch 34), or null. The owner invalidates `preview` when they change. */
   solids?(): ReadonlyMap<ClipId, SolidLook> | null;
+  /** Shape clips as a Shape section scrub or color drag edits them (Batch 66). */
+  shapeEdits?(): ReadonlyMap<ClipId, ShapeClip> | null;
   /** Loads the fonts of `style` for `text` (Export frame); resolves true when it had to wait for them. */
   loadFonts?(style: TextStyle, text: string): Promise<boolean>;
   /** True when playback fell behind on the media this playback (1/2 and 1/4 then play its proxy). */
@@ -403,6 +405,7 @@ export class PreviewView implements RenderView {
       override ? null : (this.deps.anims?.() ?? null),
       override ? null : (this.deps.captions?.() ?? null),
       override ? null : (this.deps.solids?.() ?? null),
+      override ? null : (this.deps.shapeEdits?.() ?? null),
     );
     const background = override ? null : (this.deps.background?.() ?? null);
     if (background) composite.background = background;

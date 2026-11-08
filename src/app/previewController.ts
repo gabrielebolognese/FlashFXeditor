@@ -132,6 +132,8 @@ export const previewView: PreviewView = new PreviewView({
   captions: () => liveCaptions(),
   // A size handle drag on a solid (spec §7.3), else a Solid field scrub (Batch 34).
   solids: () => canvasInput.solids ?? liveEdit.getState().solids,
+  // A Shape section field scrub or color drag (Batch 66).
+  shapeEdits: () => liveEdit.getState().shapes,
   // Export frame waits for the fonts of its text layers.
   loadFonts: async (style, text) => {
     if (fontLibrary.ready(style, text)) return false;

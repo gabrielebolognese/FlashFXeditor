@@ -290,7 +290,7 @@ export class Compositor {
    * The document at `frame`, bottom track first, with `transforms` (a canvas gesture's or a field
    * scrub's), `opacities` (a field scrub's), `crops` (a crop handle drag's or a field scrub's), `texts`
    * (a Text field scrub's), `anims` (an Animation field scrub's), `captions` (the cue list's text,
-   * a Caption style scrub's style) and `solids` (a Solid field scrub's or a size handle drag's looks)
+   * a Caption style scrub's style) and `solids` (a Solid field scrub's or a size handle drag's looks) and `shapeEdits` (a Shape section scrub's clips)
    * replacing the clips' own. The result and its layers are reused by the next call: read it before
    * evaluating again.
    */
@@ -304,6 +304,7 @@ export class Compositor {
     anims: ReadonlyMap<ClipId, LiveAnims> | null = null,
     captions: LiveCaptions | null = null,
     solids: ReadonlyMap<ClipId, SolidLook> | null = null,
+    shapeEdits: ReadonlyMap<ClipId, ShapeClip> | null = null,
   ): Composite {
     const out = this.out;
     const { width, height, background } = doc.settings;
@@ -421,7 +422,7 @@ export class Compositor {
         }
       } else if (clip.kind === "shape") {
         const layer = (this.shapePool[shapes] ??= newShapeLayer());
-        if (this.writeShape(layer, doc, clip, transform, opacity * fadeFactor(clip, frame), rel)) {
+        if (this.writeShape(layer, doc, shapeEdits?.get(clip.id) ?? clip, transform, opacity * fadeFactor(clip, frame), rel)) {
           out.layers.push(layer);
           shapes += 1;
         }

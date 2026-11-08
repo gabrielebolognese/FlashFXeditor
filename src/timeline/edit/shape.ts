@@ -228,6 +228,21 @@ export function editShapes(project: Project, ids: Iterable<ClipId>, edit: ShapeE
   };
 }
 
+/**
+ * `edit` applied to copies of the shape clips among `ids` (as `editShapes` would write it), for the live
+ * preview of a scrub or a color drag (P2: no document change). Null when no clip changes.
+ */
+export function editedShapes(project: Project, ids: Iterable<ClipId>, edit: ShapeEdit, at: Frame): Map<ClipId, ShapeClip> | null {
+  const out = new Map<ClipId, ShapeClip>();
+  for (const clip of editableShapes(project, ids)) {
+    const copy = structuredClone(clip) as Draft<ShapeClip>;
+    edit(copy, clipRel(clip, at));
+    regenerate(copy);
+    if (!sameJson(copy, clip)) out.set(clip.id, copy as ShapeClip);
+  }
+  return out.size > 0 ? out : null;
+}
+
 /** A new stroke for a path that has none: white, as wide as the shape's short side / 90. */
 export function defaultStroke(size: { w: number; h: number }): PathStroke {
   return { width: Math.max(2, Math.round(Math.min(size.w, size.h) / 40)), color: { ...WHITE }, align: "center", cap: "round", join: "round", miterLimit: 4 };
