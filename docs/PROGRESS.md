@@ -6962,6 +6962,7 @@ Why each dependency exists (Batch rule 8).
 ### Batch 69: Parenting, null clips and motion paths
 - status: done
 - date: 2026-11-08
+- docs: parenting-and-motion-paths.md (new), keyboard-shortcuts.md, whats-new.md, README.md in docs/user-guide/ (2026-11-08)
 - notes:
   - Built in auto mode (lean run, resumed after a context compaction).
   - Model (§21.14): `ClipBase.parentId`, `ClipBase.autoOrient`, the `null` clip kind (`NullClip`: transform, keyframes, size), the `transform.position` vector keyframe prop (`[x, y]` per key) with spatial tangents `spatialIn` / `spatialOut` (offsets from the key point). Schema 12 -> 13 (identity migration), zod schema, field table (`capabilities.json`: `transform.parenting`, `motionPaths`, `autoOrient` true), validation (no audio or caption child, not itself, parent has a transform, same sequence, no cycle; a null needs a size; position keys are points and tangents are pairs). INTEROP.md section 5.8 with two validated examples.

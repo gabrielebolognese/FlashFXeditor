@@ -2,6 +2,14 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+## Batch 69: Parenting, nulls and motion paths
+Pick a clip in the **Parent** menu of **Transform** and it follows that clip: when the parent moves, turns or scales, the child goes with it. **Add null** in the timeline toolbar adds an invisible layer made to be a parent, and it never shows in an export. **Move along a path** bends a layer's position keys into a curve you drag in the preview, **Smooth path** rounds it, and **Auto-orient** turns the layer along the curve. See [Parenting, nulls and motion paths](parenting-and-motion-paths.md).
+
+> **Video placeholder: What's new in Batch 69**
+> - File: `videos/whats-new/batch-69.mp4` (not recorded yet)
+> - Length: about 40 seconds
+> - Shows: click **Add null**; choose it in **Parent** for two shapes; key the null's **Rotation** from 0 to 90 and press <kbd>Space</kbd>; select a shape with position keys, click **Move along a path**, drag a round handle and click **Auto-orient**.
+
 ## Batch 68: Number counters and text animators
 Turn on **Counter** in the **Text** section to make a text count from one number to another, with decimals, a prefix, a suffix and a thousands separator. The new **Animators** section moves letters, words or lines through a range you can key. Nine new **In** and **Out** chips (**Type on**, **Decode**, **Tumble**, **Cascade up**, **Rise by line**, **Pop by char**, **Blur by char**, **Fade by char**, **Highlight sweep**) join the others. See [Text animations](text-animations.md#use-the-nine-kinetic-animations).
 

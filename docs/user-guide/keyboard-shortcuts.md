@@ -518,6 +518,20 @@ Text animations have no keys of their own: you set them with the mouse in the **
 | Make it 10 frames longer or shorter | <kbd>Shift</kbd>+<kbd>↑</kbd> or <kbd>Shift</kbd>+<kbd>↓</kbd> | <kbd>⇧</kbd>+<kbd>↑</kbd> or <kbd>⇧</kbd>+<kbd>↓</kbd> |
 | Change **Duration** or **Stagger** while the preview at the playhead follows (1 frame per pixel) | Drag the field's icon left or right | Same |
 
+### Parenting, nulls and motion paths
+
+These commands have no keys by default. Run them from the toolbar, **Edit Properties** or the command palette, or give them keys in **Settings** > **Shortcuts**. See [Parenting, nulls and motion paths](parenting-and-motion-paths.md).
+
+| Action | Windows | macOS |
+| --- | --- | --- |
+| Add a null at the playhead | **Add null** (toolbar or palette) | Same |
+| Clear the parent of the selected clips | **Clear parent** (palette) | Same |
+| Turn a motion path on or off | **Motion path (toggle)** (palette) | Same |
+| Smooth the path | **Smooth motion path** (palette) | Same |
+| Turn auto-orient on or off | **Auto-orient (toggle)** (palette) | Same |
+| Pull out matching tangents from a key in the preview | <kbd>Alt</kbd>+drag the key | <kbd>⌥</kbd>+drag the key |
+| Mirror the opposite handle in the preview | <kbd>Alt</kbd>+drag the handle | <kbd>⌥</kbd>+drag the handle |
+
 ### Font browser
 
 These keys work while the font browser is open, with the cursor in its search field. Open it by clicking the **Font** field of the **Text** or **Caption style** section, or with <kbd>Enter</kbd> or <kbd>Space</kbd> when the field has the gold focus ring. See [Fonts](fonts.md).

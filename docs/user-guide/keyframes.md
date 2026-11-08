@@ -348,6 +348,7 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Trimming clips](trimming.md)
 - [Text animations](text-animations.md)
+- [Parenting, nulls and motion paths](parenting-and-motion-paths.md)
 - [Fades and transitions](fades-and-transitions.md)
 - [Editing audio](audio-editing.md)
 - [Shapes and images](shapes-and-images.md)
