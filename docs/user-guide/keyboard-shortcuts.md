@@ -544,6 +544,9 @@ While you edit a text in the preview, every other shortcut is off and the keys t
 | --- | --- | --- |
 | New line | <kbd>Enter</kbd> or <kbd>Shift</kbd>+<kbd>Enter</kbd> | <kbd>Return</kbd> or <kbd>⇧</kbd>+<kbd>Return</kbd> |
 | Finish editing and keep the text | <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or <kbd>Esc</kbd> | <kbd>⌘</kbd>+<kbd>Return</kbd> or <kbd>Esc</kbd> |
+| Bold the selection | <kbd>Ctrl</kbd>+<kbd>B</kbd> | <kbd>⌘</kbd>+<kbd>B</kbd> |
+| Italic the selection | <kbd>Ctrl</kbd>+<kbd>I</kbd> | <kbd>⌘</kbd>+<kbd>I</kbd> |
+| Underline the selection | <kbd>Ctrl</kbd>+<kbd>U</kbd> | <kbd>⌘</kbd>+<kbd>U</kbd> |
 | Move the caret one letter, or one word | <kbd>←</kbd> or <kbd>→</kbd>; <kbd>Ctrl</kbd>+<kbd>←</kbd> or <kbd>Ctrl</kbd>+<kbd>→</kbd> | <kbd>←</kbd> or <kbd>→</kbd>; <kbd>⌥</kbd>+<kbd>←</kbd> or <kbd>⌥</kbd>+<kbd>→</kbd> |
 | Move the caret to the line above or below, as you see the lines | <kbd>↑</kbd> or <kbd>↓</kbd> | <kbd>↑</kbd> or <kbd>↓</kbd> |
 | Move the caret to the start or end of the line | <kbd>Home</kbd> or <kbd>End</kbd> | <kbd>Fn</kbd>+<kbd>←</kbd> or <kbd>Fn</kbd>+<kbd>→</kbd> |

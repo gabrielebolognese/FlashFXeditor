@@ -20,6 +20,7 @@ Text clips put words on your video: a hook at the start, a title over a shot, a 
 - [Add a subtitle](#add-a-subtitle)
 - [Where a new title goes](#where-a-new-title-goes)
 - [Edit text in the preview](#edit-text-in-the-preview)
+- [Style single words](#style-single-words)
 - [Select and move text in the preview](#select-and-move-text-in-the-preview)
 - [Resize text with its handles](#resize-text-with-its-handles)
 - [Style text in the Text section](#style-text-in-the-text-section)
@@ -167,6 +168,33 @@ The whole edit is one step in the history, named **Edit text**, whatever you typ
 The **Edit Properties** panel stays live while you edit. Change the font, the size, a color or any other value in the **Text** section, and the text updates at once while you keep editing: your typing and the caret stay where they are. Click the text to type again.
 
 Clicks in the font browser, the color picker, menus and dialogs also keep editing on.
+
+## Style single words
+While you edit a text, a small bar appears with the **Text format** tools. Select some letters, then use the bar to style only those letters. The rest of the text keeps the clip's look.
+
+1. Double-click a text in the preview to edit it.
+2. Select the words: drag across them, double-click a word, or hold <kbd>Shift</kbd> and press the arrow keys.
+3. Click a button on the bar, or use its key.
+
+| Tool | What it does | Key |
+| --- | --- | --- |
+| **Bold** | Makes the selection bold | <kbd>Ctrl</kbd>+<kbd>B</kbd> |
+| **Italic** | Makes the selection italic | <kbd>Ctrl</kbd>+<kbd>I</kbd> |
+| **Underline** | Underlines the selection | <kbd>Ctrl</kbd>+<kbd>U</kbd> |
+| **Strikethrough** | Strikes the selection through | none |
+| Selection color | Colors the letters; the **X** next to it goes back to the clip's color | none |
+| Selection highlight | Draws a colored box behind the letters; the **X** next to it removes it | none |
+| **Clear formatting** | Removes every style from the selection | none |
+
+The tools are dimmed while nothing is selected. Pressing a style again turns it off. These keys work only while you edit text: outside editing, <kbd>Ctrl</kbd>+<kbd>I</kbd> still imports media.
+
+- Typing at the end of a styled word makes the new letters share its style. Typing at its start does not.
+- Editing before a styled word keeps the style on the same words. Deleting its letters shrinks or removes the style.
+- The whole edit, styles included, is one **Edit text** step. <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes it.
+- Styled words show in the preview, in the export and in text animations: with **Word Pop**-style animations, each word moves with its own style.
+- Applying a text preset keeps the styled words: presets change the look of the clip, not these styles.
+
+> **Note:** If you change the **Case** of a text so its length changes, the styles are not shown. A word style has one gradient only when the clip has one: a gradient fill spreads over the whole text box, not over each word. Kerning between a styled and a plain word is not applied.
 
 ## Select and move text in the preview
 
@@ -328,4 +356,4 @@ Pressing <kbd>↑</kbd> or <kbd>↓</kbd> in a number field of the **Text** sect
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 58, 2026-11-07</sub>
+<sub>Last updated: Batch 67, 2026-11-08</sub>

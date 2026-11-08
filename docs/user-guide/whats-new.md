@@ -2,6 +2,14 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+## Batch 67: Style single words in a text
+While you edit a text in the preview, a **Text format** bar lets you make some words **Bold**, **Italic**, **Underline** or **Strikethrough**, give them a color or a highlight, or use **Clear formatting**. <kbd>Ctrl</kbd>+<kbd>B</kbd>, <kbd>Ctrl</kbd>+<kbd>I</kbd> and <kbd>Ctrl</kbd>+<kbd>U</kbd> work while you edit. Styles stay on their words when you edit before them, survive text presets, and show in the export. See [Style single words](titles-and-text.md#style-single-words).
+
+> **Video placeholder: What's new in Batch 67**
+> - File: `videos/whats-new/batch-67.mp4` (not recorded yet)
+> - Length: about 35 seconds
+> - Shows: double-click a text that reads `SAVE 3 HOURS`; select `3 HOURS`; pick a coral selection color on the **Text format** bar; press <kbd>Ctrl</kbd>+<kbd>B</kbd>; type a word before it and the style stays on `3 HOURS`; press <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, then <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
+
 ## Batch 66: Create and edit vector shapes, import SVG as shapes
 Click **Add shape** in the timeline toolbar and choose a **Rectangle**, **Ellipse**, **Polygon**, **Star**, **Arrow**, **Arc** or **Line** to add it at the playhead. The **Shape** section of **Edit Properties** changes its numbers, fill, stroke and trim, with a live preview while you scrub, and keyframes make a line draw itself. Right-click an SVG in the **Media** panel and choose **Import as shapes** to get editable paths, or press **Make shapes** after you drop an SVG. See [Add a vector shape](shapes-and-images.md#add-a-vector-shape), [Edit a shape](shapes-and-images.md#edit-a-shape) and [Import an SVG as shapes](shapes-and-images.md#import-an-svg-as-shapes).
 
