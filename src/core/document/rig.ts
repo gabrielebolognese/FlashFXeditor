@@ -1,3 +1,5 @@
+// Not a port of FlashFX-v2 src/core/sceneGraph.ts @ a91c675 (spec §21.14 names it): that file walks layers of one composition by index
+// and frame; this resolver reads the shared immutable `Project.clips` with a per-frame memo (see PROGRESS Batch 69 deviations).
 // Parenting (spec §21.14, Batch 69): a clip's transform is in its parent's space. The parent's world
 // transform applies after the clip's own, with the parent's own position as the origin (After Effects
 // semantics): rotating a parent turns its children around the parent's position, which is its anchor

@@ -1,8 +1,8 @@
+// Ported from FlashFX-v2 src/core/positionPath.ts @ a91c675, adapted: integer-frame inputs, no document imports, heading by finite difference.
 // Spatial motion paths (spec §21.14, Batch 69): the shape a layer travels through space, separate from
 // its temporal easing. A segment between two `transform.position` keys is a cubic bezier whose inner
 // control points are the keys' spatial tangents (offsets from each key's point). Segments are sampled by
-// ARC LENGTH so a linear ease is a constant speed along a curve. Ported from FlashFX-v2
-// `src/core/positionPath.ts`; pure, no document imports.
+// ARC LENGTH so a linear ease is a constant speed along a curve. Pure, no document imports.
 
 export type Vec2 = readonly [number, number];
 

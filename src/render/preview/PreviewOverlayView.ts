@@ -187,6 +187,8 @@ export class PreviewOverlayView implements RenderView {
       for (const q of scene.outlines) quad(q);
       quad(scene.box);
       out.push(scene.group ? 1 : 0);
+      out.push(scene.nulls?.length ?? 0);
+      for (const q of scene.nulls ?? []) quad(q);
       if (scene.anchor) out.push(1, scene.anchor.x, scene.anchor.y);
       else out.push(0);
       if (scene.marquee) out.push(1, scene.marquee.x0, scene.marquee.y0, scene.marquee.x1, scene.marquee.y1);
@@ -305,6 +307,16 @@ export class PreviewOverlayView implements RenderView {
     ctx.strokeStyle = color.accent;
     for (const quad of scene.outlines) {
       path(quad);
+      ctx.stroke();
+    }
+    // A null has no picture: its outline carries a cross through the corners (spec §21.14).
+    for (const quad of scene.nulls ?? []) {
+      const [tl, tr, br, bl] = quad.map(at) as [Point, Point, Point, Point];
+      ctx.beginPath();
+      ctx.moveTo(tl.x, tl.y);
+      ctx.lineTo(br.x, br.y);
+      ctx.moveTo(tr.x, tr.y);
+      ctx.lineTo(bl.x, bl.y);
       ctx.stroke();
     }
     if (scene.path) this.drawPath(ctx, t, dpr, scene.path);

@@ -31,10 +31,10 @@ const t = (fields: Partial<Transform> = {}): Transform => ({ ...IDENTITY_TRANSFO
  * linked partner of s1. Snapping is off unless `snap` (6 CSS px are 12 project px at this placement);
  * `tracks` sets fields of V1..V3 (locked, muted).
  */
-function setup(transforms: Partial<Transform>[] = [{}, {}, {}], { snap = false, tracks = [] as Partial<Track>[] } = {}) {
+function setup(transforms: Partial<Transform>[] = [{}, {}, {}], { snap = false, tracks = [] as Partial<Track>[], nulls = [] as string[] } = {}) {
   const p = makeProject();
   p.tracks = [...["v1", "v2", "v3"].map((id, i) => ({ ...makeTrack(id), ...tracks[i] })), makeTrack("a1", "audio")];
-  const clips: Clip[] = transforms.map((fields, i) => ({ ...makeSolidClip({ id: `s${i + 1}`, trackId: `v${i + 1}`, start: 0, duration: 30 }), transform: t(fields) }));
+  const clips: Clip[] = transforms.map((fields, i) => ({ ...makeSolidClip({ id: `s${i + 1}`, trackId: `v${i + 1}`, start: 0, duration: 30 }), transform: t(fields), ...(nulls.includes(`s${i + 1}`) ? { kind: "null" as const, size: { w: 100, h: 100 } } : {}) }) as Clip);
   const session = createSessionStore();
   session.state.set((state) => ({ ...state, snap }));
   const doc = new DocumentStore(withClips(p, clips), { session, validate: true });
@@ -208,6 +208,14 @@ describe("CanvasEditInput (spec §7.2, §7.3)", () => {
     s.element.dispatchEvent(new MouseEvent("contextmenu", { clientX: 100 + 10 + 10, clientY: 50 + 20 + 10, bubbles: true, cancelable: true }));
     expect(s.selected()).toEqual([]);
     expect(s.onContextMenu).toHaveBeenCalledTimes(1);
+  });
+
+  it("lists the selected null clips so the overlay draws a cross through them (§21.14)", () => {
+    const s = setup([{}, { x: 300 }], { nulls: ["s2"] });
+    setSelection(s.session, selectClips(["s1", "s2"]));
+    const scene = s.input.scene();
+    expect(scene.outlines).toHaveLength(2);
+    expect(scene.nulls).toHaveLength(1);
   });
 
   it("describes the gizmo for the overlay: outlines, group box, hover and readout", () => {

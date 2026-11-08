@@ -186,6 +186,8 @@ export interface GizmoScene {
   keyframe?: { on: boolean } | null;
   /** The selected clip motion path with its key points and tangent handles (Batch 69), or null. */
   path?: PathScene | null;
+  /** The outlined null clips (spec §21.14): drawn with a cross through the box corners. */
+  nulls?: readonly Quad[];
 }
 
 type GestureKind = "move" | "scale" | "rotate" | "anchor" | "crop" | "textSize" | "textWidth" | "captionSize";
@@ -595,6 +597,8 @@ export class CanvasEditInput {
     // A marquee shows the selection it would make: its layers, plus the current ones when it adds.
     const outlined = marquee ? layers.filter((layer) => marquee.hits.includes(layer.clipId) || (marquee.additive && all.includes(layer))) : all;
     const outlines = outlined.map(outlineQuad);
+    const clips = this.deps.document.getState().clips;
+    const nulls = outlined.filter((layer) => clips[layer.clipId]?.kind === "null").map(outlineQuad);
     const box = drag?.result?.box ?? (marquee ? null : gizmoBoxOf(selected.map((layer) => layer.quad)));
     const hoverLayer = !drag && !marquee && this.hover !== null ? layers.find((layer) => layer.clipId === this.hover && !selected.includes(layer)) : undefined;
     const single = selected.length === 1 ? selected[0] : undefined;
@@ -623,6 +627,7 @@ export class CanvasEditInput {
       text: null,
       keyframe: box && !marquee && !cropLayer ? this.keyframeMark(selected) : null,
       path: marquee ? null : this.pathSceneNow(),
+      nulls,
     };
   }
 
