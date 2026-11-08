@@ -6936,6 +6936,7 @@ Why each dependency exists (Batch rule 8).
   - The counter's per-frame cells/items arrays are small allocations; the P11 numbers (rasterizations during playback) are covered by unit tests of the layout/glyph-text caches, not a Profiler or CDP run.
 - follow-ups:
   - [from Batch 68 -> Batch 69] Fields commit on release (live channel), palette commands and a keyed-fill stopwatch (see Follow-ups).
+- docs: text-animations.md (new sections kinetic animations, Counter, Animators), whats-new.md, README.md
 - design gaps:
   - The Animators section and Counter rows have no DESIGN_SYSTEM.md definition (see Design system gaps).
 - pending manual checks:

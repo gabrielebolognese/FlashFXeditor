@@ -2,6 +2,14 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+## Batch 68: Number counters and text animators
+Turn on **Counter** in the **Text** section to make a text count from one number to another, with decimals, a prefix, a suffix and a thousands separator. The new **Animators** section moves letters, words or lines through a range you can key. Nine new **In** and **Out** chips (**Type on**, **Decode**, **Tumble**, **Cascade up**, **Rise by line**, **Pop by char**, **Blur by char**, **Fade by char**, **Highlight sweep**) join the others. See [Text animations](text-animations.md#use-the-nine-kinetic-animations).
+
+> **Video placeholder: What's new in Batch 68**
+> - File: `videos/whats-new/batch-68.mp4` (not recorded yet)
+> - Length: about 40 seconds
+> - Shows: turn on **Counter** on a title with **To** `85.6` and suffix `%`; press <kbd>Space</kbd>; click **Decode** under **In**; click **Add animator** and play.
+
 ## Batch 67: Style single words in a text
 While you edit a text in the preview, a **Text format** bar lets you make some words **Bold**, **Italic**, **Underline** or **Strikethrough**, give them a color or a highlight, or use **Clear formatting**. <kbd>Ctrl</kbd>+<kbd>B</kbd>, <kbd>Ctrl</kbd>+<kbd>I</kbd> and <kbd>Ctrl</kbd>+<kbd>U</kbd> work while you edit. Styles stay on their words when you edit before them, survive text presets, and show in the export. See [Style single words](titles-and-text.md#style-single-words).
 

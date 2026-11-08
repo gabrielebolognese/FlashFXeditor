@@ -27,6 +27,9 @@ Text animations make titles and subtitles move as they appear and leave: a fade,
 - [Save animations in a preset](#save-animations-in-a-preset)
 - [Find animated clips on the timeline](#find-animated-clips-on-the-timeline)
 - [Undo animation changes](#undo-animation-changes)
+- [Use the nine kinetic animations](#use-the-nine-kinetic-animations)
+- [Count a number up or down](#count-a-number-up-or-down)
+- [Animate letters, words or lines with an animator](#animate-letters-words-or-lines-with-an-animator)
 - [Related pages](#related-pages)
 
 ## When an animation plays
@@ -204,6 +207,53 @@ Every animation change is one step in the history. Hover **Undo** in the app bar
 | **Change in animation stagger**, **Change out animation stagger** | The **Stagger** field |
 | **Change in animation easing**, **Change out animation easing** | The **Easing** menu |
 
+## Use the nine kinetic animations
+
+Nine more chips sit after **Bounce** in the **In** and **Out** rows. They work like the other chips: one click plays the animation once. Each moves one letter, word or line after another.
+
+| Chip | Moves | Starting length |
+| --- | --- | --- |
+| **Type on** | Letters | 1 s |
+| **Decode** | Letters scramble, then settle on the real ones | 1 s |
+| **Tumble** | Letters | 0.8 s |
+| **Cascade up** | Letters | 0.8 s |
+| **Rise by line** | Lines | 0.7 s |
+| **Pop by char** | Letters | 0.8 s |
+| **Blur by char** | Letters | 0.8 s |
+| **Fade by char** | Letters | 0.8 s |
+| **Highlight sweep** | Words | 0.8 s |
+
+## Count a number up or down
+
+The **Counter** row in the **Text** section of **Edit Properties** turns a text into a counting number.
+
+1. Select a text clip.
+2. Turn on **Counter**.
+3. Set **From** and **To**.
+4. Set **Decimals** (0 to 6), **Prefix** (for example `$`) and **Suffix** (for example `%`).
+5. Choose a **Thousands** separator: **None**, **Comma**, **Dot**, **Space** or **Apostrophe**.
+6. Choose the **Easing**, then press <kbd>Space</kbd>.
+
+The text counts during the clip and ends on the last value. Your typed text always holds the final text. Counters and **Decode** ignore single-word styles. You can also run **Toggle number counter** from the [command palette](command-palette-and-custom-shortcuts.md).
+
+## Animate letters, words or lines with an animator
+
+An animator moves each letter, word or line by a different amount as a range sweeps across the text.
+
+1. Select a text clip and find **Animators** in **Edit Properties**.
+2. Click **Add animator** (or run **Add text animator** from the command palette). Click the **X** on an animator to remove it.
+3. Choose the **Unit**: **Character**, **Word** or **Line**.
+4. Choose the selector **Shape** (**Square**, **Ramp up**, **Ramp down**, **Triangle**, **Round**, **Smooth**) and **Order** (**Forward**, **Reverse**, **Random**). With **Random**, set a **Seed** to get the same order every time.
+5. Set **Start**, **End** and **Offset** (in %). Click the stopwatch next to one and add keys to move the range, for example **Offset** from 100% to -100% to reveal left to right.
+6. Set what the range changes: **X**, **Y**, **Scale**, **Rotation**, **Opacity**, **Blur** and **Tracking**, and a **Tint** color (**None** removes it).
+
+> **Note:** **Tint** has no stopwatch, and only the first animator's tint is used. Number fields in Counter and Animators apply when you release the mouse or press <kbd>Enter</kbd>.
+
+> **Video placeholder: Counters and animators**
+> - File: `videos/text-animations/counter-and-animators.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: add a title; turn on **Counter**, set **To** to `85.6`, **Decimals** to `1`, **Suffix** to `%`; press <kbd>Space</kbd>. Add an animator with **Unit** **Character**, **Shape** **Ramp up**, **Y** `40`, **Opacity** `0`; key **Offset**; play. Click **Decode** in **In**.
+
 ## Related pages
 - [Exporting your video](exporting-video.md)
 - [Titles and text](titles-and-text.md)
@@ -217,4 +267,4 @@ Every animation change is one step in the history. Hover **Undo** in the app bar
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 43, 2026-10-18</sub>
+<sub>Last updated: Batch 68, 2026-11-08</sub>
