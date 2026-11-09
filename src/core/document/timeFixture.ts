@@ -1,9 +1,11 @@
 // The project of fixtures/interop/time (Batch 78, spec §21.22), 360 x 640 at 30 fps: three video clips of one
-// 2 s source (media/clip.mp4, 30 fps), one after another so each one is visible alone:
+// 2 s source (media/clip.mp4, 30 fps; scripts/fixtures/make-time-media.mjs: white bars that move 40 and 32 px per
+// frame over testsrc2), one after another so each one is visible alone:
 // - "ramp" (frames 0-44): a Hero ramp (fast, slow, fast) over 45 frames of the source from 0.25 s.
 // - "back" (frames 45-89): the same range played in reverse.
 // - "slow" (frames 90-149): 25 percent speed with frame blending on (15 source frames).
-// The expected pictures (expected/*.png) include a mixed frame of "slow" (frames 92, 108 and 125 blend).
+// The expected pictures (expected/*.png): ramp frames 5, 22, 40; back 50, 60, 80; slow 90, 91, 93 and 125, whose
+// source times fall between source frames (mix 0.5, 0.75, 0.25 and 0.25), so each shows a double exposure.
 // Written by `WRITE_TIME_FIXTURE=1 npx vitest run --project unit src/core/document/timeFixture.test.ts`.
 import { makeMedia, makeMediaClip } from "./fixtures.js";
 import { createProject, emptyTrack } from "./project.js";
