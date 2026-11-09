@@ -40,7 +40,7 @@
 //   project size, whatever the quality mode and whatever is on screen.
 // - The backing store is resized inside `render`, so a resize never shows a cleared canvas.
 import { ShapeGeometryCache, workerBuilder, type ShapeGeometryStats } from "../shapes/ShapeGeometryCache.js";
-import type { ClipId, Crop, Frame, Mask, Project, RGBA, ShapeClip, TextSpan, TextStyle, Transform } from "../../core/document/types.js";
+import type { ClipId, Crop, Effect, Frame, Mask, Project, RGBA, ShapeClip, TextSpan, TextStyle, Transform } from "../../core/document/types.js";
 import { watchDevicePixelRatio } from "../../core/scheduler/devicePixelRatio.js";
 import type { FrameScheduler, RenderView } from "../../core/scheduler/FrameScheduler.js";
 import { createStore, type Store } from "../../core/store/createStore.js";
@@ -109,6 +109,8 @@ export interface PreviewViewDeps extends Omit<LayerTexturesDeps, "onChange" | "w
   shapeEdits?(): ReadonlyMap<ClipId, ShapeClip> | null;
   /** The canvas mask mode's live masks by clip id while a mask is dragged (Batch 73). */
   maskEdits?(): ReadonlyMap<ClipId, readonly Mask[]> | null;
+  /** Clips' effects as an Effects section scrub edits them (Batch 74; values at the frame, drawn instead of the document's). */
+  effectEdits?(): ReadonlyMap<ClipId, readonly Effect[]> | null;
   /** Loads the fonts of `style` for `text` (Export frame); resolves true when it had to wait for them. */
   loadFonts?(style: TextStyle, text: string): Promise<boolean>;
   /** True when playback fell behind on the media this playback (1/2 and 1/4 then play its proxy). */
@@ -410,6 +412,7 @@ export class PreviewView implements RenderView {
       override ? null : (this.deps.solids?.() ?? null),
       override ? null : (this.deps.shapeEdits?.() ?? null),
       override ? null : (this.deps.maskEdits?.() ?? null),
+      override ? null : (this.deps.effectEdits?.() ?? null),
     );
     const background = override ? null : (this.deps.background?.() ?? null);
     if (background) composite.background = background;

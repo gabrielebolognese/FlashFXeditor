@@ -124,7 +124,9 @@ import { addMask, applyMaskPreset, commitMaskGesture, deleteMaskPoint, insertMas
 import { masksAt, MASK_NUMBER_FIELDS, maskHasField } from "../../core/masks/maskEval.js";
 import type { Mask } from "../../core/document/types.js";
 import { maskPathPoints, maskPathData } from "../../core/masks/maskPath.js";
-import { BLEND_MODES, MATTE_MODES } from "../../core/document/types.js";
+import { BLEND_MODES, EFFECT_TYPES, MATTE_MODES, type Effect } from "../../core/document/types.js";
+import { EFFECT_DEFS, type EffectParamDef } from "../../core/effects/effectParams.js";
+import { addEffect, moveEffect, removeAllEffects, removeEffect, setEffectEnabled, setEffectParam, setEffectStopwatch, takesEffects, toggleEffectKey } from "./effects.js";
 import { isVisualClip } from "../../core/effects/trackMatte.js";
 import { setPerspective } from "../../core/commands/projectCommands.js";
 import { addSolid, newSolidClip, setSolids, type SolidEdit, type SolidLook } from "./solid.js";
@@ -852,9 +854,10 @@ export type FuzzArea =
   | "rig"
   | "depth"
   | "compositing"
-  | "masks";
+  | "masks"
+  | "effects";
 
-export const FUZZ_AREAS: readonly FuzzArea[] = ["move", "trim", "split", "delete", "gaps", "links", "tracks", "keyframes", "transitions", "fades", "speed", "audio", "silence", "clipboard", "props", "solids", "text", "captions", "media", "markers", "rig", "depth", "compositing", "masks"];
+export const FUZZ_AREAS: readonly FuzzArea[] = ["move", "trim", "split", "delete", "gaps", "links", "tracks", "keyframes", "transitions", "fades", "speed", "audio", "silence", "clipboard", "props", "solids", "text", "captions", "media", "markers", "rig", "depth", "compositing", "masks", "effects"];
 
 export interface FuzzOp {
   name: string;
@@ -2088,6 +2091,67 @@ const MASK_OPS: FuzzOp[] = [
   }, { weight: 0.4 }),
 ];
 
+/** Effects (Batch 74, spec §21.19): add, parameters (out of range ones clamped), enable, stopwatches and keys, order, removal (weighted as one area). */
+const effectedClip = (p: Project, rng: Rng) => pickClip(p, rng, (c) => takesEffects(c) && ((c as { effects?: Effect[] }).effects?.length ?? 0) > 0) as (Clip & { effects: Effect[] }) | null;
+/** A random value for a parameter: numbers may fall outside the range (the command clamps them). */
+function effectValue(rng: Rng, def: EffectParamDef): number | number[] | string {
+  if (def.kind === "choice") return rng.pick(def.options ?? [""]);
+  if (def.kind === "toggle") return rng.int(0, 1);
+  if (def.kind === "color") return [rng.next(), rng.next(), rng.next(), fl(rng, -0.2, 1.2)];
+  const min = def.min ?? 0;
+  const max = def.max ?? 100;
+  return fl(rng, min - (max - min) * 0.1, max + (max - min) * 0.1);
+}
+const EFFECT_OPS: FuzzOp[] = [
+  op("effects.add", "effects", (store, rng) => {
+    const p = store.getState();
+    const clip = pickClip(p, rng, takesEffects);
+    return clip ? exec(store, addEffect(p, selection(p, rng, clip, false), rng.pick(EFFECT_TYPES))) : false;
+  }, { weight: 0.5 }),
+  op("effects.param", "effects", (store, rng) => {
+    const p = store.getState();
+    const clip = effectedClip(p, rng);
+    if (!clip) return false;
+    const effect = rng.pick(clip.effects);
+    const def = rng.pick(EFFECT_DEFS[effect.type].params);
+    return exec(store, setEffectParam(p, clip.id, effect.id, def.name, effectValue(rng, def), clip.start + rng.int(0, clip.duration)));
+  }, { weight: 0.6 }),
+  op("effects.enabled", "effects", (store, rng) => {
+    const p = store.getState();
+    const clip = effectedClip(p, rng);
+    if (!clip) return false;
+    const effect = rng.pick(clip.effects);
+    return exec(store, setEffectEnabled(p, clip.id, effect.id, !effect.enabled));
+  }, { weight: 0.3 }),
+  op("effects.stopwatch", "effects", (store, rng) => {
+    const p = store.getState();
+    const clip = effectedClip(p, rng);
+    if (!clip) return false;
+    const effect = rng.pick(clip.effects);
+    const def = rng.pick(EFFECT_DEFS[effect.type].params);
+    return exec(store, setEffectStopwatch(p, clip.id, effect.id, def.name, rng.chance(0.7), clip.start + rng.int(0, clip.duration)));
+  }, { weight: 0.4 }),
+  op("effects.key", "effects", (store, rng) => {
+    const p = store.getState();
+    const clip = effectedClip(p, rng);
+    if (!clip) return false;
+    const effect = rng.pick(clip.effects);
+    const def = rng.pick(EFFECT_DEFS[effect.type].params);
+    return exec(store, toggleEffectKey(p, clip.id, effect.id, def.name, clip.start + rng.int(0, clip.duration)));
+  }, { weight: 0.3 }),
+  op("effects.order", "effects", (store, rng) => {
+    const p = store.getState();
+    const clip = effectedClip(p, rng);
+    return clip ? exec(store, moveEffect(p, clip.id, rng.pick(clip.effects).id, rng.int(0, clip.effects.length - 1))) : false;
+  }, { weight: 0.3 }),
+  op("effects.remove", "effects", (store, rng) => {
+    const p = store.getState();
+    const clip = effectedClip(p, rng);
+    if (!clip) return false;
+    return exec(store, rng.chance(0.8) ? removeEffect(p, clip.id, rng.pick(clip.effects).id) : removeAllEffects(p, [clip.id]));
+  }, { weight: 0.3 }),
+];
+
 /** Every edit operation of the catalogue, with random but sensible arguments. */
 export const FUZZ_OPS: readonly FuzzOp[] = [
   ...MOVE_OPS,
@@ -2114,6 +2178,7 @@ export const FUZZ_OPS: readonly FuzzOp[] = [
   ...DEPTH_OPS,
   ...COMPOSITING_OPS,
   ...MASK_OPS,
+  ...EFFECT_OPS,
 ];
 
 /** The operations of some areas. */

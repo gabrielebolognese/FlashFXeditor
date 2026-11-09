@@ -34,14 +34,17 @@ import {
   type FuzzRunResult,
 } from "./fuzzKit.js";
 
-/** Undoes every step back to the original document, then redoes them all to the final one. */
+/**
+ * Undoes every step back to the original document, then redoes as many to the final one. A run with random
+ * undos can end right after one, leaving redo steps past the final document: redoing them all would overshoot.
+ */
 function expectUndoRedo(result: FuzzRunResult, exactSteps = true): void {
   const { store, original, final } = result;
   let undone = 0;
   while (store.undo()) undone++;
   if (exactSteps) expect(undone).toBe(result.changed);
   expect(store.getState()).toStrictEqual(original);
-  while (store.redo());
+  for (let i = 0; i < undone; i++) store.redo();
   expect(store.getState()).toStrictEqual(final);
 }
 
@@ -417,6 +420,20 @@ describe("Masks (Batch 73)", { timeout: 60_000 }, () => {
       // The run left masks and mask keys behind at all.
       const clips = Object.values(result.final.clips) as { masks?: unknown[]; keyframes?: Record<string, unknown> }[];
       expect(clips.some((clip) => (clip.masks?.length ?? 0) > 0)).toBe(true);
+    });
+  }
+});
+
+describe("Effects (Batch 74)", { timeout: 60_000 }, () => {
+  // The effects ops are weighted as one area in the full fuzz: boosted here, where they are the subject.
+  const ops = opsOf("effects", "masks", "split", "delete", "clipboard", "move", "speed", "transitions", "keyframes").map((op) => (op.area === "effects" ? { ...op, weight: (op.weight ?? 1) * 4 } : op));
+  for (const seed of [741, 742, 743]) {
+    it(`effect edits mixed with edits keep every invariant (seed ${seed})`, () => {
+      const result = property({ seed, steps: 400, ops });
+      expect(result.areas.get("effects") ?? 0).toBeGreaterThan(50);
+      // The run left effect stacks behind at all.
+      const clips = Object.values(result.final.clips) as { effects?: unknown[] }[];
+      expect(clips.some((clip) => (clip.effects?.length ?? 0) > 0)).toBe(true);
     });
   }
 });

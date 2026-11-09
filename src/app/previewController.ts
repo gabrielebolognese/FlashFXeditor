@@ -144,6 +144,8 @@ export const previewView: PreviewView = new PreviewView({
   shapeEdits: () => liveEdit.getState().shapes,
   // A mask handle drag in mask mode, else a Masks section field scrub (Batch 73).
   maskEdits: () => canvasInput.maskEdits ?? liveEdit.getState().masks,
+  // An Effects section field scrub (Batch 74).
+  effectEdits: () => liveEdit.getState().effects,
   // Export frame waits for the fonts of its text layers.
   loadFonts: async (style, text) => {
     if (fontLibrary.ready(style, text)) return false;

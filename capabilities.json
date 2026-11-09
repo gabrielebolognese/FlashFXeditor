@@ -2,8 +2,8 @@
   "manifestVersion": 1,
   "app": "shorts-editor",
   "appVersion": "1.1.0",
-  "lastBatch": 73,
-  "schemaVersion": 17,
+  "lastBatch": 74,
+  "schemaVersion": 18,
   "project": {
     "file": "project.json",
     "fontsManifest": "fonts/fonts.json",
@@ -147,7 +147,10 @@
     ],
     "bezier": true,
     "spring": true,
-    "vectorValues": true
+    "vectorValues": true,
+    "effectProps": [
+      "effects.<id>.<param>"
+    ]
   },
   "solid": {
     "shapes": [
@@ -349,7 +352,13 @@
       "paths.<id>.primitive.<param>"
     ]
   },
-  "effects": [],
+  "effects": [
+    "gaussianBlur",
+    "directionalBlur",
+    "glow",
+    "dropShadow",
+    "outline"
+  ],
   "audio": {
     "clipGainDb": [
       -60,

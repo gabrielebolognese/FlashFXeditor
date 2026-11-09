@@ -32,7 +32,7 @@ function typeSchema(type: FieldType): Json {
     case "json":
       return { type: "object" };
     case "numberOrVector":
-      return { anyOf: [{ type: "number" }, { type: "array", items: { type: "number" }, minItems: 1, maxItems: type.max }] };
+      return { anyOf: [{ type: "number" }, ...(type.strings ? [{ type: "string" }] : []), { type: "array", items: { type: "number" }, minItems: 1, maxItems: type.max }] };
   }
 }
 

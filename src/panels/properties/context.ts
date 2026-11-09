@@ -22,7 +22,7 @@ import { isLayerClip, isTransformClip } from "../../timeline/edit/transform.js";
 import { audioTargets, canDetach } from "../../timeline/edit/volume.js";
 
 /** The registered sections, top to bottom in their order of appearance. */
-export type SectionId = "clip" | "text" | "animation" | "animators" | "solid" | "shape" | "captionStyle" | "transform" | "crop" | "frame" | "opacity" | "compositing" | "masks" | "speed" | "audio" | "transition" | "track" | "marker" | "project";
+export type SectionId = "clip" | "text" | "animation" | "animators" | "solid" | "shape" | "captionStyle" | "transform" | "crop" | "frame" | "opacity" | "compositing" | "masks" | "effects" | "speed" | "audio" | "transition" | "track" | "marker" | "project";
 
 export type PropertiesContext =
   | { kind: "none" }
@@ -170,6 +170,8 @@ export function sectionIds(context: PropertiesContext): SectionId[] {
       if (context.layerIds.length > 0) ids.push("compositing");
       // Masks (Batch 73): masks of the visual clips.
       if (context.maskIds.length > 0) ids.push("masks");
+      // Effects (Batch 74): the same visual clips (EFFECT_KINDS = MASKABLE_KINDS).
+      if (context.maskIds.length > 0) ids.push("effects");
       if (context.speedIds.length > 0) ids.push("speed");
       if (context.audioIds.length > 0 || context.detachIds.length > 0) ids.push("audio");
       return ids;

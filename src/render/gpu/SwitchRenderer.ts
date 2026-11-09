@@ -102,6 +102,10 @@ export class SwitchRenderer implements Renderer {
     return this.chosen?.maskCoveragePasses ?? 0;
   }
 
+  get effectPasses(): number {
+    return this.chosen?.effectPasses ?? 0;
+  }
+
   subscribe(listener: (event: DeviceEvent) => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);

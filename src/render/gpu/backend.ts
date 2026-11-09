@@ -34,6 +34,8 @@ export interface BackendRenderer extends Renderer {
   readonly backdropCopies: number;
   /** Mask coverage passes drawn so far (spec §21.18; static masks draw none after their first frame, the Batch 73 cache counter). */
   readonly maskCoveragePasses: number;
+  /** Effect passes drawn so far (spec §21.19; a static clip with effects draws none after its first frame, the Batch 74 cache counter). */
+  readonly effectPasses: number;
   /** Frees what the renderer keeps for reuse (spare frame textures, blur textures): a closed project leaves nothing on the GPU (P13). */
   releaseCaches(): void;
 }

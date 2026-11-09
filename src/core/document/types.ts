@@ -1,7 +1,7 @@
 // The persistent document (spec §5.2). Plain JSON only: no classes, Maps, Sets or undefined-valued
 // keys, so a Project can be serialized as-is and diffed by Immer patches.
 
-export const SCHEMA_VERSION = 17;
+export const SCHEMA_VERSION = 18;
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: JsonValue };
@@ -594,6 +594,23 @@ export interface Mask {
   inverted: boolean;
 }
 
+/** The effect types (spec §21.19): Batch 74's blurs, glow, shadow and outline. Later batches add theirs. */
+export const EFFECT_TYPES = ["gaussianBlur", "directionalBlur", "glow", "dropShadow", "outline"] as const;
+export type EffectType = (typeof EFFECT_TYPES)[number];
+
+/**
+ * An effect (spec §21.19, Batch 74): one step of a visual clip's effect stack, applied in order to the clip's
+ * picture in its content space (after its masks, before its transform). `params` holds the type's parameters
+ * by name (core/effects/effectParams.ts): numbers, colors as [r, g, b, a] (straight alpha, 0..1) and choices
+ * as strings; a missing parameter takes its default.
+ */
+export interface Effect {
+  id: string;
+  type: EffectType;
+  enabled: boolean;
+  params: Record<string, number | number[] | string>;
+}
+
 export const CLIP_KINDS = ["video", "audio", "image", "text", "solid", "caption", "compound", "shape", "null"] as const;
 export type ClipKind = (typeof CLIP_KINDS)[number];
 
@@ -625,6 +642,8 @@ export interface ClipBase {
   matteOnly?: boolean;
   /** Visual clips (spec §21.18, Batch 73): the clip shows only where these masks, combined in order, cover it; absent or empty = whole. */
   masks?: Mask[];
+  /** Visual clips (spec §21.19, Batch 74): the effect stack, applied in order after the masks; absent or empty = none. */
+  effects?: Effect[];
 }
 
 export interface MediaClip extends ClipBase {

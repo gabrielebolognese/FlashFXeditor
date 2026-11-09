@@ -5,8 +5,9 @@
 // (spec §21.1). Pure: no DOM.
 import { MAX_GAIN_DB, MAX_SPEED, MIN_GAIN_DB } from "./limits.js";
 import { ANIMATOR_PROP_PATTERN, KEYFRAME_PROPS, MASK_PROP_PATTERN, SHAPE_PROP_PATTERN } from "./keyframes.js";
+import { EFFECT_PROP_PATTERN } from "../effects/effectParams.js";
 import { PRIMITIVE_LIMITS } from "../shapes/primitives.js";
-import { BLEND_MODES, MASK_MODES, MATTE_MODES, CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, LABEL_COLORS, PRESET_SET_IDS, SCHEMA_VERSION, FILL_RULES, LINE_CAPS, LINE_JOINS, SOLID_SHAPE_IDS, STROKE_ALIGNS, COUNTER_SEPARATORS, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_DIRECTIONS, TRANSITION_KINDS, type JsonValue } from "./types.js";
+import { BLEND_MODES, EFFECT_TYPES, MASK_MODES, MATTE_MODES, CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, LABEL_COLORS, PRESET_SET_IDS, SCHEMA_VERSION, FILL_RULES, LINE_CAPS, LINE_JOINS, SOLID_SHAPE_IDS, STROKE_ALIGNS, COUNTER_SEPARATORS, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_DIRECTIONS, TRANSITION_KINDS, type JsonValue } from "./types.js";
 
 export type FieldType =
   | { t: "string"; nonEmpty?: boolean }
@@ -22,8 +23,8 @@ export type FieldType =
   | { t: "union"; options: readonly { when: string; label: string; type: FieldType }[]; nullable?: boolean }
   /** Any JSON object: the content is not described (`fallbackOf.data`). */
   | { t: "json" }
-  /** A finite number, or an array of 1 to `max` finite numbers (a keyframe value: a number, a point or a color). */
-  | { t: "numberOrVector"; max: number };
+  /** A finite number, or an array of 1 to `max` finite numbers (a keyframe value: a number, a point or a color); also a string with `strings` (an effect parameter, Batch 74). */
+  | { t: "numberOrVector"; max: number; strings?: boolean };
 
 export interface Field {
   type: FieldType;
@@ -216,7 +217,7 @@ const SCHEMAS: ObjectSchema[] = [
     doc: "Keyframe lists by property id, each sorted by frame.",
     types: ["Keyframes"],
     fields: {},
-    value: { t: "record", item: { t: "array", item: obj("Keyframe") }, keys: KEYFRAME_PROPS, keyPatterns: [SHAPE_PROP_PATTERN.source, ANIMATOR_PROP_PATTERN.source, MASK_PROP_PATTERN.source] },
+    value: { t: "record", item: { t: "array", item: obj("Keyframe") }, keys: KEYFRAME_PROPS, keyPatterns: [SHAPE_PROP_PATTERN.source, ANIMATOR_PROP_PATTERN.source, MASK_PROP_PATTERN.source, EFFECT_PROP_PATTERN.source] },
   },
   {
     name: "Transition",
@@ -255,6 +256,17 @@ const SCHEMAS: ObjectSchema[] = [
       expansion: req(num, "Grows the shape by this many content px (negative shrinks it).", 0),
       opacity: req(range(0, 1), "Scales the mask's coverage.", 1),
       inverted: req(bool, "Uses the outside of the shape.", false),
+    },
+  },
+  {
+    name: "Effect",
+    doc: "An effect (Batch 74): one step of a visual clip's effect stack, applied in order to its picture in content space (after its masks, before its transform, opacity, blend and matte). The parameters of each type, their ranges and defaults are listed in INTEROP.md §5.13; a missing parameter takes its default.",
+    types: ["Effect"],
+    fields: {
+      id: req(text, "Unique among the clip's effects: letters, digits, `_` or `-` (keyframe ids are `effects.<id>.<param>`)."),
+      type: req(oneOf(EFFECT_TYPES), "The effect type."),
+      enabled: req(bool, "Off: the effect is kept but not drawn.", true),
+      params: req({ t: "record", item: { t: "numberOrVector", max: 4, strings: true } }, "Parameters by name: numbers (toggles are 0 or 1), colors [r, g, b, a] (straight alpha, 0..1) and choices (strings). Only the type's parameters, each in its range.", {}),
     },
   },
   {
@@ -939,6 +951,7 @@ function clipBaseFields(kind?: string): Record<string, Field> {
     matte: opt(obj("TrackMatte"), "Visual clips (Batch 72): the clip shows only through another clip's alpha or luma."),
     matteOnly: opt(bool, "Visual clips (Batch 72): not drawn on its own; it is another clip's matte.", false),
     masks: opt(list(obj("Mask")), "Visual clips (Batch 73): masks combined in order; absent or empty = the whole clip shows."),
+    effects: opt(list(obj("Effect")), "Visual clips (Batch 74): the effect stack, applied in order after the masks; absent or empty = none."),
   };
 }
 

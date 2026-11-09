@@ -9,7 +9,7 @@ import { setBackground, setPerspective } from "../core/commands/projectCommands.
 import { backfaceHiddenAll, depthSortOf, resetDepth, setBackfaceHidden, setDepthSort } from "../timeline/edit/depth.js";
 import { matteOnlyOf, setBlend, setMatte, setMatteOnly } from "../timeline/edit/compositing.js";
 import { formatHexColor } from "../core/document/color.js";
-import { BLEND_MODES, type BlendMode, type ClipId, type RGBA } from "../core/document/types.js";
+import { BLEND_MODES, EFFECT_TYPES, type BlendMode, type ClipId, type RGBA } from "../core/document/types.js";
 import { pushRecentColor } from "../project/appSettings.js";
 import { retimeClips, setEnabled, type ClipTimeField } from "../timeline/edit/clipProps.js";
 import { isCropClip, quickCrops, type QuickCrop } from "../timeline/edit/crop.js";
@@ -22,6 +22,8 @@ import { MAX_CLIP_NAME } from "./cutController.js";
 import { patchLiveEdit } from "./liveEdit.js";
 import { canvasInput, cropMode } from "./previewController.js";
 import { addMasks, presetMasks, removeSelectedMasks } from "./maskController.js";
+import { addEffects, removeSelectedEffects } from "./effectController.js";
+import { effectAddCommand } from "../panels/properties/effectIcons.js";
 import { actions, appSettings, documentStore, sessionStore } from "./services.js";
 import { reportTrimLimit } from "./timelineController.js";
 
@@ -238,6 +240,9 @@ export function installPropertiesController(): () => void {
     actions.register("clip.mask.wipeIn", () => presetMasks("wipeIn")),
     actions.register("clip.mask.circleReveal", () => presetMasks("circleReveal")),
     actions.register("clip.mask.removeAll", removeSelectedMasks),
+    // Effects (Batch 74).
+    ...EFFECT_TYPES.map((type) => actions.register(effectAddCommand(type), () => addEffects(type))),
+    actions.register("clip.effect.removeAll", removeSelectedEffects),
   ];
   return () => {
     for (const stop of stops) stop();

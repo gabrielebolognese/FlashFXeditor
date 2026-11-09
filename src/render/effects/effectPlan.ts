@@ -1,0 +1,92 @@
+// The passes of one effect stage (spec §21.19, Batch 74), planned once for both backends: the clip's picture
+// in its content box (buffer 0), kept where its masks cover it, then each effect's passes in order. Passes
+// ping-pong between three scratch buffers (0..2, pooled textures of the stage's size); the last pass writes
+// FX_BUFFER.out (the stage's own texture, kept for the cache). A pass reads `src`, and `orig` (the effect's
+// input, or the mask coverage) when it composites. No allocation once warm. Pure.
+import { EFFECT_BLOCK, effectTypeOf } from "../../core/effects/effectEval.js";
+import { EFFECT_REGISTRY, FX_FLOATS, FX_PROGRAM, FX_SLOT, type FxProgram, type PassWriter } from "./registry.js";
+
+/** Buffers besides the scratch ones (0..2): the stage's output texture and the clip's mask coverage. */
+export const FX_BUFFER = { out: 3, coverage: 4 } as const;
+
+/** What a stage's plan needs: its size (stage px), the content box in it, stage px per content px, the packed stack. */
+export interface StagePlanInput {
+  width: number;
+  height: number;
+  /** The content box in stage px: x0, y0, x1, y1. */
+  rect: readonly [number, number, number, number];
+  scale: number;
+  data: Float32Array;
+  length: number;
+  masked: boolean;
+}
+
+export class EffectPlan implements PassWriter {
+  /** Passes of the last `build`. */
+  count = 0;
+  /** Each pass's uniform floats (FX_FLOATS per pass). */
+  data = new Float32Array(FX_FLOATS * 8);
+  readonly src: number[] = [];
+  readonly orig: number[] = [];
+  readonly dst: number[] = [];
+  private views: Float32Array[] = [];
+  /** The effect's input buffer and the buffer the last pass wrote. */
+  private input = 0;
+  private last = 0;
+  private stage: StagePlanInput | null = null;
+
+  /** Plans the passes of `stage` and returns how many. */
+  build(stage: StagePlanInput): number {
+    this.count = 0;
+    this.input = 0;
+    this.last = 0;
+    this.stage = stage;
+    if (stage.masked) {
+      this.pass(FX_PROGRAM.mask, true, FX_BUFFER.coverage);
+      this.input = this.last;
+    }
+    for (let o = 0; o + EFFECT_BLOCK <= stage.length; o += EFFECT_BLOCK) {
+      const type = effectTypeOf(stage.data[o] as number);
+      if (!type) continue;
+      EFFECT_REGISTRY[type].passes(this, stage.data, o, stage.scale);
+      this.input = this.last;
+    }
+    if (this.count > 0) this.dst[this.count - 1] = FX_BUFFER.out;
+    this.stage = null;
+    return this.count;
+  }
+
+  /** The uniform floats of pass `index` (a view kept across builds). */
+  uniform(index: number): Float32Array {
+    return this.views[index] as Float32Array;
+  }
+
+  pass(program: FxProgram, withInput: boolean, origBuffer?: number): Float32Array {
+    const index = this.count;
+    this.count += 1;
+    if (this.data.length < this.count * FX_FLOATS) {
+      const grown = new Float32Array(this.data.length * 2);
+      grown.set(this.data);
+      this.data = grown;
+      this.views = [];
+    }
+    for (let i = this.views.length; i < this.data.length / FX_FLOATS; i++) this.views.push(this.data.subarray(i * FX_FLOATS, (i + 1) * FX_FLOATS));
+    const src = this.last;
+    const orig = origBuffer ?? (withInput ? this.input : src);
+    let dst = 0;
+    while (dst === src || dst === orig) dst += 1;
+    this.src[index] = src;
+    this.orig[index] = orig;
+    this.dst[index] = dst;
+    this.last = dst;
+    const u = this.views[index] as Float32Array;
+    u.fill(0);
+    const stage = this.stage as StagePlanInput;
+    u[FX_SLOT.size] = stage.width;
+    u[FX_SLOT.size + 1] = stage.height;
+    u[FX_SLOT.size + 2] = program;
+    for (let i = 0; i < 4; i++) u[FX_SLOT.rect + i] = stage.rect[i] as number;
+    u[FX_SLOT.c + 1] = 1;
+    return u;
+  }
+}

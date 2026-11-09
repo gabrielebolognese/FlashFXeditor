@@ -80,7 +80,7 @@ describe("migration hook", () => {
   it("leaves a current file alone", () => {
     const raw = v1();
     expect(migrateProject(raw)).toEqual(raw);
-    expect(SCHEMA_VERSION).toBe(17);
+    expect(SCHEMA_VERSION).toBe(18);
   });
 
   it("opens a schema 1 project (Batch 41): no bins yet, media without sizes", () => {
@@ -115,7 +115,7 @@ describe("migration hook", () => {
     const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
     raw.schemaVersion = 3;
     const parsed = parseProjectFile(JSON.stringify(raw));
-    expect(parsed.schemaVersion).toBe(17);
+    expect(parsed.schemaVersion).toBe(18);
     expect(parsed.meta).not.toHaveProperty("generator");
     expect(parsed.clips).toEqual(project.clips);
     expect(parsed.media).toEqual(project.media);
@@ -126,7 +126,7 @@ describe("migration hook", () => {
     const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
     raw.schemaVersion = 13;
     const parsed = parseProjectFile(JSON.stringify(raw));
-    expect(parsed.schemaVersion).toBe(17);
+    expect(parsed.schemaVersion).toBe(18);
     expect(parsed.settings).not.toHaveProperty("perspective");
     expect(parsed.clips).toEqual(project.clips);
     const clip = Object.values(project.clips).find((c) => "transform" in c) as Project["clips"][string] & { transform: Record<string, unknown> };
@@ -144,7 +144,7 @@ describe("migration hook", () => {
     const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
     raw.schemaVersion = 15;
     const parsed = parseProjectFile(JSON.stringify(raw));
-    expect(parsed.schemaVersion).toBe(17);
+    expect(parsed.schemaVersion).toBe(18);
     expect(parsed.clips).toEqual(project.clips);
     const visual = Object.values(project.clips).filter((c) => c.kind === "video" || c.kind === "text" || c.kind === "solid" || c.kind === "image");
     const [a, b] = visual as [Project["clips"][string], Project["clips"][string]];
@@ -163,7 +163,7 @@ describe("migration hook", () => {
     const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
     raw.schemaVersion = 16;
     const parsed = parseProjectFile(JSON.stringify(raw));
-    expect(parsed.schemaVersion).toBe(17);
+    expect(parsed.schemaVersion).toBe(18);
     expect(parsed.clips).toEqual(project.clips);
     const solid = Object.values(project.clips).find((c) => c.kind === "solid") as Project["clips"][string];
     expect(solid).toBeDefined();
@@ -178,6 +178,31 @@ describe("migration hook", () => {
     const bad = JSON.parse(serializeProject(masked, STAMP)) as { clips: Record<string, { masks: { mode: string }[] }> };
     (bad.clips[solid.id]?.masks[0] as { mode: string }).mode = "xor";
     expect(() => parseProjectFile(JSON.stringify(bad))).toThrow(/mode/);
+  });
+
+  it("opens a schema 17 project (before Batch 74) unchanged: no effects; keeps them and their keys through save and open", () => {
+    const project = richProject();
+    const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
+    raw.schemaVersion = 17;
+    const parsed = parseProjectFile(JSON.stringify(raw));
+    expect(parsed.schemaVersion).toBe(18);
+    expect(parsed.clips).toEqual(project.clips);
+    const solid = Object.values(project.clips).find((c) => c.kind === "solid") as Project["clips"][string];
+    expect(solid).toBeDefined();
+    const effects = [
+      { id: "fx1", type: "glow", enabled: true, params: { mode: "outer", radius: 20, intensity: 1, threshold: 0, color: [1, 1, 1, 1] } },
+      { id: "fx2", type: "dropShadow", enabled: false, params: { distance: 30 } },
+    ];
+    const keyframes = { "effects.fx1.intensity": [{ frame: 0, value: 0, ease: "linear" }, { frame: 5, value: 1, ease: "linear" }], "effects.fx1.color": [{ frame: 0, value: [1, 0, 0, 1], ease: "linear" }] };
+    const withEffects = { ...project, clips: { ...project.clips, [solid.id]: { ...solid, effects, keyframes } } } as Project;
+    const back = parseProjectFile(serializeProject(withEffects, STAMP));
+    expect(back.clips[solid.id]).toMatchObject({ effects, keyframes });
+    const bad = JSON.parse(serializeProject(withEffects, STAMP)) as { clips: Record<string, { effects: { params: Record<string, unknown> }[] }> };
+    (bad.clips[solid.id]?.effects[0] as { params: Record<string, unknown> }).params.radius = 9000;
+    expect(() => parseProjectFile(JSON.stringify(bad))).toThrow(/radius/);
+    const unkeyable = JSON.parse(serializeProject(withEffects, STAMP)) as { clips: Record<string, { keyframes: Record<string, unknown> }> };
+    (unkeyable.clips[solid.id] as { keyframes: Record<string, unknown> }).keyframes["effects.fx1.mode"] = [{ frame: 0, value: 1, ease: "linear" }];
+    expect(() => parseProjectFile(JSON.stringify(unkeyable))).toThrow(/mode/);
   });
 
   it("keeps meta.generator and a clip's fallbackOf through save and open, and refuses malformed ones", () => {

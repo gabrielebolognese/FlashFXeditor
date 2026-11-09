@@ -43,6 +43,7 @@ export type Migration = (raw: JsonObject) => JsonObject;
  * - 15 -> 16 (Batch 72): `ClipBase.blend`, `.matte` and `.matteOnly` (all optional; absent = normal, no matte, drawn):
  *   older projects open unchanged.
  * - 16 -> 17 (Batch 73): `ClipBase.masks` (optional; absent = the whole clip shows): older projects open unchanged.
+ * - 17 -> 18 (Batch 74): `ClipBase.effects` (optional; absent = no effects): older projects open unchanged.
  * - 7 -> 8 (Batch 62): `sequences` (empty) and the `compound` clip kind: older projects open unchanged.
  * - 6 -> 7 (Batch 60): the 30 Penner eases, `bezier` and `spring` on keys, vector (color) key values and the keyframe
  *   properties of spec §21.9 (all new values of existing fields): older projects open unchanged.
@@ -86,6 +87,8 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   15: (raw) => raw,
   // 16 -> 17 (Batch 73): masks: optional, none in an older project.
   16: (raw) => raw,
+  // 17 -> 18 (Batch 74): effects: optional, none in an older project.
+  17: (raw) => raw,
 };
 
 function isObject(value: unknown): value is JsonObject {

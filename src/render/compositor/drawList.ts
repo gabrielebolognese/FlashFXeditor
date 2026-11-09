@@ -166,16 +166,39 @@ export interface MaskFrame {
 }
 
 /**
- * A clip drawn with a blend mode, a track matte or masks (spec §21.17, §21.18): its `layers` are drawn on
+ * A clip's effects at a frame (spec §21.19, Batch 74): its enabled effects packed (core/effects/effectEval.ts,
+ * EFFECT_BLOCK floats each, the first `length` floats of `data`), the clip's content box (`width` x `height`
+ * content px laid out by `model`, then `persp` for a 2.5D clip) and the clip's opacity, which its layers'
+ * opacities are divided by while drawn into the effect picture and which the picture is drawn with
+ * (effects come before opacity). `version` changes whenever the data does and is unique across compositors.
+ */
+export interface EffectFrame {
+  clipId: ClipId;
+  data: Float32Array;
+  length: number;
+  version: number;
+  width: number;
+  height: number;
+  model: Mat3;
+  persp: Homography | null;
+  opacity: number;
+}
+
+/**
+ * A clip drawn with a blend mode, a track matte, masks or effects (spec §21.17 to §21.19): its `layers` are drawn on
  * their own into a transparent picture of the frame, kept where its `mask` covers it and where the `matte`
  * layers' picture (itself kept where the matte clip's own `mask` covers it) is opaque or bright (`mode`),
  * and that picture is blended over what is below with `blend`. Its own `transform` is the identity and its
- * `opacity` 1 (the clip's opacity is in its layers). Groups do not nest.
+ * `opacity` 1 (the clip's opacity is in its layers). Groups do not nest. With `effects` the layers are first
+ * drawn into the clip's content box (padded by the effects' reach), kept where `mask` covers it, run through
+ * the effects and drawn with the clip's model, projection and opacity (`effects.opacity`); `mask` is then
+ * not applied again.
  */
 export interface GroupLayer extends LayerBase {
   kind: "group";
   blend: BlendMode;
   mask: MaskFrame | null;
+  effects: EffectFrame | null;
   layers: readonly Layer[];
   matte: { mode: MatteMode; layers: readonly Layer[]; mask: MaskFrame | null } | null;
 }
@@ -387,6 +410,8 @@ export interface GroupCompositeLayer {
   blend: BlendMode;
   /** The clip's masks (spec §21.18); null without. */
   mask: MaskFrame | null;
+  /** The clip's effects (spec §21.19, Batch 74); null without. */
+  effects: EffectFrame | null;
   layers: readonly PlainCompositeLayer[];
   matte: { mode: MatteMode; layers: readonly PlainCompositeLayer[]; mask: MaskFrame | null } | null;
   /** Always null: the projection of a 2.5D clip is on its layers. */

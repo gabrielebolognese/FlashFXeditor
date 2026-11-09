@@ -15,11 +15,16 @@
 // multisampled scratch with a stencil (each path's fill fans counted by winding, or its stroke's
 // triangles, then a cover rectangle painted where the stencil says inside and the stencil cleared),
 // resolved into a pooled texture that the draw shows as a textured quad with the shape's opacity.
+// A clip with effects (spec §21.19, Batch 74) is an effect stage: when its signature changed, its records are
+// drawn into a pooled scratch the stage's size (the view of the target, the viewport the stage's), then the
+// effect passes run (EFFECT_WGSL, one 256-byte uniform slot each) into the clip's kept texture, which the
+// draw shows as a textured quad; an unchanged stage reuses its kept texture with no pass (P6).
 import type { RGBA } from "../../core/document/types.js";
 import type { DrawList, MaskFrame } from "../compositor/drawList.js";
 import { IDENTITY, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import type { BackendRenderer } from "./backend.js";
-import { blurRegionInto, DrawRecords, newRecordUniform, pathRegionInto, premultipliedInto, ROLE, setRect, showBlurred, showPath, writePathUniform, type BlurRegion, type DrawRecord, type QuadKind, type Rect } from "./drawRecords.js";
+import { blurRegionInto, DrawRecords, newRecordUniform, pathRegionInto, premultipliedInto, retargetStages, ROLE, setRect, showBlurred, showPath, writePathUniform, type BlurRegion, type DrawRecord, type QuadKind, type Rect } from "./drawRecords.js";
+import { FX_BUFFER, FX_PASS_STRIDE, FX_UNIFORM_BYTES, StageJobs, type StageJob } from "../effects/stageJobs.js";
 import { fitWithin, hasAlphaFormat } from "./fitWithin.js";
 import type { GpuDevice } from "./GpuDevice.js";
 import { isHdrColorSpace, toneMapToCanvas } from "./hdr.js";
@@ -29,7 +34,7 @@ import { paddedBytesPerRow, unpadAndUnpremultiply } from "./readback.js";
 import type { AlphaPlane, CanvasTarget, DeviceEvent, OffscreenTarget, Pane, RenderTarget, TextureHandle, TextureOptions, Viewport } from "./renderer.js";
 import { coverageSize, evictCoverage, maskDataRows, pickCoverage, writeMaskData, type CoverageEntry } from "./maskTargets.js";
 import { MASK_DATA_WIDTH } from "../../core/masks/maskCoverage.js";
-import { BLUR_WGSL, COMPOSITE_WGSL, DISSOLVE_WGSL, MASK_WGSL, MIPMAP_WGSL, PATH_RESOLVE_WGSL, PATH_WGSL, SCALE_ALPHA_WGSL, SCALE_WGSL, SOLID_WGSL, TEXTURED_WGSL } from "./shaders.js";
+import { BLUR_WGSL, COMPOSITE_WGSL, DISSOLVE_WGSL, EFFECT_WGSL, MASK_WGSL, MIPMAP_WGSL, PATH_RESOLVE_WGSL, PATH_WGSL, SCALE_ALPHA_WGSL, SCALE_WGSL, SOLID_WGSL, TEXTURED_WGSL } from "./shaders.js";
 
 /** Textures, offscreen targets and mip levels are rgba8 (spec §9.3); canvases use the preferred format. */
 const TEXTURE_FORMAT: GPUTextureFormat = "rgba8unorm";
@@ -136,6 +141,18 @@ interface CompositeResources {
   coverages: GpuCoverage[];
 }
 
+/** Effects (Batch 74), built on the first effect stage: the pass pipeline, its uniforms (one 256-byte slot per pass) and the kept results. */
+interface EffectResources {
+  pipeline: GPURenderPipeline;
+  layout: GPUBindGroupLayout;
+  buffer: GPUBuffer;
+  capacity: number;
+  group: GPUBindGroup;
+  jobs: StageJobs<GpuTexture>;
+  /** Bind groups of mask coverages (read by the mask pass), by view. */
+  coverageGroups: WeakMap<GPUTextureView, GPUBindGroup>;
+}
+
 /** Everything that belongs to one GPUDevice. */
 interface DeviceResources {
   device: GPUDevice;
@@ -155,6 +172,8 @@ interface DeviceResources {
   path: PathResources | null;
   /** Blend modes and track mattes (Batch 72); null until the first group is drawn. */
   composite: CompositeResources | null;
+  /** Effects (Batch 74); null until the first effect stage is drawn. */
+  effects: EffectResources | null;
   /** The blur passes: pipeline, uniforms (one 256-byte slot per pass), pooled textures. */
   blur: { pipeline: GPURenderPipeline; layout: GPUBindGroupLayout; buffer: GPUBuffer; capacity: number; group: GPUBindGroup; pool: { texture: GpuTexture; used: number }[] };
   viewBuffer: GPUBuffer;
@@ -311,6 +330,10 @@ export class WebGpuRenderer implements BackendRenderer {
   backdropCopies = 0;
   /** Coverage passes drawn (spec §21.18, Batch 73): static masks draw none after their first frame (`__editor` dev stats). */
   maskCoveragePasses = 0;
+  /** Effect passes drawn (spec §21.19, Batch 74): a static clip with effects draws none after its first frame (`__editor` dev stats). */
+  effectPasses = 0;
+  /** This draw's buffers of the stage being drawn (FX_BUFFER: scratch 0..2, out). */
+  private readonly fxBuffers: (GpuTexture | null)[] = [null, null, null, null];
   private maskStaging = new Float32Array(MASK_DATA_WIDTH * 4);
 
   constructor(private readonly gpu: GpuDevice) {
@@ -436,6 +459,8 @@ export class WebGpuRenderer implements BackendRenderer {
     }
     const pool = this.resources?.blur.pool;
     if (pool) for (const entry of pool.splice(0)) entry.texture.destroy();
+    this.resources?.effects?.jobs.clear((texture) => texture.destroy());
+    this.fxBuffers.fill(null);
     const composite = this.resources?.composite;
     if (composite) {
       for (const entry of composite.groups.splice(0)) {
@@ -509,7 +534,10 @@ export class WebGpuRenderer implements BackendRenderer {
     this.draws += 1;
     this.pathRecords(res, encoder, count);
     this.blurRecords(res, encoder, count);
+    // Effects (spec §21.19): kept results picked, the stages to redraw planned, stage records moved to the target's px.
+    const effects = this.records.stageCount > 0 ? this.prepareStages(res, count, target.width, target.height) : null;
     this.writeUniforms(res, count, pixelsToClipInto(this.toClip, target.width, target.height, IDENTITY));
+    if (effects) this.stagePasses(res, encoder, effects, count);
 
     // Blend modes and track mattes (spec §21.17): each group's layers and matte into their pictures first.
     const composite = this.records.groupCount > 0 ? this.groupPasses(res, encoder, count, target.width, target.height) : null;
@@ -570,13 +598,127 @@ export class WebGpuRenderer implements BackendRenderer {
   /** Draws a quad record (textured, dissolve or solid; a shape is a textured record by now). */
   private quad(pass: GPURenderPassEncoder, pipelines: Pipelines, res: DeviceResources, index: number, record: DrawRecord<GpuTexture>, last: Rect): void {
     this.scissor(pass, record, last);
-    if (record.kind === "path" || record.kind === "composite" || (record.kind === "textured" && !record.texture0)) return;
+    if (record.kind === "path" || record.kind === "composite" || record.kind === "effect" || (record.kind === "textured" && !record.texture0)) return;
     pass.setPipeline(pipelines[record.kind]);
     this.dynamicOffset[0] = index * LAYER_STRIDE;
     pass.setBindGroup(0, res.group, this.dynamicOffset, 0, 1);
     if (record.texture0) pass.setBindGroup(1, record.texture0.bindGroup);
     if (record.texture1) pass.setBindGroup(2, record.texture1.bindGroup);
     pass.draw(4);
+  }
+
+  /**
+   * Effects (spec §21.19, Batch 74): each stage's kept result picked (a texture of at least its size), the
+   * passes of the stages whose signature changed planned and their uniforms written, then the stage records
+   * scaled to the target's px (drawn with the target's view into a stage-sized viewport). Frees results no
+   * draw used for a while.
+   */
+  private prepareStages(res: DeviceResources, count: number, width: number, height: number): EffectResources {
+    const fx = (res.effects ??= this.buildEffects(res));
+    const jobs = fx.jobs;
+    jobs.prepare(this.records, count, this.draws, (current, w, h) => {
+      if (current && current.valid && current.width >= w && current.height >= h && current.width <= 2 * w + BLUR_STEP && current.height <= 2 * h + BLUR_STEP) return current;
+      current?.destroy();
+      const step = (size: number) => Math.min(this.maxTextureSize, Math.ceil(size / BLUR_STEP) * BLUR_STEP);
+      return this.newTexture(res, step(w), step(h), { label: "effect result" });
+    });
+    jobs.evict(this.draws, BLUR_KEEP_DRAWS, (texture) => texture.destroy());
+    // The uniform buffer grows before any pass is encoded (see blurRecords).
+    if (jobs.passCount > fx.capacity) {
+      let capacity = fx.capacity;
+      while (capacity < jobs.passCount) capacity *= 2;
+      fx.buffer.destroy();
+      fx.buffer = res.device.createBuffer({ label: "effect passes", size: capacity * FX_PASS_STRIDE, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+      fx.capacity = capacity;
+      fx.group = res.device.createBindGroup({ label: "effect passes", layout: fx.layout, entries: [{ binding: 0, resource: { buffer: fx.buffer, size: FX_UNIFORM_BYTES } }] });
+    }
+    if (jobs.passCount > 0) res.device.queue.writeBuffer(fx.buffer, 0, jobs.data.buffer, 0, jobs.passCount * FX_PASS_STRIDE);
+    retargetStages(this.records, count, width, height);
+    return fx;
+  }
+
+  /** Encodes the stages to redraw: each one's records into its first buffer, then its effect passes. */
+  private stagePasses(res: DeviceResources, encoder: GPUCommandEncoder, fx: EffectResources, count: number): void {
+    const jobs = fx.jobs;
+    for (let j = 0; j < jobs.jobCount; j++) {
+      const job = jobs.jobs[j] as StageJob<GpuTexture>;
+      const { width, height } = job.info;
+      const buffers = this.fxBuffers;
+      buffers.fill(null);
+      buffers[FX_BUFFER.out] = job.entry.texture;
+      const buffer = (index: number): GpuTexture => (buffers[index] ??= this.blurTexture(res, width, height));
+      // Masks first (spec §21.19 order: content, masks, effects): the clip's coverage, read by the mask pass.
+      let coverage: GPUBindGroup | null = null;
+      const mask = job.info.mask;
+      if (mask) {
+        const composite = (res.composite ??= this.buildComposite(res));
+        const view = this.coverage(res, encoder, composite, mask);
+        if (view) {
+          coverage = fx.coverageGroups.get(view) ?? null;
+          if (!coverage) {
+            coverage = res.device.createBindGroup({ label: "effect coverage", layout: res.textureLayout, entries: [{ binding: 0, resource: res.sampler }, { binding: 1, resource: view }] });
+            fx.coverageGroups.set(view, coverage);
+          }
+        }
+      }
+      const content = buffer(job.count > 0 ? 0 : FX_BUFFER.out);
+      const pass = encoder.beginRenderPass({ label: "effect stage", colorAttachments: [{ view: content.view, loadOp: "clear", storeOp: "store", clearValue: [0, 0, 0, 0] }] });
+      pass.setViewport(0, 0, width, height, 0, 1);
+      const pipelines = this.pipelines(res, TEXTURE_FORMAT);
+      const last = setRect(this.lastScissor, 0, 0, content.width, content.height);
+      for (let index = 0; index < count; index++) {
+        const record = this.records.at(index);
+        if (record.role === ROLE.stage && record.stage === job.stage) this.quad(pass, pipelines, res, index, record, last);
+      }
+      pass.end();
+      for (let i = job.first; i < job.first + job.count; i++) {
+        const dst = buffer(jobs.dst[i] as number);
+        const src = buffer(jobs.src[i] as number);
+        const origIndex = jobs.orig[i] as number;
+        const orig = origIndex === FX_BUFFER.coverage ? coverage : buffer(origIndex).bindGroup;
+        const fxPass = encoder.beginRenderPass({ label: "effect", colorAttachments: [{ view: dst.view, loadOp: "clear", storeOp: "store", clearValue: [0, 0, 0, 0] }] });
+        fxPass.setPipeline(fx.pipeline);
+        fxPass.setViewport(0, 0, width, height, 0, 1);
+        fxPass.setScissorRect(0, 0, width, height);
+        this.dynamicOffset[0] = i * FX_PASS_STRIDE;
+        fxPass.setBindGroup(0, fx.group, this.dynamicOffset, 0, 1);
+        fxPass.setBindGroup(1, src.bindGroup);
+        fxPass.setBindGroup(2, orig ?? src.bindGroup);
+        fxPass.draw(3);
+        fxPass.end();
+        this.effectPasses += 1;
+      }
+    }
+    this.fxBuffers.fill(null);
+  }
+
+  private buildEffects(res: DeviceResources): EffectResources {
+    const { device } = res;
+    const layout = device.createBindGroupLayout({
+      label: "effect pass",
+      entries: [{ binding: 0, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "uniform", hasDynamicOffset: true, minBindingSize: FX_UNIFORM_BYTES } }],
+    });
+    const module = device.createShaderModule({ label: "effects", code: EFFECT_WGSL });
+    void module.getCompilationInfo().then((info) => {
+      for (const message of info.messages) if (message.type === "error") console.error(`[gpu] effects shader: ${message.message} (line ${message.lineNum})`);
+    });
+    const capacity = 16;
+    const buffer = device.createBuffer({ label: "effect passes", size: capacity * FX_PASS_STRIDE, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    return {
+      layout,
+      buffer,
+      capacity,
+      group: device.createBindGroup({ label: "effect passes", layout, entries: [{ binding: 0, resource: { buffer, size: FX_UNIFORM_BYTES } }] }),
+      pipeline: device.createRenderPipeline({
+        label: "effect pass",
+        layout: device.createPipelineLayout({ label: "effect pass", bindGroupLayouts: [layout, res.textureLayout, res.textureLayout] }),
+        vertex: { module, entryPoint: "vs" },
+        fragment: { module, entryPoint: "fs", targets: [{ format: TEXTURE_FORMAT }] },
+        primitive: { topology: "triangle-list" },
+      }),
+      jobs: new StageJobs<GpuTexture>(),
+      coverageGroups: new WeakMap(),
+    };
   }
 
   /** The descriptor of a pass that keeps the target's contents (after a backdrop copy). */
@@ -1389,6 +1531,7 @@ export class WebGpuRenderer implements BackendRenderer {
       pipelines: new Map<GPUTextureFormat, Pipelines>(),
       path: null,
       composite: null,
+      effects: null,
       mips,
       scaler,
       blur,

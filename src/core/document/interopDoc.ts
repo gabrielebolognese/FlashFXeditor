@@ -33,7 +33,7 @@ function typeLabel(type: FieldType): string {
     case "json":
       return "object (opaque)";
     case "numberOrVector":
-      return `number, or number[] (1 to ${type.max} items)`;
+      return `number, ${type.strings ? "string, " : ""}or number[] (1 to ${type.max} items)`;
   }
 }
 

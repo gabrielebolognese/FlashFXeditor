@@ -13,22 +13,30 @@
 // A 2.5D layer (spec §21.15, Batch 70) carries a homography after its matrix: its record's matrix is
 // projective (`wRow` holds the bottom row) and the vertex stages output w, so the GPU interpolates UVs
 // perspective-correctly. Every step that grows or moves a quad multiplies the whole projective matrix.
+// A clip with effects (spec §21.19, Batch 74) is an effect stage: its layers become "stage" records drawn in
+// its content box (content px times the stage scale, padded by the effects' reach, without its projection
+// and with its opacity divided out) into the stage's picture; the backend runs the effect passes
+// (render/effects/effectPlan.ts) and `showEffect` turns the stage's "effect" record into a textured quad of
+// the result, laid out by the clip's model and projection and drawn with its opacity. Each stage has a
+// signature of what it draws: while it stays the same the backend keeps its last result (P6).
 import type { GradientFill, RGBA } from "../../core/document/types.js";
-import type { DrawList, GroupLayer, Layer, MaskFrame, PathDraw, PathLayer, SolidLayer, UvRect } from "../compositor/drawList.js";
+import type { ClipId } from "../../core/document/types.js";
+import type { DrawList, EffectFrame, GroupLayer, Layer, MaskFrame, PathDraw, PathLayer, SolidLayer, UvRect } from "../compositor/drawList.js";
+import { stackReach } from "../effects/registry.js";
 import { blendCode, isHardwareBlend } from "../../core/effects/blendModes.js";
 import { matteCode } from "../../core/effects/trackMatte.js";
 import { invertInto, multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import { boxPerimeter } from "../../core/document/fill.js";
-import { newStyleUniform, resetStyleUniform, SHAPE_CODE, type LayerUniform, type WRow } from "./layerUniforms.js";
+import { LAYER_STRIDE, newStyleUniform, packLayer, resetStyleUniform, SHAPE_CODE, type LayerUniform, type WRow } from "./layerUniforms.js";
 import { affineTimesHomography, homographyTimesAffine, newHomography, type Homography } from "../projection.js";
 import type { Pane, TextureHandle, Viewport } from "./renderer.js";
 
-export type RecordKind = "textured" | "dissolve" | "solid" | "path" | "composite";
+export type RecordKind = "textured" | "dissolve" | "solid" | "path" | "composite" | "effect";
 /** The kinds drawn with the layer pipelines ("path" records become "textured" before the passes; "composite" has its own). */
-export type QuadKind = Exclude<RecordKind, "path" | "composite">;
+export type QuadKind = Exclude<RecordKind, "path" | "composite" | "effect">;
 
 /** Where a record draws: the target (0), or a group's picture (spec §21.17): its layers (1) or its matte (2). */
-export const ROLE = { target: 0, layers: 1, matte: 2 } as const;
+export const ROLE = { target: 0, layers: 1, matte: 2, stage: 3 } as const;
 
 export interface Rect {
   x: number;
@@ -58,6 +66,76 @@ export interface DrawRecord<T extends TextureHandle> {
    */
   group: number;
   role: number;
+  /**
+   * Effects (spec §21.19, Batch 74): the stage (1, 2, ...) a record with role stage draws into, or the stage
+   * an "effect" record shows; 0 otherwise.
+   */
+  stage: number;
+}
+
+/**
+ * An effect stage of a build (spec §21.19, Batch 74): the clip's picture in its content box, `width` x
+ * `height` stage px (`scale` stage px per content px; the content box spans `rect` in it), its masks
+ * (applied first) and its packed effects. `numbers` and `refs` (the first `numberCount` / `refCount`) are
+ * its signature: what its records draw, in stage px, with their textures and shapes.
+ */
+export interface StageInfo {
+  clipId: ClipId;
+  width: number;
+  height: number;
+  scale: number;
+  rect: [number, number, number, number];
+  effects: EffectFrame;
+  mask: MaskFrame | null;
+  numbers: Float64Array;
+  numberCount: number;
+  refs: unknown[];
+  refCount: number;
+}
+
+/** What a stage's cached result is kept by (StageInfo's signature, or a copy of it). */
+export type StageSignature = Pick<StageInfo, "numbers" | "numberCount" | "refs" | "refCount">;
+
+/** The largest side of a stage picture (stage px): a larger one is drawn at a lower scale. */
+export const MAX_STAGE_SIZE = 4096;
+/** Stage px the effects of a stage may pad it by on each side at most. */
+const MAX_STAGE_REACH = 1024;
+/** Stage px per content px: the scale shown, in quarter octaves (a slowly growing clip keeps its stage), within these. */
+const MIN_STAGE_SCALE = 1 / 16;
+const MAX_STAGE_SCALE = 4;
+
+/** The stage scale for a clip shown at `shown` target px per content px. */
+export function stageScale(shown: number): number {
+  if (!(shown > 0) || !Number.isFinite(shown)) return 1;
+  const quantized = 2 ** (Math.ceil(Math.log2(shown) * 4 - 1e-6) / 4);
+  return Math.min(MAX_STAGE_SCALE, Math.max(MIN_STAGE_SCALE, quantized));
+}
+
+/** Whether two stage signatures are the same (numbers within a rounding tolerance, references identical). */
+export function sameSignature(a: StageSignature, b: StageSignature): boolean {
+  if (a.numberCount !== b.numberCount || a.refCount !== b.refCount) return false;
+  for (let i = 0; i < a.refCount; i++) if (a.refs[i] !== b.refs[i]) return false;
+  for (let i = 0; i < a.numberCount; i++) {
+    const x = a.numbers[i] as number;
+    const y = b.numbers[i] as number;
+    if (x !== y && !(Math.abs(x - y) <= 1e-4 * Math.max(1, Math.abs(x)))) return false;
+  }
+  return true;
+}
+
+/** An empty signature (a cache entry's). */
+export function newSignature(): StageSignature {
+  return { numbers: new Float64Array(256), numberCount: 0, refs: [], refCount: 0 };
+}
+
+/** Copies the signature `from` into `to` (growing its buffer when needed). */
+export function copySignature(to: StageSignature, from: StageSignature): void {
+  if (to.numbers.length < from.numberCount) to.numbers = new Float64Array(Math.max(from.numberCount, 2 * to.numbers.length));
+  to.numbers.set(from.numbers.subarray(0, from.numberCount));
+  to.numberCount = from.numberCount;
+  for (let i = 0; i < from.refCount; i++) to.refs[i] = from.refs[i];
+  to.refs.length = from.refCount;
+  to.refCount = from.refCount;
 }
 
 /**
@@ -123,6 +201,7 @@ function newRecord<T extends TextureHandle>(): DrawRecord<T> {
     path: null,
     group: 0,
     role: ROLE.target,
+    stage: 0,
   };
 }
 
@@ -133,9 +212,19 @@ export class DrawRecords<T extends TextureHandle> {
   /** The groups of the last `build` (spec §21.17): group g is `groups[g - 1]`; the first `groupCount` are current. */
   readonly groups: GroupInfo[] = [];
   groupCount = 0;
+  /** The effect stages of the last `build` (spec §21.19): stage e is `stages[e - 1]`; the first `stageCount` are current. */
+  readonly stages: StageInfo[] = [];
+  stageCount = 0;
   /** Where the records being added draw (a group's picture while its layers are added). */
   private group = 0;
   private role: number = ROLE.target;
+  /** The stage whose records are being added (0: none), and what their opacities are multiplied by (its clip's opacity divided out). */
+  private stage = 0;
+  private opacityScale = 1;
+  private readonly stageView = mutableIdentity();
+  private readonly stageModel = mutableIdentity();
+  private readonly stageScissor: Rect = { x: 0, y: 0, width: MAX_STAGE_SIZE, height: MAX_STAGE_SIZE };
+  private readonly packScratch = new Float32Array(LAYER_STRIDE / 4);
   /** The list of the pane being built (its frame size gives a composite its quad). */
   private list: DrawList | null = null;
   private readonly inverse = mutableIdentity();
@@ -158,8 +247,11 @@ export class DrawRecords<T extends TextureHandle> {
   build(panes: readonly Pane[], width: number, height: number): number {
     this.count = 0;
     this.groupCount = 0;
+    this.stageCount = 0;
     this.group = 0;
     this.role = ROLE.target;
+    this.stage = 0;
+    this.opacityScale = 1;
     for (const pane of panes) {
       const { list, viewport } = pane;
       const bounds = clipRect(this.paneScissor, pane.bounds, width, height);
@@ -204,6 +296,7 @@ export class DrawRecords<T extends TextureHandle> {
     record.path = null;
     record.group = this.group;
     record.role = this.role;
+    record.stage = this.stage;
     const u = record.uniform;
     setFlat(u.wRow);
     u.opacity = 1;
@@ -226,11 +319,17 @@ export class DrawRecords<T extends TextureHandle> {
    * (over the frame quad). Nothing when none of its layers adds a record.
    */
   private groupRecords(layer: GroupLayer, view: Mat3, scissor: Rect): void {
+    // Effects (spec §21.19): a normal clip with no matte draws its effect picture straight onto the target.
+    if (layer.effects && layer.blend === "normal" && !layer.matte) {
+      this.stageRecords(layer, layer.effects, view, scissor);
+      return;
+    }
     const index = this.groupCount + 1;
     const before = this.count;
     this.group = index;
     this.role = ROLE.layers;
-    for (const inner of layer.layers) this.layerRecord(inner, view, scissor);
+    if (layer.effects) this.stageRecords(layer, layer.effects, view, scissor);
+    else for (const inner of layer.layers) this.layerRecord(inner, view, scissor);
     const drawn = this.count > before;
     let matte = false;
     if (drawn && layer.matte) {
@@ -245,7 +344,8 @@ export class DrawRecords<T extends TextureHandle> {
     const info = (this.groups[index - 1] ??= { backdrop: false, matte: false, mask: null, matteMask: null });
     info.backdrop = !isHardwareBlend(layer.blend);
     info.matte = matte;
-    info.mask = layer.mask;
+    // With effects the masks were applied in the stage (before the effects).
+    info.mask = layer.effects ? null : layer.mask;
     info.matteMask = matte ? (layer.matte?.mask ?? null) : null;
     const record = this.nextRecord("composite", scissor);
     record.group = index;
@@ -261,6 +361,141 @@ export class DrawRecords<T extends TextureHandle> {
     if (info.matteMask && !writeMaskMap(maps, MASK_MAP.matteMask, view, info.matteMask)) info.matteMask = null;
     maps[MASK_MAP.flags] = info.mask ? 1 : 0;
     maps[MASK_MAP.flags + 1] = info.matteMask ? 1 : 0;
+  }
+
+  /**
+   * An effect stage (spec §21.19, Batch 74): the clip's layers as stage records in its content box (scaled to
+   * the size it is shown at, without its projection, its opacity divided out), the box grown to hold what they
+   * draw and the effects' reach, then the "effect" record that shows the stage's result through the clip's
+   * model and projection with its opacity, where records are being added (the target or a group's picture).
+   */
+  private stageRecords(layer: GroupLayer, effects: EffectFrame, view: Mat3, scissor: Rect): void {
+    const model = effects.model;
+    if (!(effects.width > 0) || !(effects.height > 0) || !(effects.opacity > 0) || !invertInto(this.stageModel, model)) return;
+    // Stage px per content px: the area scale the clip is shown at (its projection left out).
+    const shown = multiplyInto(this.stageView, view, model);
+    const scale = stageScale(Math.sqrt(Math.abs(shown[0] * shown[3] - shown[1] * shown[2])));
+    // Project px -> stage px, the content box's top-left at 0 (moved once the box is known).
+    const stageView = multiplyInto(this.stageView, setMat(this.stageView, scale, 0, 0, scale, 0, 0), this.stageModel);
+    const index = this.stageCount + 1;
+    const before = this.count;
+    const outerRole = this.role;
+    const outerGroup = this.group;
+    this.stage = index;
+    this.role = ROLE.stage;
+    this.group = 0;
+    this.opacityScale = 1 / effects.opacity;
+    for (const inner of layer.layers) if (inner.kind !== "group") this.layerRecord(inner, stageView, this.stageScissor);
+    this.stage = 0;
+    this.role = outerRole;
+    this.group = outerGroup;
+    this.opacityScale = 1;
+    if (this.count === before) return;
+    // The box: the content box and what the records draw (a stroke or a shadow past it, at most half the
+    // box's size past it), grown by the effects' reach and rounded out to whole px.
+    const cw = effects.width * scale;
+    const ch = effects.height * scale;
+    const slack = 0.5 * Math.max(cw, ch);
+    const box = this.box;
+    let x0 = 0;
+    let y0 = 0;
+    let x1 = cw;
+    let y1 = ch;
+    for (let i = before; i < this.count; i++) {
+      if (!recordBox(box, this.pool[i] as DrawRecord<T>)) continue;
+      x0 = Math.min(x0, Math.max(box[0], -slack));
+      y0 = Math.min(y0, Math.max(box[1], -slack));
+      x1 = Math.max(x1, Math.min(box[2], cw + slack));
+      y1 = Math.max(y1, Math.min(box[3], ch + slack));
+    }
+    const reach = Math.min(MAX_STAGE_REACH, stackReach(effects.data, effects.length) * scale);
+    x0 = Math.floor(x0 - reach);
+    y0 = Math.floor(y0 - reach);
+    x1 = Math.ceil(x1 + reach);
+    y1 = Math.ceil(y1 + reach);
+    // Too large: the stage is drawn smaller (its records scaled about the content box's top-left).
+    const fit = Math.min(1, MAX_STAGE_SIZE / (x1 - x0), MAX_STAGE_SIZE / (y1 - y0));
+    if (fit < 1) {
+      x0 = Math.floor(x0 * fit);
+      y0 = Math.floor(y0 * fit);
+      x1 = Math.ceil(x1 * fit);
+      y1 = Math.ceil(y1 * fit);
+    }
+    const s = scale * fit;
+    const width = Math.max(1, Math.min(MAX_STAGE_SIZE, x1 - x0));
+    const height = Math.max(1, Math.min(MAX_STAGE_SIZE, y1 - y0));
+    const move = setMat(this.stageModel, fit, 0, 0, fit, -x0, -y0);
+    for (let i = before; i < this.count; i++) {
+      const record = this.pool[i] as DrawRecord<T>;
+      multiplyInto(record.uniform.transform, move, record.uniform.transform);
+      setRect(record.scissor, 0, 0, width, height);
+    }
+    this.stageCount = index;
+    const info = (this.stages[index - 1] ??= { clipId: "", width: 0, height: 0, scale: 1, rect: [0, 0, 0, 0], effects, mask: null, ...newSignature() });
+    info.clipId = effects.clipId;
+    info.width = width;
+    info.height = height;
+    info.scale = s;
+    info.rect[0] = -x0;
+    info.rect[1] = -y0;
+    info.rect[2] = effects.width * s - x0;
+    info.rect[3] = effects.height * s - y0;
+    info.effects = effects;
+    info.mask = layer.mask;
+    this.writeSignature(info, before);
+    // The record showing the result: the unit quad -> the stage box in content px -> the clip's model (and projection) -> target px.
+    const record = this.nextRecord("effect", scissor);
+    record.stage = index;
+    const local = setMat(this.stageModel, width / s, 0, 0, height / s, x0 / s, y0 / s);
+    copyLayer(record, view, effects, multiplyInto(this.stageView, model, local), effects.opacity);
+  }
+
+  private readonly box: [number, number, number, number] = [0, 0, 0, 0];
+
+  /** The signature of stage `info` (its records from `first` on): its size, scale, box, effects and mask versions, and every record. */
+  private writeSignature(info: StageInfo, first: number): void {
+    const stride = LAYER_STRIDE / 4;
+    let need = 8;
+    for (let i = first; i < this.count; i++) need += 2 + stride + 4 * ((this.pool[i] as DrawRecord<T>).path?.draws.length ?? 0);
+    if (info.numbers.length < need) info.numbers = new Float64Array(Math.max(need, 2 * info.numbers.length));
+    const numbers = info.numbers;
+    const refs = info.refs;
+    let n = 0;
+    let r = 0;
+    numbers[n++] = info.width;
+    numbers[n++] = info.height;
+    numbers[n++] = info.scale;
+    numbers[n++] = info.rect[0];
+    numbers[n++] = info.rect[1];
+    numbers[n++] = info.effects.version;
+    numbers[n++] = info.mask ? info.mask.version : 0;
+    numbers[n++] = this.count - first;
+    const scratch = this.packScratch;
+    for (let i = first; i < this.count; i++) {
+      const record = this.pool[i] as DrawRecord<T>;
+      numbers[n++] = KIND_CODE[record.kind];
+      numbers[n++] = record.blur;
+      packLayer(scratch, 0, record.uniform);
+      for (let k = 0; k < stride; k++) numbers[n++] = scratch[k] as number;
+      refs[r++] = record.texture0;
+      refs[r++] = record.texture1;
+      const path = record.path;
+      if (path) {
+        // A shape's geometry: the shape cache returns the same arrays while a path is unchanged.
+        refs[r++] = path.draws.length;
+        for (const draw of path.draws) {
+          refs[r++] = draw.triangles;
+          refs[r++] = draw.clip;
+          refs[r++] = draw.gradient;
+          numbers[n++] = draw.color.r;
+          numbers[n++] = draw.color.g;
+          numbers[n++] = draw.color.b;
+          numbers[n++] = draw.color.a;
+        }
+      }
+    }
+    info.numberCount = n;
+    info.refCount = r;
   }
 
   /** A flat color quad. */
@@ -281,7 +516,7 @@ export class DrawRecords<T extends TextureHandle> {
     switch (layer.kind) {
       case "group": {
         // Groups do not nest (a matte's own blend and matte are not drawn): an inner group draws plainly.
-        if (this.group !== 0) {
+        if (this.group !== 0 || this.stage !== 0) {
           for (const inner of layer.layers) this.layerRecord(inner, view, scissor);
           return;
         }
@@ -293,7 +528,7 @@ export class DrawRecords<T extends TextureHandle> {
         const record = this.nextRecord("textured", scissor);
         record.texture0 = layer.texture;
         record.blur = layer.blur ?? 0;
-        copyLayer(record, view, layer, layer.transform, layer.opacity);
+        copyLayer(record, view, this.stage ? NO_PERSP : layer, layer.transform, layer.opacity * this.opacityScale);
         setUv(record.uniform.uv, layer.crop.u0, layer.crop.v0, layer.crop.u1, layer.crop.v1);
         record.uniform.flipX = layer.flipX;
         record.uniform.flipY = layer.flipY;
@@ -319,7 +554,7 @@ export class DrawRecords<T extends TextureHandle> {
         sideMap(u.mapB, to.transform, layer.transform);
         record.texture0 = from.texture;
         record.texture1 = to.texture;
-        copyLayer(record, view, layer, layer.transform, layer.opacity);
+        copyLayer(record, view, this.stage ? NO_PERSP : layer, layer.transform, layer.opacity * this.opacityScale);
         setUv(u.uv, from.crop.u0, from.crop.v0, from.crop.u1, from.crop.v1);
         setUv(u.uv2, to.crop.u0, to.crop.v0, to.crop.u1, to.crop.v1);
         u.sides.from = from.opacity;
@@ -342,12 +577,12 @@ export class DrawRecords<T extends TextureHandle> {
         if (layer.draws.length === 0 || layer.opacity <= 0) return;
         const record = this.nextRecord("path", scissor);
         record.path = layer;
-        copyLayer(record, view, layer, layer.transform, layer.opacity);
+        copyLayer(record, view, this.stage ? NO_PERSP : layer, layer.transform, layer.opacity * this.opacityScale);
         return;
       }
       case "solid": {
         const record = this.solidRecord(layer.color, scissor);
-        copyLayer(record, view, layer, layer.transform, layer.opacity);
+        copyLayer(record, view, this.stage ? NO_PERSP : layer, layer.transform, layer.opacity * this.opacityScale);
         const u = record.uniform;
         if (layer.to) setColor(u.to, layer.to);
         const shape = layer.shape;
@@ -367,6 +602,74 @@ export class DrawRecords<T extends TextureHandle> {
       }
     }
   }
+}
+
+/** Record kinds as numbers (stage signatures). */
+const KIND_CODE: Readonly<Record<RecordKind, number>> = { textured: 1, dissolve: 2, solid: 3, path: 4, composite: 5, effect: 6 };
+
+/** A layer drawn flat (a stage's records: the clip's projection applies to the stage's result). */
+const NO_PERSP: { persp: null } = { persp: null };
+
+const UNIT_BOX: readonly [number, number, number, number] = [0, 0, 1, 1];
+
+/** The box (x0, y0, x1, y1, px of its matrix) a flat record draws into `out` (a path's draws' box, a blur's reach); false when none. */
+function recordBox(out: [number, number, number, number], record: DrawRecord<TextureHandle>): boolean {
+  const m = record.uniform.transform;
+  const [bx0, by0, bx1, by1] = record.kind === "path" && record.path ? record.path.bounds : UNIT_BOX;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (let i = 0; i < 4; i++) {
+    const x = i & 1 ? bx1 : bx0;
+    const y = i & 2 ? by1 : by0;
+    const tx = m[0] * x + m[2] * y + m[4];
+    const ty = m[1] * x + m[3] * y + m[5];
+    minX = Math.min(minX, tx);
+    maxX = Math.max(maxX, tx);
+    minY = Math.min(minY, ty);
+    maxY = Math.max(maxY, ty);
+  }
+  let grow = record.kind === "path" ? PATH_MARGIN : 0;
+  // A blurred text grows by 3 sigma (texture px, about its matrix's px).
+  if (record.blur > 0) grow += Math.ceil(3 * Math.min(MAX_BLUR_SIGMA, record.blur));
+  out[0] = minX - grow;
+  out[1] = minY - grow;
+  out[2] = maxX + grow;
+  out[3] = maxY + grow;
+  return Number.isFinite(minX + minY + maxX + maxY);
+}
+
+/**
+ * Scales every stage record (the first `count` of `records`) from its stage's px to the target's: the backends
+ * draw a stage with the target's view into the stage's picture (its viewport), so a stage px x must sit where
+ * the target's view puts x * target / stage. Run after the path and blur records are drawn, before the
+ * uniforms are written.
+ */
+export function retargetStages<T extends TextureHandle>(records: DrawRecords<T>, count: number, width: number, height: number): void {
+  if (records.stageCount === 0) return;
+  for (let i = 0; i < count; i++) {
+    const record = records.at(i);
+    if (record.role !== ROLE.stage) continue;
+    const stage = records.stages[record.stage - 1];
+    if (!stage) continue;
+    const sx = width / stage.width;
+    const sy = height / stage.height;
+    const m = record.uniform.transform;
+    m[0] *= sx;
+    m[2] *= sx;
+    m[4] *= sx;
+    m[1] *= sy;
+    m[3] *= sy;
+    m[5] *= sy;
+  }
+}
+
+/** Points an "effect" record at `texture`, which holds its stage's result from its top-left: a textured quad. */
+export function showEffect<T extends TextureHandle>(record: DrawRecord<T>, stage: StageInfo, texture: T): void {
+  record.kind = "textured";
+  record.texture0 = texture;
+  setUv(record.uniform.uv, 0, 0, stage.width / texture.width, stage.height / texture.height);
 }
 
 /** A gradient fill into a style uniform (at most 8 stops are drawn). */

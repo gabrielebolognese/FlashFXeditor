@@ -5,13 +5,14 @@
 import { ACCEPTED_EXTENSIONS } from "../media/mediaKinds.js";
 import { ANIMATION_BUDGET_BYTES, ANIMATION_MAX_SIZE, MAX_GAIN_DB, MAX_SPEED, MIN_GAIN_DB, MIN_SPEED } from "./document/limits.js";
 import { ANIMATOR_KEYFRAME_PROPS, KEYFRAME_PROPS, MASK_KEYFRAME_PROPS, SHAPE_KEYFRAME_PROPS } from "./document/keyframes.js";
+import { EFFECT_KEYFRAME_PROPS } from "./effects/effectParams.js";
 import { FONT_MANIFEST_VERSION } from "../text/fonts.js";
-import { BLEND_MODES, MASK_MODES, CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, SCHEMA_VERSION, SOLID_SHAPE_IDS, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_KINDS, PRIMITIVE_KINDS, LINE_CAPS, LINE_JOINS, FILL_RULES } from "./document/types.js";
+import { BLEND_MODES, EFFECT_TYPES, MASK_MODES, CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, SCHEMA_VERSION, SOLID_SHAPE_IDS, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_KINDS, PRIMITIVE_KINDS, LINE_CAPS, LINE_JOINS, FILL_RULES } from "./document/types.js";
 
 /** The `manifestVersion`: changes only when a key changes meaning (new keys do not change it). */
 export const MANIFEST_VERSION = 1;
 /** The last batch that touched the manifest (spec §21.1: each batch sets it to its own number). */
-export const LAST_BATCH = 73;
+export const LAST_BATCH = 74;
 
 /** The flags of the manifest: a batch that adds a capability flips its key here (spec §21.2 table). */
 export const FEATURES = {
@@ -69,7 +70,8 @@ export function buildCapabilities(appVersion: string): Capabilities {
     trackKinds: [...TRACK_KINDS],
     clipKinds: [...CLIP_KINDS],
     transform: { ...f.transform },
-    keyframes: { props: [...KEYFRAME_PROPS], eases: [...EASE_IDS], ...f.keyframes },
+    // Effects (Batch 74): `effects.<id>.<param>` keys a keyframeable parameter of the effect `<id>`.
+    keyframes: { props: [...KEYFRAME_PROPS], eases: [...EASE_IDS], ...f.keyframes, effectProps: [...EFFECT_KEYFRAME_PROPS] },
     solid: { shapes: [...SOLID_SHAPE_IDS], fills: ["color", "gradient2", "linear", "radial"], ...f.solid },
     mediaFrame: { ...f.mediaFrame },
     text: {
@@ -97,7 +99,8 @@ export function buildCapabilities(appVersion: string): Capabilities {
     compositing: { compound: f.compositing.compound, blendModes: [...BLEND_MODES], trackMatte: f.compositing.trackMatte, masks: f.compositing.masks, maskModes: [...MASK_MODES], maskKeyframeProps: [...MASK_KEYFRAME_PROPS], adjustment: f.compositing.adjustment },
     // Shapes (Batch 65): primitives, stroke caps and joins, fill rules and the keyframe props of paths (`<id>`: a path id).
     vector: { ...f.vector, primitives: [...PRIMITIVE_KINDS], caps: [...LINE_CAPS], joins: [...LINE_JOINS], fillRules: [...FILL_RULES], keyframeProps: [...SHAPE_KEYFRAME_PROPS] },
-    effects: [],
+    // Effects (spec §21.19): every effect type a clip's `effects` can hold (Batch 74: blurs, glow, shadow, outline).
+    effects: [...EFFECT_TYPES],
     audio: { clipGainDb: [MIN_GAIN_DB, MAX_GAIN_DB], ...f.audio },
     time: { speedRange: [MIN_SPEED, MAX_SPEED], ...f.time },
     templates: f.templates,

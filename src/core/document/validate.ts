@@ -6,6 +6,7 @@ import { sequenceGraphIssues } from "./sequences.js";
 import { usPerFrame } from "./time.js";
 import { sequenceDurationUs, sequenceRecordIssues } from "./sequence.js";
 import { pathDataIssue } from "../shapes/pathData.js";
+import { effectIssues } from "../effects/effectParams.js";
 import { PRIMITIVE_LIMITS, PRIMITIVE_PARAMS } from "../shapes/primitives.js";
 import { BLEND_MODES, MASK_MODES, MATTE_MODES, CAPTION_HIGHLIGHTS, COUNTER_SEPARATORS, CUE_ANIM_KINDS, FILL_RULES, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_UNITS, isFreeze, isMediaClip, LABEL_COLORS, LINE_CAPS, LINE_JOINS, PRIMITIVE_KINDS, SOLID_SHAPE_IDS, type NullClip, type PrimitiveKind, type ShapeClip, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type CompoundClip, type Sequence, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextSpan, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
 
@@ -85,6 +86,9 @@ function clipIssues(project: Project, clip: Clip): string[] {
   issues.push(...depthIssues(clip, label));
   issues.push(...compositingIssues(clip, label));
   issues.push(...maskIssues(clip, label));
+  // Effects (spec §21.19, Batch 74): visual clips only; known types and parameters in range.
+  if ((clip.effects?.length ?? 0) > 0 && !VISUAL_KINDS.has(clip.kind)) issues.push(`${label}: a ${clip.kind} clip takes no effects`);
+  issues.push(...effectIssues(clip.effects as unknown, label));
   // Frame styles (spec §21.7): pictures have rounded corners, an outline and a shadow.
   if (clip.kind === "video" || clip.kind === "image") issues.push(...frameIssues(clip, label));
   // Keyframes (Batch 35): known properties, one key per integer frame in order, finite values, known eases.

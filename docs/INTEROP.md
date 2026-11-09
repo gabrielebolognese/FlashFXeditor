@@ -792,6 +792,76 @@ The title clip `title` on another video track then carries `"matteOnly": true`. 
 
 A morph keys the path's points: `"masks.shape.path": [{ "frame": 0, "value": [80, 220, 280, 220, 280, 420, 80, 420], "ease": "linear" }, { "frame": 29, "value": [180, 170, 330, 320, 180, 470, 30, 320], "ease": "linear" }]`. Schema 16 projects open unchanged (migration 16 to 17 changes nothing). `fixtures/interop/masks` is a complete project: a video inside a feathered ellipse, subtract, intersect and invert on solids, a title revealed by a keyed rectangle, a path morph and a masked matte source, with an expected frame of each. `npm run test:render` renders them on both backends.
 
+### 5.13 Effects I: blur, glow, drop shadow and outline (manifest keys `effects`, `keyframes.effectProps`; schema 18)
+
+**The stack.** A visual clip (`video`, `image`, `text`, `solid`, `shape`, `compound`) may carry `effects`: a list applied **in order** to its picture, each one to the result of the one before (an outline then a drop shadow casts the shadow of the outlined picture; the other way round, the outline also goes round the shadow). Each effect has a unique `id` within the clip, a `type`, `enabled` (`false` keeps it in the list but skips it) and `params`, its parameters by name. A missing parameter takes its default; a parameter that the type does not have, or a value out of its range, is an error. An empty or absent list draws the clip as it is. The manifest key `effects` lists the types this build draws.
+
+**Where they apply.** Effects work in the clip's **content px** (the same space as masks, §5.12): after its crop and masks, before its transform, opacity, fades, track matte and blend mode. So a 20 px blur is 20 content px: it scales, turns and tilts with the clip, and a drop shadow's angle turns with it. An effect may draw outside the clip's box (a glow, a shadow, a wide outline); that part is kept. Colors are `[r, g, b, a]`, straight alpha, each 0 to 1; toggles are `0` or `1`; angles are degrees, 0 pointing right and 90 down.
+
+| Type | Parameter | Range | Default | What it does |
+| --- | --- | --- | --- | --- |
+| `gaussianBlur` | `radius` | 0 to 500 px | 10 | Blur radius. |
+| | `repeatEdges` | toggle | 0 | 1: the clip's edge pixels repeat outward, so the edges stay sharp and nothing bleeds out of the box. |
+| `directionalBlur` | `length` | 0 to 500 px | 20 | Length of the motion streak. |
+| | `angle` | -360 to 360° | 0 | Direction of the streak. |
+| | `repeatEdges` | toggle | 0 | As for the gaussian blur. |
+| `glow` | `mode` | `"outer"`, `"inner"` | `"outer"` | Outer: light around and over the picture. Inner: light inside its edges only. |
+| | `radius` | 0 to 500 px | 20 | How far the light spreads. |
+| | `intensity` | 0 to 5 | 1 | Strength; 0 draws no glow. |
+| | `threshold` | 0 to 1 | 0 | Only parts brighter than this glow. |
+| | `color` | RGBA | `[1, 1, 1, 1]` | Color of the light. |
+| `dropShadow` | `color` | RGBA | `[0, 0, 0, 0.55]` | Shadow color and strength. |
+| | `angle` | -360 to 360° | 90 | Direction the shadow falls. |
+| | `distance` | 0 to 1000 px | 12 | How far it falls. |
+| | `blur` | 0 to 500 px | 16 | Softness. |
+| `outline` | `width` | 0 to 200 px | 6 | Stroke width, outside the picture's alpha edge. |
+| | `color` | RGBA | `[1, 1, 1, 1]` | Stroke color. |
+
+The drop shadow and the outline follow the picture's **alpha**: on a transparent PNG or a text they take its shape, on an opaque video they follow its box.
+
+**Animation.** Every number and color parameter can be keyed: the keyframe prop is `effects.<id>.<param>` (numbers take numbers, colors take `[r, g, b, a]` vectors). Choices (`mode`) and toggles (`repeatEdges`) cannot. The manifest key `keyframes.effectProps` lists the pattern.
+
+**Order.** A clip draws: its content (with crop), its masks, its effects, its transform, opacity and fades, then its track matte and blend mode (§5.11). In a transition the effects of the clip that dominates the frame apply to the transition's picture. A clip used as a track matte keys through its picture without its effects. Effects of later types (color, stylize, keys, LUTs) are not in this schema.
+
+```json Clip.solid
+{
+  "id": "card",
+  "trackId": "v1",
+  "kind": "solid",
+  "name": "Glowing card",
+  "start": 0,
+  "duration": 60,
+  "enabled": true,
+  "fill": { "r": 1, "g": 0.6, "b": 0.2, "a": 1 },
+  "shape": "rect",
+  "size": { "w": 600, "h": 300 },
+  "cornerRadius": 40,
+  "transform": { "x": 0, "y": 0, "scale": 1, "rotation": 0, "anchor": { "x": 0.5, "y": 0.5 }, "flipH": false, "flipV": false },
+  "opacity": 1,
+  "effects": [
+    { "id": "fx1", "type": "outline", "enabled": true, "params": { "width": 6, "color": [1, 1, 1, 1] } },
+    { "id": "fx2", "type": "glow", "enabled": true, "params": { "mode": "outer", "radius": 40, "intensity": 1, "threshold": 0, "color": [0.2, 0.85, 1, 1] } },
+    { "id": "fx3", "type": "dropShadow", "enabled": false, "params": { "color": [0, 0, 0, 0.55], "angle": 90, "distance": 12, "blur": 16 } }
+  ],
+  "keyframes": {
+    "effects.fx2.intensity": [
+      { "frame": 0, "value": 0, "ease": "linear" },
+      { "frame": 29, "value": 1, "ease": "linear" }
+    ]
+  }
+}
+```
+
+```json Effect
+{ "id": "streak", "type": "directionalBlur", "enabled": true, "params": { "length": 120, "angle": 45, "repeatEdges": 1 } }
+```
+
+```json Effect
+{ "id": "soft", "type": "gaussianBlur", "enabled": true, "params": {} }
+```
+
+The second effect takes every default (radius 10, no repeated edges). Schema 17 projects open unchanged (migration 17 to 18 changes nothing). `fixtures/interop/effects-1` is a complete project: each effect at its defaults and at extreme settings, a glow whose intensity is keyed, a stack and the same stack swapped, a disabled effect and a turned, scaled clip with a shadow, with an expected frame of each. `npm run test:render` renders them on both backends.
+
 ## 6. Captions and word timings
 
 The caption track's `captionTracks[<track id>].style` styles every cue; a cue's `styleOverride` sets only the fields it changes. A cue is a `caption` clip with `text` (`\n` for line breaks) and optional `words`: `start` and `end` are integer frames relative to the cue's start, `end` after `start`. A word may start before the cue or end after it: an in-trim keeps the words it hides (negative frames), so a trim back shows them again. With word timings the active word is highlighted as the style's `highlight` says.
@@ -1092,7 +1162,7 @@ The parameters of a `spring` ease: a damped cosine over the segment that ends ex
 
 Keyframe lists by property id, each sorted by frame.
 
-Value: object of [Keyframe](#keyframe)[] (keys: `transform.x`, `transform.y`, `transform.scale`, `transform.scaleY`, `transform.rotation`, `opacity`, `volume.gainDb`, `transform.anchor.x`, `transform.anchor.y`, `crop.left`, `crop.top`, `crop.right`, `crop.bottom`, `size.w`, `size.h`, `cornerRadius`, `fill`, `stroke.width`, `stroke.color`, `stroke.dashOffset`, `shadow.x`, `shadow.y`, `shadow.blur`, `shadow.spread`, `shadow.color`, `style.fontSize`, `style.letterSpacing`, `style.fill`, `text.counter.value`, `transform.position`, `transform.rotationX`, `transform.rotationY`, `transform.z`, and keys matching `^paths\.([A-Za-z0-9_-]+)\.(trim\.(?:start|end|offset)|stroke\.(?:width|color|dashOffset)|fill|primitive\.([A-Za-z]+))$`, `^animators\.([A-Za-z0-9_-]+)\.(selector\.(?:start|end|offset)|props\.(?:x|y|scale|rotation|opacity|blur|tracking|fill))$`, `^masks\.([A-Za-z0-9_-]+)\.(x|y|w|h|radius|feather|expansion|opacity|path)$`).
+Value: object of [Keyframe](#keyframe)[] (keys: `transform.x`, `transform.y`, `transform.scale`, `transform.scaleY`, `transform.rotation`, `opacity`, `volume.gainDb`, `transform.anchor.x`, `transform.anchor.y`, `crop.left`, `crop.top`, `crop.right`, `crop.bottom`, `size.w`, `size.h`, `cornerRadius`, `fill`, `stroke.width`, `stroke.color`, `stroke.dashOffset`, `shadow.x`, `shadow.y`, `shadow.blur`, `shadow.spread`, `shadow.color`, `style.fontSize`, `style.letterSpacing`, `style.fill`, `text.counter.value`, `transform.position`, `transform.rotationX`, `transform.rotationY`, `transform.z`, and keys matching `^paths\.([A-Za-z0-9_-]+)\.(trim\.(?:start|end|offset)|stroke\.(?:width|color|dashOffset)|fill|primitive\.([A-Za-z]+))$`, `^animators\.([A-Za-z0-9_-]+)\.(selector\.(?:start|end|offset)|props\.(?:x|y|scale|rotation|opacity|blur|tracking|fill))$`, `^masks\.([A-Za-z0-9_-]+)\.(x|y|w|h|radius|feather|expansion|opacity|path)$`, `^effects\.([A-Za-z0-9_-]+)\.([A-Za-z][A-Za-z0-9]*)$`).
 
 #### Transition
 
@@ -1132,6 +1202,17 @@ A mask (Batch 73): the clip shows only where its masks, combined in order, cover
 | `expansion` | number | yes | `0` | Grows the shape by this many content px (negative shrinks it). |
 | `opacity` | number (>= 0, <= 1) | yes | `1` | Scales the mask's coverage. |
 | `inverted` | boolean | yes | `false` | Uses the outside of the shape. |
+
+#### Effect
+
+An effect (Batch 74): one step of a visual clip's effect stack, applied in order to its picture in content space (after its masks, before its transform, opacity, blend and matte). The parameters of each type, their ranges and defaults are listed in INTEROP.md §5.13; a missing parameter takes its default.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `id` | string (not empty) | yes |  | Unique among the clip's effects: letters, digits, `_` or `-` (keyframe ids are `effects.<id>.<param>`). |
+| `type` | `"gaussianBlur"` | `"directionalBlur"` | `"glow"` | `"dropShadow"` | `"outline"` | yes |  | The effect type. |
+| `enabled` | boolean | yes | `true` | Off: the effect is kept but not drawn. |
+| `params` | object of number, string, or number[] (1 to 4 items) by id | yes | `{}` | Parameters by name: numbers (toggles are 0 or 1), colors [r, g, b, a] (straight alpha, 0..1) and choices (strings). Only the type's parameters, each in its range. |
 
 #### MaskBox
 
@@ -1582,7 +1663,7 @@ project.json.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `schemaVersion` | integer (>= 1) | yes | `17` | The schema version; this build writes and reads up to the current one. |
+| `schemaVersion` | integer (>= 1) | yes | `18` | The schema version; this build writes and reads up to the current one. |
 | `id` | string (not empty) | yes |  | Unique id, never changes (uuid v4 recommended). |
 | `name` | string | yes |  | Project name. |
 | `settings` | [Settings](#settings) | yes |  | Frame and time base. |
@@ -1626,6 +1707,7 @@ The fields every clip has.
 | `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
 | `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
 | `masks` | [Mask](#mask)[] | no |  | Visual clips (Batch 73): masks combined in order; absent or empty = the whole clip shows. |
+| `effects` | [Effect](#effect)[] | no |  | Visual clips (Batch 74): the effect stack, applied in order after the masks; absent or empty = none. |
 
 #### Clip.video
 
@@ -1651,6 +1733,7 @@ A video clip.
 | `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
 | `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
 | `masks` | [Mask](#mask)[] | no |  | Visual clips (Batch 73): masks combined in order; absent or empty = the whole clip shows. |
+| `effects` | [Effect](#effect)[] | no |  | Visual clips (Batch 74): the effect stack, applied in order after the masks; absent or empty = none. |
 | `mediaId` | string (not empty) | yes |  | The media item it plays; a clip whose item was removed stays as an offline clip. |
 | `in` | integer (>= 0) | yes |  | Source in point. Integer microseconds. |
 | `out` | integer (>= 1) | yes |  | Source out point; `out - in` equals `duration * speed` frame times (within one frame). Integer microseconds. |
@@ -1691,6 +1774,7 @@ A audio clip.
 | `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
 | `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
 | `masks` | [Mask](#mask)[] | no |  | Visual clips (Batch 73): masks combined in order; absent or empty = the whole clip shows. |
+| `effects` | [Effect](#effect)[] | no |  | Visual clips (Batch 74): the effect stack, applied in order after the masks; absent or empty = none. |
 | `mediaId` | string (not empty) | yes |  | The media item it plays; a clip whose item was removed stays as an offline clip. |
 | `in` | integer (>= 0) | yes |  | Source in point. Integer microseconds. |
 | `out` | integer (>= 1) | yes |  | Source out point; `out - in` equals `duration * speed` frame times (within one frame). Integer microseconds. |
@@ -1728,6 +1812,7 @@ A image clip.
 | `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
 | `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
 | `masks` | [Mask](#mask)[] | no |  | Visual clips (Batch 73): masks combined in order; absent or empty = the whole clip shows. |
+| `effects` | [Effect](#effect)[] | no |  | Visual clips (Batch 74): the effect stack, applied in order after the masks; absent or empty = none. |
 | `mediaId` | string (not empty) | yes |  | The media item it plays; a clip whose item was removed stays as an offline clip. |
 | `in` | integer (>= 0) | yes |  | Source in point. Integer microseconds. |
 | `out` | integer (>= 1) | yes |  | Source out point; `out - in` equals `duration * speed` frame times (within one frame). Integer microseconds. |
@@ -1768,6 +1853,7 @@ A text clip.
 | `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
 | `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
 | `masks` | [Mask](#mask)[] | no |  | Visual clips (Batch 73): masks combined in order; absent or empty = the whole clip shows. |
+| `effects` | [Effect](#effect)[] | no |  | Visual clips (Batch 74): the effect stack, applied in order after the masks; absent or empty = none. |
 | `text` | [TextContent](#textcontent) | yes |  | What it says. |
 | `style` | [TextStyle](#textstyle) | yes |  | Its look. |
 | `animIn` | [TextAnim](#textanim) | no |  | In animation. |
@@ -1883,6 +1969,7 @@ A solid or shape layer: `size` project px at scale 1.
 | `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
 | `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
 | `masks` | [Mask](#mask)[] | no |  | Visual clips (Batch 73): masks combined in order; absent or empty = the whole clip shows. |
+| `effects` | [Effect](#effect)[] | no |  | Visual clips (Batch 74): the effect stack, applied in order after the masks; absent or empty = none. |
 | `fill` | [RGBA](#rgba) | [Gradient](#gradient) | [GradientFill](#gradientfill) | yes |  | A color or a vertical two-stop gradient. |
 | `shape` | `"rect"` | `"roundedRect"` | `"ellipse"` | `"line"` | yes | `"rect"` | The shape. |
 | `size` | [Size](#size) | yes |  | Width and height at scale 1, project px. |
@@ -1919,6 +2006,7 @@ A nested sequence shown as one layer (Batch 62): inner frame = `offset + (frame 
 | `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
 | `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
 | `masks` | [Mask](#mask)[] | no |  | Visual clips (Batch 73): masks combined in order; absent or empty = the whole clip shows. |
+| `effects` | [Effect](#effect)[] | no |  | Visual clips (Batch 74): the effect stack, applied in order after the masks; absent or empty = none. |
 | `sequenceId` | string (not empty) | yes |  | The sequence it shows (a key of `Project.sequences`); instances may share one. |
 | `offset` | integer (>= 0) | yes | `0` | The sequence frame shown at the clip's first frame. Integer frames at the project frame rate. |
 | `transform` | [Transform](#transform) | yes |  | Placement. |
@@ -1951,6 +2039,7 @@ A vector graphic (Batch 65): paths drawn in order in a view box of `size` projec
 | `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
 | `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
 | `masks` | [Mask](#mask)[] | no |  | Visual clips (Batch 73): masks combined in order; absent or empty = the whole clip shows. |
+| `effects` | [Effect](#effect)[] | no |  | Visual clips (Batch 74): the effect stack, applied in order after the masks; absent or empty = none. |
 | `size` | [Size](#size) | yes |  | The view box: width and height at scale 1, project px. |
 | `paths` | [ShapePath](#shapepath)[] | yes | `[]` | The paths, bottom to top. |
 | `transform` | [Transform](#transform) | yes |  | Placement. |
@@ -1982,6 +2071,7 @@ An invisible controller (Batch 69): never drawn or exported, a parent for other 
 | `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
 | `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
 | `masks` | [Mask](#mask)[] | no |  | Visual clips (Batch 73): masks combined in order; absent or empty = the whole clip shows. |
+| `effects` | [Effect](#effect)[] | no |  | Visual clips (Batch 74): the effect stack, applied in order after the masks; absent or empty = none. |
 | `size` | [Size](#size) | yes | `{"w":100,"h":100}` | The selection outline: width and height at scale 1, project px. |
 | `transform` | [Transform](#transform) | yes |  | Placement. |
 | `keyframes` | [Keyframes](#keyframes) | no |  | Animated properties, including `transform.position`. |
@@ -2155,6 +2245,7 @@ A caption cue. Its style is its track's with `styleOverride` on top.
 | `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
 | `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
 | `masks` | [Mask](#mask)[] | no |  | Visual clips (Batch 73): masks combined in order; absent or empty = the whole clip shows. |
+| `effects` | [Effect](#effect)[] | no |  | Visual clips (Batch 74): the effect stack, applied in order after the masks; absent or empty = none. |
 | `text` | string | yes |  | Plain text with `\n` line breaks. |
 | `words` | [CaptionWord](#captionword)[] | no |  | Word timings (karaoke), relative to the cue start. |
 | `styleOverride` | [CaptionStyleOverride](#captionstyleoverride) | no |  | The cue's own style. |

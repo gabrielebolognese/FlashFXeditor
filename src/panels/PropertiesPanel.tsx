@@ -23,6 +23,7 @@ import { QuickActions } from "./properties/QuickActions.js";
 import { Section } from "./properties/Section.js";
 import { CompositingSection } from "./properties/CompositingSection.js";
 import { MasksSection } from "./properties/MasksSection.js";
+import { EffectsSection } from "./properties/EffectsSection.js";
 import { FrameSection } from "./properties/FrameSection.js";
 import { ShapeSection } from "./properties/ShapeSection.js";
 import { SolidSection } from "./properties/SolidSection.js";
@@ -61,6 +62,7 @@ const SECTION_TITLES: Record<SectionId, string> = {
   opacity: "Opacity",
   compositing: "Compositing",
   masks: "Masks",
+  effects: "Effects",
   speed: "Speed",
   audio: "Audio",
   transition: "Transition",
@@ -97,6 +99,8 @@ function sectionBody(id: SectionId, context: PropertiesContext): ReactNode {
       return context.kind === "clips" ? <CompositingSection ids={context.layerIds} /> : null;
     case "masks":
       return context.kind === "clips" ? <MasksSection ids={context.maskIds} /> : null;
+    case "effects":
+      return context.kind === "clips" ? <EffectsSection ids={context.maskIds} /> : null;
     case "speed":
       return context.kind === "clips" ? <SpeedSection ids={context.speedIds} /> : null;
     case "audio":

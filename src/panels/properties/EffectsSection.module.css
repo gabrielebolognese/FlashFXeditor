@@ -1,0 +1,30 @@
+/* The Effects section (spec §21.19, Batch 74; gap: the DS has no drag-to-reorder list). An effect's header
+   controls are its drag handle's row: while another effect is dragged over it, an accent line (--space-0
+   thick, --accent) marks where it lands, above or below the row. */
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-0);
+  border-radius: var(--radius-sm);
+}
+
+.header[data-drop="before"] {
+  box-shadow: inset 0 var(--space-0) 0 var(--accent);
+}
+
+.header[data-drop="after"] {
+  box-shadow: inset 0 calc(-1 * var(--space-0)) 0 var(--accent);
+}
+
+.grip {
+  cursor: grab;
+}
+
+.grip:active {
+  cursor: grabbing;
+}
+
+/* A disabled effect's name in muted text. */
+.off {
+  color: var(--text-tertiary);
+}

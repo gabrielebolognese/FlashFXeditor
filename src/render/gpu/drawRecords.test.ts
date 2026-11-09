@@ -227,6 +227,7 @@ describe("DrawRecords groups (spec §21.17, Batch 72)", () => {
     opacity: 1,
     blend,
     mask: null,
+    effects: null,
     layers: [solid(RED)],
     matte: matte ? { mode, layers: matte, mask: null } : null,
   });
@@ -273,7 +274,7 @@ describe("DrawRecords groups (spec §21.17, Batch 72)", () => {
     const records = new DrawRecords(usable);
     const dead = new FakeTexture(10, 10);
     dead.destroy();
-    const layer: Layer = { kind: "group", transform: IDENTITY, opacity: 1, blend: "multiply", mask: null, layers: [{ kind: "texture", texture: dead, transform: IDENTITY, opacity: 1, crop: FULL_UV, flipX: false, flipY: false }], matte: null };
+    const layer: Layer = { kind: "group", transform: IDENTITY, opacity: 1, blend: "multiply", mask: null, effects: null, layers: [{ kind: "texture", texture: dead, transform: IDENTITY, opacity: 1, crop: FULL_UV, flipX: false, flipY: false }], matte: null };
     expect(records.build([pane(list([layer]), IDENTITY)], 400, 400)).toBe(1);
     expect(records.groupCount).toBe(0);
   });
@@ -281,7 +282,7 @@ describe("DrawRecords groups (spec §21.17, Batch 72)", () => {
   it("draws a group inside a group plainly into the outer picture", () => {
     const records = new DrawRecords(usable);
     const inner = groupLayer("screen", null);
-    const outer: Layer = { kind: "group", transform: IDENTITY, opacity: 1, blend: "multiply", mask: null, layers: [inner], matte: null };
+    const outer: Layer = { kind: "group", transform: IDENTITY, opacity: 1, blend: "multiply", mask: null, effects: null, layers: [inner], matte: null };
     const count = records.build([pane(list([outer]), IDENTITY)], 400, 400);
     expect(count).toBe(3);
     expect([records.at(1).group, records.at(1).role, records.at(2).kind]).toEqual([1, 1, "composite"]);
@@ -298,7 +299,7 @@ describe("DrawRecords masks (spec §21.18, Batch 73)", () => {
 
   it("a masked group's composite holds the map from target px to its content box's unit square", () => {
     const records = new DrawRecords(usable);
-    const group: Layer = { kind: "group", transform: IDENTITY, opacity: 1, blend: "normal", mask: frame(), layers: [RED_SOLID], matte: null };
+    const group: Layer = { kind: "group", transform: IDENTITY, opacity: 1, blend: "normal", mask: frame(), effects: null, layers: [RED_SOLID], matte: null };
     const count = records.build([pane(list([group]), [2, 0, 0, 2, 50, 0])], 400, 400);
     const composite = records.at(count - 1);
     expect(composite.kind).toBe("composite");
@@ -317,7 +318,7 @@ describe("DrawRecords masks (spec §21.18, Batch 73)", () => {
   it("a 2.5D clip's map goes through its projection; a matte clip's mask has its own map", () => {
     const persp: NonNullable<MaskFrame["persp"]> = [1, 0, 0.1, 1, 5, 0, 0.0005, 0.001, 1];
     const records = new DrawRecords(usable);
-    const group: Layer = { kind: "group", transform: IDENTITY, opacity: 1, blend: "normal", mask: frame(persp), layers: [RED_SOLID], matte: { mode: "alpha", layers: [RED_SOLID], mask: frame() } };
+    const group: Layer = { kind: "group", transform: IDENTITY, opacity: 1, blend: "normal", mask: frame(persp), effects: null, layers: [RED_SOLID], matte: { mode: "alpha", layers: [RED_SOLID], mask: frame() } };
     const count = records.build([pane(list([group]), IDENTITY)], 400, 400);
     const maps = records.at(count - 1).uniform.style.stopColor;
     expect([maps[MASK_MAP.flags], maps[MASK_MAP.flags + 1]]).toEqual([1, 1]);

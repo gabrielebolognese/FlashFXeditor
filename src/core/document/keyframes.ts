@@ -22,6 +22,7 @@ import { positionOnSegment, segmentAngle, type Vec2 } from "./positionPath.js";
 import { cubicBezier, EASINGS, springProgress, type EasingName } from "./easings.js";
 import { EASE_IDS, PENNER_EASES, type EaseId, type Frame, type KeyData, type Keyframes, type Transform } from "./types.js";
 import { maskPathPoints } from "../masks/maskPath.js";
+import { EFFECT_KINDS, effectPropIssue, isEffectColorProp, isEffectProp } from "../effects/effectParams.js";
 
 /** A key (spec §21.9): a number value, or an array for the vector properties (colors). */
 export type Key = KeyData;
@@ -138,6 +139,7 @@ export function propValidFor(prop: string, kind: string): boolean {
   if (prop.startsWith("paths.")) return kind === "shape";
   if (prop.startsWith("animators.")) return kind === "text";
   if (prop.startsWith("masks.")) return MASKABLE_KINDS.includes(kind);
+  if (prop.startsWith("effects.")) return EFFECT_KINDS.includes(kind);
   const kinds = PROP_KINDS[prop];
   return kinds === undefined || kinds.includes(kind);
 }
@@ -900,7 +902,7 @@ export function isColorFill(fill: unknown): boolean {
 }
 
 /** What is wrong with a clip's keyframes (spec §5.2 invariants, Batch 35): known properties, sorted integer frames, finite values, known eases, no empty list. */
-export function keyframeIssues(keyframes: Keyframes, clip?: { kind: string; fill?: unknown; paths?: unknown; animators?: unknown; masks?: unknown }): string[] {
+export function keyframeIssues(keyframes: Keyframes, clip?: { kind: string; fill?: unknown; paths?: unknown; animators?: unknown; masks?: unknown; effects?: unknown }): string[] {
   const issues: string[] = [];
   for (const [prop, keys] of Object.entries(keyframes)) {
     // A path mask's points (spec §21.18): one vector as long as the base path's.
@@ -915,6 +917,13 @@ export function keyframeIssues(keyframes: Keyframes, clip?: { kind: string; fill
           const mask = (clip.masks as { id: string; shape: { d?: unknown } }[]).find((m) => m.id === id);
           pathLength = typeof mask?.shape.d === "string" ? (maskPathPoints(mask.shape.d)?.length ?? null) : null;
         }
+      }
+    } else if (isEffectProp(prop)) {
+      // Effects (spec §21.19, Batch 74): a keyframeable parameter of one of the clip's effects.
+      if (clip && !EFFECT_KINDS.includes(clip.kind)) issues.push(`keyframes.${prop}: not a property of a ${clip.kind} clip`);
+      else if (clip) {
+        const issue = effectPropIssue(prop, clip.effects);
+        if (issue) issues.push(`keyframes.${prop}: ${issue}`);
       }
     } else if (isAnimatorProp(prop)) {
       if (clip && clip.kind !== "text") issues.push(`keyframes.${prop}: not a property of a ${clip.kind} clip`);
@@ -931,7 +940,7 @@ export function keyframeIssues(keyframes: Keyframes, clip?: { kind: string; fill
     } else if (!isKeyframeProp(prop)) issues.push(`keyframes: unknown property "${prop}"`);
     else if (clip && !propValidFor(prop, clip.kind)) issues.push(`keyframes.${prop}: not a property of a ${clip.kind} clip`);
     else if (clip && prop === "fill" && clip.kind === "solid" && !isColorFill(clip.fill)) issues.push("keyframes.fill: the solid's fill is not a plain color");
-    const vector = isColorProp(prop);
+    const vector = isColorProp(prop) || (isEffectProp(prop) && isEffectColorProp(prop, clip?.effects));
     const point = isPointProp(prop);
     const maskPath = isMaskProp(prop) && prop.endsWith(".path");
     if (!Array.isArray(keys) || keys.length === 0) {

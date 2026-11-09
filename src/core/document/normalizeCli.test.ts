@@ -39,7 +39,7 @@ describe("fixtures/interop/sparse and `normalize`", { timeout: 30_000 }, () => {
     const report = await normalizeProjectFolder(rel(SPARSE), { ...NORMALIZE, write: false });
     expect(report.errors).toEqual([]);
     expect(report.project).toEqual(expected);
-    expect(expected.schemaVersion).toBe(17);
+    expect(expected.schemaVersion).toBe(18);
     expect(expected.media.m1).toMatchObject({ durationUs: 2_000_000, width: 270, height: 480, fps: { num: 30, den: 1 }, hasAudio: true, codec: "avc1.64001f", audioCodec: "mp4a.40.2" });
     expect(expected.media.m2).toMatchObject({ durationUs: 500_000, hasAudio: true, audioCodec: "pcm" });
     expect(expected.media.m3).toMatchObject({ durationUs: 0, width: 64, height: 64, hasAudio: false });

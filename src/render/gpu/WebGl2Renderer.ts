@@ -21,13 +21,15 @@ import type { RGBA } from "../../core/document/types.js";
 import type { DrawList } from "../compositor/drawList.js";
 import { IDENTITY, mutableIdentity, setMat, type MutableMat3 } from "../mat3.js";
 import type { BackendRenderer } from "./backend.js";
-import { blurRegionInto, DrawRecords, newRecordUniform, pathRegionInto, premultipliedInto, ROLE, showBlurred, showPath, writePathUniform, type BlurRegion, type DrawRecord, type QuadKind, type Rect } from "./drawRecords.js";
+import { FX_BUFFER, StageJobs, type StageJob } from "../effects/stageJobs.js";
+import { FX_FLOATS } from "../effects/registry.js";
+import { blurRegionInto, DrawRecords, newRecordUniform, pathRegionInto, premultipliedInto, retargetStages, ROLE, showBlurred, showPath, writePathUniform, type BlurRegion, type DrawRecord, type QuadKind, type Rect } from "./drawRecords.js";
 import { fitWithin, hasAlphaFormat } from "./fitWithin.js";
 import type { GlContext } from "./GlContext.js";
 import { coverageSize, evictCoverage, maskDataRows, pickCoverage, writeMaskData, type CoverageEntry } from "./maskTargets.js";
 import { MASK_DATA_WIDTH } from "../../core/masks/maskCoverage.js";
 import type { MaskFrame } from "../compositor/drawList.js";
-import { BLUR_FRAGMENT, COMPOSITE_BACKDROP_FRAGMENT, COMPOSITE_FRAGMENT, DISSOLVE_FRAGMENT, DISSOLVE_VERTEX, FULLSCREEN_VERTEX, LAYER_VERTEX, MASK_FRAGMENT, PATH_COVER_FRAGMENT, PATH_COVER_VERTEX, PATH_STENCIL_FRAGMENT, PATH_STENCIL_VERTEX, SCALE_ALPHA_FRAGMENT, SCALE_FRAGMENT, SOLID_FRAGMENT, TEXTURED_FRAGMENT } from "./glShaders.js";
+import { BLUR_FRAGMENT, COMPOSITE_BACKDROP_FRAGMENT, COMPOSITE_FRAGMENT, DISSOLVE_FRAGMENT, DISSOLVE_VERTEX, EFFECT_FRAGMENT, FULLSCREEN_VERTEX, LAYER_VERTEX, MASK_FRAGMENT, PATH_COVER_FRAGMENT, PATH_COVER_VERTEX, PATH_STENCIL_FRAGMENT, PATH_STENCIL_VERTEX, SCALE_ALPHA_FRAGMENT, SCALE_FRAGMENT, SOLID_FRAGMENT, TEXTURED_FRAGMENT } from "./glShaders.js";
 import { isHdrColorSpace, toneMapToCanvas } from "./hdr.js";
 import { layerFloats, LAYER_SIZE, LAYER_STRIDE, packLayer, packMat3, pixelsToClipInto } from "./layerUniforms.js";
 import { mipLevelCount, textureBytes } from "./mipmaps.js";
@@ -190,6 +192,13 @@ interface GlComposite {
   copyUsed: number;
 }
 
+/** Effects (Batch 74), linked on the first effect stage: the pass program and the kept results. */
+interface GlEffects {
+  program: WebGLProgram;
+  fx: WebGLUniformLocation | null;
+  jobs: StageJobs<GlTexture>;
+}
+
 /** Everything that belongs to one context generation. */
 interface Resources {
   gl: WebGL2RenderingContext;
@@ -202,6 +211,8 @@ interface Resources {
   path: GlPath | null;
   /** Blend modes and track mattes; null until the first group is drawn. */
   composite: GlComposite | null;
+  /** Effects; null until the first effect stage is drawn. */
+  effects: GlEffects | null;
   scale: Program;
   /** `scale` with an alpha plane on unit 1 (Batch 64); linked on the first video with alpha. */
   scaleAlpha: Program | null;
@@ -249,6 +260,10 @@ export class WebGl2Renderer implements BackendRenderer {
   backdropCopies = 0;
   /** See WebGpuRenderer.maskCoveragePasses. */
   maskCoveragePasses = 0;
+  /** See WebGpuRenderer.effectPasses. */
+  effectPasses = 0;
+  /** This draw's buffers of the stage being drawn (FX_BUFFER: scratch 0..2, out). */
+  private readonly fxBuffers: (GlTexture | null)[] = [null, null, null, null];
   /** This draw's coverages (Batch 73): group g's clip at `2 (g - 1)`, its matte clip's at `2 (g - 1) + 1`. */
   private readonly groupMasks: (WebGLTexture | null)[] = [];
   private maskStaging = new Float32Array(MASK_DATA_WIDTH * 4);
@@ -364,6 +379,8 @@ export class WebGl2Renderer implements BackendRenderer {
     for (const surface of this.spares.splice(0)) if (res) this.deleteSurface(res, surface);
     if (res) {
       for (const entry of res.blurPool.splice(0)) entry.texture.destroy();
+      res.effects?.jobs.clear((texture) => texture.destroy());
+      this.fxBuffers.fill(null);
       const composite = res.composite;
       if (composite) {
         for (const entry of composite.groups.splice(0)) {
@@ -420,6 +437,8 @@ export class WebGl2Renderer implements BackendRenderer {
     this.blurRecords(res, count);
     const { width, height } = target;
     if (this.layerData.length < layerFloats(count)) this.layerData = new Float32Array(layerFloats(Math.max(count, 2 * (this.layerData.length / LAYER_STRIDE_FLOATS))));
+    // Effects (spec §21.19): see WebGpuRenderer.prepareStages and stagePasses.
+    if (this.records.stageCount > 0) this.stagePasses(res, this.prepareStages(res, count, width, height), count, width, height);
     // Blend modes and track mattes (spec §21.17): each group's layers and matte into their pictures first.
     const composite = this.records.groupCount > 0 ? this.groupPasses(res, count, width, height) : null;
 
@@ -573,7 +592,7 @@ export class WebGl2Renderer implements BackendRenderer {
   private quad(res: Resources, index: number, record: DrawRecord<GlTexture>, topDown: boolean, height: number): void {
     const { gl } = res;
     this.scissor(record, topDown, height);
-    if (record.kind === "path" || record.kind === "composite" || (record.kind === "textured" && !record.texture0)) return;
+    if (record.kind === "path" || record.kind === "composite" || record.kind === "effect" || (record.kind === "textured" && !record.texture0)) return;
     const program = res.programs[record.kind];
     this.useProgram(program);
     packLayer(this.layerData, index, record.uniform);
@@ -588,6 +607,98 @@ export class WebGl2Renderer implements BackendRenderer {
       gl.bindTexture(gl.TEXTURE_2D, record.texture1.surface.texture);
     }
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
+  /** See WebGpuRenderer.prepareStages: kept results picked, redraws planned, stage records moved to the target's px. */
+  private prepareStages(res: Resources, count: number, width: number, height: number): GlEffects {
+    const fx = (res.effects ??= this.buildEffects(res));
+    fx.jobs.prepare(this.records, count, this.draws, (current, w, h) => {
+      if (current && current.valid && current.width >= w && current.height >= h && current.width <= 2 * w + BLUR_STEP && current.height <= 2 * h + BLUR_STEP) return current;
+      current?.destroy();
+      const step = (size: number) => Math.min(this.maxTextureSize, Math.ceil(size / BLUR_STEP) * BLUR_STEP);
+      return this.newTexture(res, step(w), step(h), { label: "effect result" });
+    });
+    fx.jobs.evict(this.draws, BLUR_KEEP_DRAWS, (texture) => texture.destroy());
+    retargetStages(this.records, count, width, height);
+    return fx;
+  }
+
+  /**
+   * See WebGpuRenderer.stagePasses: each stage to redraw, its records into its first buffer (rows top first,
+   * the target's view in a stage-sized viewport), then its effect passes (no blending).
+   */
+  private stagePasses(res: Resources, fx: GlEffects, count: number, targetWidth: number, targetHeight: number): void {
+    const { gl } = res;
+    const jobs = fx.jobs;
+    if (jobs.jobCount === 0) return;
+    const buffers = this.fxBuffers;
+    for (let j = 0; j < jobs.jobCount; j++) {
+      const job = jobs.jobs[j] as StageJob<GlTexture>;
+      const { width, height } = job.info;
+      buffers.fill(null);
+      buffers[FX_BUFFER.out] = job.entry.texture;
+      const buffer = (index: number): GlTexture => (buffers[index] ??= this.blurTexture(res, width, height));
+      const mask = job.info.mask;
+      const coverage = mask ? this.coverage(res, (res.composite ??= this.buildComposite(res)), mask) : null;
+      const content = buffer(job.count > 0 ? 0 : FX_BUFFER.out);
+      this.framebufferOf(res, content.surface);
+      gl.disable(gl.SCISSOR_TEST);
+      gl.viewport(0, 0, content.width, content.height);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.viewport(0, 0, width, height);
+      gl.enable(gl.SCISSOR_TEST);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      this.setView(targetWidth, targetHeight, true);
+      this.lastScissor.width = -1;
+      this.current = null;
+      for (let index = 0; index < count; index++) {
+        const record = this.records.at(index);
+        if (record.role === ROLE.stage && record.stage === job.stage) this.quad(res, index, record, true, height);
+      }
+      gl.disable(gl.BLEND);
+      gl.useProgram(fx.program);
+      this.current = null;
+      for (let i = job.first; i < job.first + job.count; i++) {
+        const dst = buffer(jobs.dst[i] as number);
+        const src = buffer(jobs.src[i] as number);
+        const origIndex = jobs.orig[i] as number;
+        this.framebufferOf(res, dst.surface);
+        gl.disable(gl.SCISSOR_TEST);
+        gl.viewport(0, 0, dst.width, dst.height);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.viewport(0, 0, width, height);
+        gl.enable(gl.SCISSOR_TEST);
+        gl.scissor(0, 0, width, height);
+        gl.uniform4fv(fx.fx, jobs.data, jobs.offset(i), FX_FLOATS);
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, origIndex === FX_BUFFER.coverage ? coverage : buffer(origIndex).surface.texture);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, src.surface.texture);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        this.effectPasses += 1;
+      }
+      // The buffers are drawn into by the next stage: leave none bound.
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, null);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, null);
+    }
+    buffers.fill(null);
+    gl.disable(gl.SCISSOR_TEST);
+    this.lastScissor.width = -1;
+  }
+
+  private buildEffects(res: Resources): GlEffects {
+    const { gl } = res;
+    const program = linkProgram(gl, "effects", FULLSCREEN_VERTEX, EFFECT_FRAGMENT);
+    gl.useProgram(program);
+    gl.uniform1i(gl.getUniformLocation(program, "u_src"), 0);
+    gl.uniform1i(gl.getUniformLocation(program, "u_orig"), 1);
+    gl.useProgram(null);
+    this.current = null;
+    return { program, fx: gl.getUniformLocation(program, "u_fx"), jobs: new StageJobs<GlTexture>() };
   }
 
   /**
@@ -1240,6 +1351,7 @@ export class WebGl2Renderer implements BackendRenderer {
       quads,
       path: null,
       composite: null,
+      effects: null,
     };
     gl.useProgram(null);
     return resources;

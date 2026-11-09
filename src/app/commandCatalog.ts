@@ -142,7 +142,8 @@ import {
 import { EASE_LABELS, KEYFRAME_SECTIONS, SECTION_LABELS, type KeyframeSection } from "../core/document/keyframes.js";
 import { TRANSITION_LABELS } from "../core/document/transitions.js";
 import { TRANSITION_ICONS } from "../panels/properties/transitionIcons.js";
-import { BLEND_MODES, EASE_IDS, LABEL_COLORS, TRANSITION_KINDS } from "../core/document/types.js";
+import { EFFECT_ADD_TITLES, EFFECT_ICONS, EFFECT_KEYWORDS, effectAddCommand } from "../panels/properties/effectIcons.js";
+import { BLEND_MODES, EASE_IDS, EFFECT_TYPES, LABEL_COLORS, TRANSITION_KINDS } from "../core/document/types.js";
 import { BLEND_MODE_META } from "../core/effects/blendModes.js";
 import type { FocusScope } from "../core/keyboard/focusScope.js";
 import { FADE_PRESET_SECONDS } from "../timeline/edit/fades.js";
@@ -373,6 +374,9 @@ export const COMMANDS: readonly CommandInfo[] = [
   clip("clip.mask.wipeIn", "Mask preset: Wipe in", { icon: Square, keywords: "mask reveal wipe left right animate" }),
   clip("clip.mask.circleReveal", "Mask preset: Circle reveal", { icon: Circle, keywords: "mask reveal iris circle animate" }),
   clip("clip.mask.removeAll", "Remove masks", { icon: Shapes, keywords: "mask delete clear" }),
+  // Effects (spec §21.19, Batch 74)
+  ...EFFECT_TYPES.map((type) => clip(effectAddCommand(type), EFFECT_ADD_TITLES[type], { icon: EFFECT_ICONS[type], keywords: EFFECT_KEYWORDS[type] })),
+  clip("clip.effect.removeAll", "Remove effects", { icon: Eraser, keywords: "effect blur glow shadow outline delete clear" }),
 
   // Speed (spec §11, Batch 27)
   speed("clip.speedPanel", "Speed…", { icon: Gauge, keywords: "rate duration" }),

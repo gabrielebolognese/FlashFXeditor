@@ -58,7 +58,7 @@ import { isAbortError, isWorkerCrash, type FramePriority } from "../../media/wor
 import { newUnitState, type UnitState } from "../../text/anim.js";
 import type { NeighborFrame, UpcomingText } from "../compositor/Compositor.js";
 import { transitionFx, type TransitionFx } from "../../core/document/transitions.js";
-import { type CaptionHighlightFrame, type Composite, type CompoundCompositeLayer, type DissolveLayer, type DrawList, type GroupCompositeLayer, type GroupLayer, type Layer, type MaskFrame, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextGlyphDraw, type TextCompositeLayer, type TextureLayer, type TransitionCompositeLayer, type UvRect } from "../compositor/drawList.js";
+import { type CaptionHighlightFrame, type Composite, type CompoundCompositeLayer, type DissolveLayer, type DrawList, type EffectFrame, type GroupCompositeLayer, type GroupLayer, type Layer, type MaskFrame, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextGlyphDraw, type TextCompositeLayer, type TextureLayer, type TransitionCompositeLayer, type UvRect } from "../compositor/drawList.js";
 import type { TextureHandle } from "../gpu/renderer.js";
 import { multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import type { Homography } from "../projection.js";
@@ -317,6 +317,7 @@ export class LayerTextures {
     this.groupCount += 1;
     out.blend = layer.blend;
     out.mask = layer.mask;
+    out.effects = layer.effects;
     out.matte = null;
     if (layer.matte) {
       this.resolveLayers(pane, out.matteList, layer.matte.layers, composite, priority);
@@ -717,6 +718,7 @@ export class LayerTextures {
       // Blend mode and track matte (spec §21.17): the clip's layers and its matte's, exactly.
       const { blend, matte } = layer;
       const mask = layer.mask ? copyMaskFrame(layer.mask) : null;
+      const effects = layer.effects ? copyEffectFrame(layer.effects) : null;
       const matteMask = matte?.mask ? copyMaskFrame(matte.mask) : null;
       const mode = matte?.mode ?? null;
       const matteLayers = matte ? [...matte.layers] : null;
@@ -729,7 +731,7 @@ export class LayerTextures {
         await this.exactLayers(matteLayers, keyed, composite, maxLongEdge, renderScale, unpins);
         resolvedMatte = { mode, layers: keyed, mask: matteMask };
       }
-      layers.push({ kind: "group", transform: mutableIdentity(), opacity: 1, persp: null, blend, mask, layers: inner, matte: resolvedMatte });
+      layers.push({ kind: "group", transform: mutableIdentity(), opacity: 1, persp: null, blend, mask, effects, layers: inner, matte: resolvedMatte });
       return;
     }
     if (layer.kind === "shape") {
@@ -1293,12 +1295,17 @@ type WritableGroupLayer = Omit<GroupLayer, "layers" | "matte"> & {
 function newGroupLayer(): WritableGroupLayer {
   const list = newList();
   const matteList = newList();
-  return { kind: "group", transform: mutableIdentity(), opacity: 1, persp: null, blend: "normal", mask: null, layers: list.layers, matte: null, matteValue: { mode: "alpha", layers: matteList.layers, mask: null }, list, matteList };
+  return { kind: "group", transform: mutableIdentity(), opacity: 1, persp: null, blend: "normal", mask: null, effects: null, layers: list.layers, matte: null, matteValue: { mode: "alpha", layers: matteList.layers, mask: null }, list, matteList };
 }
 
 /** A copy of a mask frame (export holds its layers across awaits; the compositor reuses its frames). */
 function copyMaskFrame(mask: MaskFrame): MaskFrame {
   return { ...mask, data: mask.data.slice(0, mask.length), model: [...mask.model] as unknown as MaskFrame["model"], persp: mask.persp ? ([...mask.persp] as unknown as MaskFrame["persp"]) : null };
+}
+
+/** A copy of an effect frame (export holds its layers across awaits; the compositor reuses its frames). */
+function copyEffectFrame(effects: EffectFrame): EffectFrame {
+  return { ...effects, data: effects.data.slice(0, effects.length), model: [...effects.model] as unknown as EffectFrame["model"], persp: effects.persp ? ([...effects.persp] as unknown as EffectFrame["persp"]) : null };
 }
 
 function newTextureLayer(): WritableTextureLayer {

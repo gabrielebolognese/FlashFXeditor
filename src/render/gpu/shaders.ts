@@ -893,3 +893,181 @@ fn fs(@builtin(position) position: vec4f) -> @location(0) vec4f {
   return vec4f(acc, 0.0, 0.0, 1.0);
 }
 `;
+
+/**
+ * The effect passes (spec §21.19, Batch 74): one full-target triangle per pass over a stage picture, the
+ * program picked by `fx.size.z` (render/effects/registry.ts FX_PROGRAM, planned by effectPlan.ts). `src` is
+ * the picture the pass reads, `orig` the effect's input (or the clip's mask coverage); both are pooled
+ * textures at least the stage's size, read by stage px (pixel centers at k + 0.5): bilinear inside the stage,
+ * transparent past it, or clamped to the content box when `fx.size.w` (repeat edges) is set. Premultiplied
+ * in and out; no blending.
+ * Ported from FlashFX-v2 src/engine/renderer.ts (BLUR_EFFECT_SHADER fs_gauss_h / fs_gauss_v / fs_directional,
+ * GLOW_SHADER, SHADOW_SHADER) @ a91c675, adapted: one module for every program, the glow extracted from the
+ * picture's unpremultiplied luminance and screened over it, the shadow's offset applied while extracting.
+ */
+export const EFFECT_WGSL = /* wgsl */ `
+struct Fx {
+  // stage width, height (px), program, repeat edges
+  size: vec4f,
+  // blurs: dirX, dirY, sigma, taps; directional: x, y (px), samples; outline: width (px), rings
+  a: vec4f,
+  // shadow offset x, y (px); glow intensity, threshold
+  b: vec4f,
+  // straight rgba
+  color: vec4f,
+  // the content box x0, y0, x1, y1 (stage px)
+  rect: vec4f,
+  // glow mode (0 outer, 1 inner), tap gap (px)
+  c: vec4f,
+};
+
+@group(0) @binding(0) var<uniform> fx: Fx;
+@group(1) @binding(0) var srcSampler: sampler;
+@group(1) @binding(1) var src: texture_2d<f32>;
+@group(2) @binding(0) var origSampler: sampler;
+@group(2) @binding(1) var orig: texture_2d<f32>;
+
+const TAU = 6.283185307;
+
+@vertex
+fn vs(@builtin(vertex_index) index: u32) -> @builtin(position) vec4f {
+  var points = array<vec2f, 3>(vec2f(-1.0, -1.0), vec2f(3.0, -1.0), vec2f(-1.0, 3.0));
+  return vec4f(points[index], 0.0, 1.0);
+}
+
+fn tapSrc(p: vec2f) -> vec4f {
+  let dims = vec2f(textureDimensions(src));
+  if (fx.size.w > 0.5) {
+    let q = clamp(p, fx.rect.xy + vec2f(0.5), max(fx.rect.zw - vec2f(0.5), fx.rect.xy + vec2f(0.5)));
+    return textureSampleLevel(src, srcSampler, q / dims, 0.0);
+  }
+  let size = fx.size.xy;
+  let q = clamp(p, vec2f(0.5), size - vec2f(0.5));
+  let w = clamp(p + vec2f(0.5), vec2f(0.0), vec2f(1.0)) * clamp(size + vec2f(0.5) - p, vec2f(0.0), vec2f(1.0));
+  return textureSampleLevel(src, srcSampler, q / dims, 0.0) * (w.x * w.y);
+}
+
+fn tapOrig(p: vec2f) -> vec4f {
+  let dims = vec2f(textureDimensions(orig));
+  let size = fx.size.xy;
+  let q = clamp(p, vec2f(0.5), size - vec2f(0.5));
+  let w = clamp(p + vec2f(0.5), vec2f(0.0), vec2f(1.0)) * clamp(size + vec2f(0.5) - p, vec2f(0.0), vec2f(1.0));
+  return textureSampleLevel(orig, origSampler, q / dims, 0.0) * (w.x * w.y);
+}
+
+// What a blur pass sums at q: the picture, the glow source (bright pixels alpha, or the inverse alpha
+// inside for an inner glow) or the shadow source (the alpha moved by the offset).
+fn source(program: i32, q: vec2f) -> vec4f {
+  if (program == 3) {
+    let s = tapSrc(q);
+    if (fx.c.x > 0.5) { return vec4f(1.0 - s.a); }
+    let rgb = s.rgb / max(s.a, 0.00001);
+    let lum = dot(rgb, vec3f(0.2126, 0.7152, 0.0722));
+    return vec4f(s.a * smoothstep(fx.b.w - 0.1, fx.b.w, lum));
+  }
+  if (program == 5) { return vec4f(tapSrc(q - fx.b.xy).a); }
+  return tapSrc(q);
+}
+
+// Wide blurs space their taps out; each tap then reads two bilinear samples (a box about the gap wide).
+fn spaced(program: i32, q: vec2f, dir: vec2f, gap: f32) -> vec4f {
+  if (gap <= 1.5) { return source(program, q); }
+  let off = dir * (gap * 0.25);
+  return 0.5 * (source(program, q - off) + source(program, q + off));
+}
+
+fn gauss(program: i32, p: vec2f) -> vec4f {
+  let dir = fx.a.xy;
+  let sigma = max(fx.a.z, 0.0001);
+  let taps = i32(fx.a.w + 0.5);
+  let gap = max(fx.c.y, 0.0001);
+  var sum = spaced(program, p, dir, gap);
+  var total = 1.0;
+  for (var k = 1; k <= taps; k++) {
+    let d = f32(k) * gap;
+    let weight = exp(-(d * d) / (2.0 * sigma * sigma));
+    sum += weight * (spaced(program, p + dir * d, dir, gap) + spaced(program, p - dir * d, dir, gap));
+    total += 2.0 * weight;
+  }
+  return sum / total;
+}
+
+fn directional(p: vec2f) -> vec4f {
+  let n = i32(fx.a.z + 0.5);
+  if (n <= 1) { return tapSrc(p); }
+  var sum = vec4f(0.0);
+  for (var i = 0; i < n; i++) {
+    let t = f32(i) / f32(n - 1) * 2.0 - 1.0;
+    sum += tapSrc(p + fx.a.xy * t);
+  }
+  return sum / f32(n);
+}
+
+// The largest alpha of the picture within a disk of radius fx.a.x (rings of samples about 1.5 px apart). An
+// outline chains several (a disk dilated by a disk is the disk of the summed radii): small steps keep it round.
+fn dilate(p: vec2f) -> f32 {
+  let rings = i32(fx.a.y + 0.5);
+  var d = tapSrc(p).a;
+  for (var j = 1; j <= rings; j++) {
+    let r = fx.a.x * f32(j) / f32(rings);
+    let n = i32(clamp(ceil(TAU * r / 1.5), 6.0, 48.0));
+    let turn = 0.5 * f32(j & 1) / f32(n);
+    for (var i = 0; i < n; i++) {
+      let angle = TAU * (f32(i) / f32(n) + turn);
+      d = max(d, tapSrc(p + r * vec2f(cos(angle), sin(angle))).a);
+    }
+  }
+  return d;
+}
+
+// The last step of an outline: the dilated alpha tinted, under the effect's input.
+fn outline(p: vec2f) -> vec4f {
+  let o = tapOrig(p);
+  let a = dilate(p) * fx.color.a;
+  return o + vec4f(fx.color.rgb * a, a) * (1.0 - o.a);
+}
+
+// The clip mask coverage over the content box (texels read bilinearly, clamped at its edges).
+fn coverage(p: vec2f) -> f32 {
+  let size = vec2i(textureDimensions(orig));
+  let box = max(fx.rect.zw - fx.rect.xy, vec2f(0.0001));
+  let t = (p - fx.rect.xy) / box * vec2f(size) - vec2f(0.5);
+  let f = floor(t);
+  let w = t - f;
+  let hi = size - vec2i(1);
+  let i0 = clamp(vec2i(f), vec2i(0), hi);
+  let i1 = clamp(vec2i(f) + vec2i(1), vec2i(0), hi);
+  let a = textureLoad(orig, i0, 0).r;
+  let b = textureLoad(orig, vec2i(i1.x, i0.y), 0).r;
+  let c = textureLoad(orig, vec2i(i0.x, i1.y), 0).r;
+  let d = textureLoad(orig, i1, 0).r;
+  return mix(mix(a, b, w.x), mix(c, d, w.x), w.y);
+}
+
+@fragment
+fn fs(@builtin(position) position: vec4f) -> @location(0) vec4f {
+  let p = position.xy;
+  let program = i32(fx.size.z + 0.5);
+  if (fx.size.w > 0.5 && (p.x < fx.rect.x || p.y < fx.rect.y || p.x > fx.rect.z || p.y > fx.rect.w)) { return vec4f(0.0); }
+  switch program {
+    case 1, 3, 5: { return gauss(program, p); }
+    case 2: { return directional(p); }
+    case 4: {
+      let o = tapOrig(p);
+      var k = clamp(gauss(program, p).r * fx.b.z * fx.color.a, 0.0, 1.0);
+      if (fx.c.x > 0.5) { k = k * o.a; }
+      let glow = vec4f(fx.color.rgb * k, k);
+      return o + glow - o * glow;
+    }
+    case 6: {
+      let o = tapOrig(p);
+      let a = gauss(program, p).r * fx.color.a;
+      return o + vec4f(fx.color.rgb * a, a) * (1.0 - o.a);
+    }
+    case 7: { return outline(p); }
+    case 8: { return tapSrc(p) * coverage(p); }
+    case 9: { return vec4f(dilate(p)); }
+    default: { return tapSrc(p); }
+  }
+}
+`;

@@ -780,3 +780,146 @@ void main() {
   outColor = vec4(acc, 0.0, 0.0, 1.0);
 }
 `;
+
+/**
+ * See EFFECT_WGSL in shaders.ts: the effect passes (spec §21.19, Batch 74), line for line. Framebuffers keep
+ * row 0 at the top, so gl_FragCoord is stage px as it is for the WebGPU pass.
+ * Ported from FlashFX-v2 src/engine/renderer.ts (BLUR_EFFECT_SHADER, GLOW_SHADER, SHADOW_SHADER) @ a91c675, adapted.
+ */
+export const EFFECT_FRAGMENT = /* glsl */ `${HEADER}
+// size (w, h, program, repeat edges), a, b, color, rect (x0, y0, x1, y1), c: see EFFECT_WGSL
+uniform vec4 u_fx[6];
+uniform sampler2D u_src;
+uniform sampler2D u_orig;
+out vec4 outColor;
+
+const float TAU = 6.283185307;
+
+vec4 tapSrc(vec2 p) {
+  vec2 dims = vec2(textureSize(u_src, 0));
+  if (u_fx[0].w > 0.5) {
+    vec2 q = clamp(p, u_fx[4].xy + vec2(0.5), max(u_fx[4].zw - vec2(0.5), u_fx[4].xy + vec2(0.5)));
+    return textureLod(u_src, q / dims, 0.0);
+  }
+  vec2 size = u_fx[0].xy;
+  vec2 q = clamp(p, vec2(0.5), size - vec2(0.5));
+  vec2 w = clamp(p + vec2(0.5), vec2(0.0), vec2(1.0)) * clamp(size + vec2(0.5) - p, vec2(0.0), vec2(1.0));
+  return textureLod(u_src, q / dims, 0.0) * (w.x * w.y);
+}
+
+vec4 tapOrig(vec2 p) {
+  vec2 dims = vec2(textureSize(u_orig, 0));
+  vec2 size = u_fx[0].xy;
+  vec2 q = clamp(p, vec2(0.5), size - vec2(0.5));
+  vec2 w = clamp(p + vec2(0.5), vec2(0.0), vec2(1.0)) * clamp(size + vec2(0.5) - p, vec2(0.0), vec2(1.0));
+  return textureLod(u_orig, q / dims, 0.0) * (w.x * w.y);
+}
+
+vec4 source(int program, vec2 q) {
+  if (program == 3) {
+    vec4 s = tapSrc(q);
+    if (u_fx[5].x > 0.5) { return vec4(1.0 - s.a); }
+    vec3 rgb = s.rgb / max(s.a, 0.00001);
+    float lum = dot(rgb, vec3(0.2126, 0.7152, 0.0722));
+    return vec4(s.a * smoothstep(u_fx[2].w - 0.1, u_fx[2].w, lum));
+  }
+  if (program == 5) { return vec4(tapSrc(q - u_fx[2].xy).a); }
+  return tapSrc(q);
+}
+
+vec4 spaced(int program, vec2 q, vec2 dir, float gap) {
+  if (gap <= 1.5) { return source(program, q); }
+  vec2 off = dir * (gap * 0.25);
+  return 0.5 * (source(program, q - off) + source(program, q + off));
+}
+
+vec4 gauss(int program, vec2 p) {
+  vec2 dir = u_fx[1].xy;
+  float sigma = max(u_fx[1].z, 0.0001);
+  int taps = int(u_fx[1].w + 0.5);
+  float gap = max(u_fx[5].y, 0.0001);
+  vec4 sum = spaced(program, p, dir, gap);
+  float total = 1.0;
+  for (int k = 1; k <= taps; k++) {
+    float d = float(k) * gap;
+    float weight = exp(-(d * d) / (2.0 * sigma * sigma));
+    sum += weight * (spaced(program, p + dir * d, dir, gap) + spaced(program, p - dir * d, dir, gap));
+    total += 2.0 * weight;
+  }
+  return sum / total;
+}
+
+vec4 directional(vec2 p) {
+  int n = int(u_fx[1].z + 0.5);
+  if (n <= 1) { return tapSrc(p); }
+  vec4 sum = vec4(0.0);
+  for (int i = 0; i < n; i++) {
+    float t = float(i) / float(n - 1) * 2.0 - 1.0;
+    sum += tapSrc(p + u_fx[1].xy * t);
+  }
+  return sum / float(n);
+}
+
+float dilate(vec2 p) {
+  int rings = int(u_fx[1].y + 0.5);
+  float d = tapSrc(p).a;
+  for (int j = 1; j <= rings; j++) {
+    float r = u_fx[1].x * float(j) / float(rings);
+    int n = int(clamp(ceil(TAU * r / 1.5), 6.0, 48.0));
+    float turn = 0.5 * float(j & 1) / float(n);
+    for (int i = 0; i < n; i++) {
+      float angle = TAU * (float(i) / float(n) + turn);
+      d = max(d, tapSrc(p + r * vec2(cos(angle), sin(angle))).a);
+    }
+  }
+  return d;
+}
+
+vec4 outlined(vec2 p) {
+  vec4 o = tapOrig(p);
+  float a = dilate(p) * u_fx[3].a;
+  return o + vec4(u_fx[3].rgb * a, a) * (1.0 - o.a);
+}
+
+float coverage(vec2 p) {
+  ivec2 size = textureSize(u_orig, 0);
+  vec2 box = max(u_fx[4].zw - u_fx[4].xy, vec2(0.0001));
+  vec2 t = (p - u_fx[4].xy) / box * vec2(size) - vec2(0.5);
+  vec2 f = floor(t);
+  vec2 w = t - f;
+  ivec2 hi = size - ivec2(1);
+  ivec2 i0 = clamp(ivec2(f), ivec2(0), hi);
+  ivec2 i1 = clamp(ivec2(f) + ivec2(1), ivec2(0), hi);
+  float a = texelFetch(u_orig, i0, 0).r;
+  float b = texelFetch(u_orig, ivec2(i1.x, i0.y), 0).r;
+  float c = texelFetch(u_orig, ivec2(i0.x, i1.y), 0).r;
+  float d = texelFetch(u_orig, i1, 0).r;
+  return mix(mix(a, b, w.x), mix(c, d, w.x), w.y);
+}
+
+void main() {
+  vec2 p = gl_FragCoord.xy;
+  int program = int(u_fx[0].z + 0.5);
+  if (u_fx[0].w > 0.5 && (p.x < u_fx[4].x || p.y < u_fx[4].y || p.x > u_fx[4].z || p.y > u_fx[4].w)) { outColor = vec4(0.0); return; }
+  if (program == 1 || program == 3 || program == 5) { outColor = gauss(program, p); return; }
+  if (program == 2) { outColor = directional(p); return; }
+  if (program == 4) {
+    vec4 o = tapOrig(p);
+    float k = clamp(gauss(program, p).r * u_fx[2].z * u_fx[3].a, 0.0, 1.0);
+    if (u_fx[5].x > 0.5) { k = k * o.a; }
+    vec4 glow = vec4(u_fx[3].rgb * k, k);
+    outColor = o + glow - o * glow;
+    return;
+  }
+  if (program == 6) {
+    vec4 o = tapOrig(p);
+    float a = gauss(program, p).r * u_fx[3].a;
+    outColor = o + vec4(u_fx[3].rgb * a, a) * (1.0 - o.a);
+    return;
+  }
+  if (program == 7) { outColor = outlined(p); return; }
+  if (program == 8) { outColor = tapSrc(p) * coverage(p); return; }
+  if (program == 9) { outColor = vec4(dilate(p)); return; }
+  outColor = tapSrc(p);
+}
+`;
