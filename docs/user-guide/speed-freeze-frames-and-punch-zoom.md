@@ -25,6 +25,9 @@ These tools set the pace of your short. Speed a clip up or slow it down with one
 - [Change a freeze frame](#change-a-freeze-frame)
 - [Punch in at a cut (punch zoom)](#punch-in-at-a-cut-punch-zoom)
 - [Know which clip a freeze or punch zoom uses](#know-which-clip-a-freeze-or-punch-zoom-uses)
+- [Play a clip backward](#play-a-clip-backward)
+- [Mix frames in slow motion](#mix-frames-in-slow-motion)
+- [Shape the speed with a curve (time remap)](#shape-the-speed-with-a-curve-time-remap)
 - [Undo a pacing change](#undo-a-pacing-change)
 - [What is not available yet](#what-is-not-available-yet)
 - [Related pages](#related-pages)
@@ -37,6 +40,7 @@ These tools set the pace of your short. Speed a clip up or slow it down with one
 | The **Speed** section: **Speed**, **Duration**, **Ripple** and **Freeze frame** | **Edit Properties**, with a video or audio clip selected | |
 | **Speed...** | The clip menu (right-click a video or audio clip): opens the **Speed** section | |
 | **Freeze frame** | The **Edit** group of the timeline toolbar (**Freeze frame at playhead**), the quick actions, the **Speed** section, and **Freeze frame at playhead** in the clip menu | <kbd>Shift</kbd>+<kbd>F</kbd> |
+| **Reverse**, **Frame blend**, **Time remap** and **Ramps** | The **Speed** section, with a video clip selected (**Reverse** also with an audio clip) | |
 | **Punch zoom** | The **Edit** group of the timeline toolbar (**Punch zoom at playhead**) and the quick actions | <kbd>Shift</kbd>+<kbd>Z</kbd> |
 
 <kbd>Shift</kbd>+<kbd>F</kbd> and <kbd>Shift</kbd>+<kbd>Z</kbd> work in every panel, except while you type in a field. Point at a button to see its name and shortcut.
@@ -248,6 +252,54 @@ When there is nothing to act on, a message says why:
 | **No picture under the playhead** | Punch zoom found no video or image clip at the playhead. | Move the playhead over a video or image clip, or select one. |
 | **The playhead is not over the selected clip** | The selected clips are not under the playhead. The editor doesn't freeze or zoom another clip instead. | Move the playhead into the selected clip, or clear the selection with <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd>. |
 
+## Play a clip backward
+
+1. Select a video or audio clip.
+2. In the **Speed** section of **Edit Properties**, switch **Reverse** on (tooltip **Play the clip backward**).
+
+The clip plays from its last frame to its first, and its sound plays backward too. The clip gets a `rev` badge, and its waveform is mirrored. Switch **Reverse** off to play it forward again. You can also run **Reverse (toggle)** from the command palette.
+
+- Trimming a reversed clip's start cuts the end of its media, and trimming its end cuts the start. Splitting it swaps the two halves in the media.
+- **Reverse** has no effect while **Time remap** is on: a curve can run backward by itself.
+- Locked tracks are skipped.
+
+## Mix frames in slow motion
+
+Slow motion shows each media frame for several timeline frames, which looks steppy. **Frame blend** mixes the two nearest media frames instead.
+
+1. Select a video clip and slow it down, for example to `25` in **Speed**.
+2. Switch **Frame blend** on (tooltip **Mix the two nearest source frames in slow motion**).
+
+**Frame blend** is off by default. It does nothing when the clip plays at normal speed or faster. Export gives the same frames as the preview. The mix is exact when the clip's **Opacity** is 100%; at a lower opacity it can look slightly different. There is no optical-flow smoothing. You can also run **Frame blending (toggle)** from the command palette.
+
+## Shape the speed with a curve (time remap)
+
+A time remap changes the speed along the clip, for example fast, then slow, then fast.
+
+1. Select one video clip.
+2. Switch **Time remap** on. A **Graph** row appears and the clip gets a `remap` badge and a read-only speed graph on the timeline.
+3. Drag a key in the **Graph** to move it in time or in the media. Double-click the graph to add a key, or double-click a key to remove it.
+
+The graph shows the media time against the clip's frames. Each drag is one step you can undo. The first and last keys stay on the clip's ends.
+
+For a ready-made curve, click one of the **Ramps** buttons (the tooltips read "<name>: a speed ramp over the clip"):
+
+| Button | Speed along the clip |
+| --- | --- |
+| **Ramp in** | Slow to fast |
+| **Ramp out** | Fast to slow |
+| **Hero** | Fast, slow, fast |
+| **Bullet** | Fast with a slow, nearly held middle |
+
+The ramp buttons are also in the command palette (**Ramp in**, **Ramp out**, **Hero ramp (fast, slow, fast)**, **Bullet ramp**). Switch **Time remap** off to go back to the plain speed.
+
+> **Note:** Sound linked to a remapped video clip is muted, and the sound clip shows a red `muted` badge.
+
+> **Video placeholder: Reverse, slow motion and a speed ramp**
+> - File: `videos/speed-freeze-frames-and-punch-zoom/remap.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: select a video clip, open **Speed** and switch **Reverse** on (the `rev` badge) and play; switch it off. Type `25` in **Speed** and switch **Frame blend** on. Set the speed back to `100`, switch **Time remap** on, drag a key in the **Graph**, double-click to add a key. Click **Hero** and play; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
+
 ## Undo a pacing change
 
 Each change is one step in the history. Hover over **Undo** in the app bar to see its name.
@@ -263,7 +315,8 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
 ## What is not available yet
 
-- Playing a clip backward (reverse) is not available, and the clip menu has no row for it.
+- The remap curve can be edited in the **Graph** only, not on the timeline clip.
+- Optical-flow smoothing of slow motion is not available.
 - Sound at another speed always changes pitch; keeping the original pitch is not available.
 
 ## Related pages
@@ -279,4 +332,4 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 42, 2026-10-18</sub>
+<sub>Last updated: Batch 78, 2026-11-09</sub>

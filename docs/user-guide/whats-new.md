@@ -2,6 +2,14 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+## Batch 78: Reverse, frame blending and speed ramps
+The **Speed** section gets **Reverse** (play a clip and its sound backward), **Frame blend** (smoother slow motion), **Time remap** with an editable speed **Graph**, and **Ramps** buttons (**Ramp in**, **Ramp out**, **Hero**, **Bullet**). Clips show `rev`, `remap` and `muted` badges. See [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md#play-a-clip-backward).
+
+> **Video placeholder: What's new in Batch 78**
+> - File: `videos/whats-new/batch-78.mp4` (not recorded yet)
+> - Length: about 40 seconds
+> - Shows: select a video clip, switch **Reverse** on and play; switch it off; set **Speed** to `25` and switch **Frame blend** on; switch **Time remap** on and drag a key in the **Graph**; click **Hero** and play.
+
 ## Batch 77: Track mixer, pan, loudness and beat markers
 Right-click an audio track's header and choose **Mixer...** for track **Gain**, **Pan**, **Mute** and **Solo**. The **Audio** section gets **Pan** and **Fade curve** rows. **Detect beats** (command palette) puts teal **Beat** markers on music. The **Reels**, **TikTok** and **Shorts** presets export at -14 LUFS with a true peak at or below -1 dBTP, and the meter shows loudness bars. See [Editing audio](audio-editing.md#mix-a-track-and-normalize-the-export).
 

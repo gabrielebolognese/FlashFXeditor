@@ -96,6 +96,9 @@ Badges sit at the right end of a clip's label bar, from right to left in this or
 |---|---|---|
 | Offline | The red word **Offline**, at the very right | The clip's media file can't be read: it is missing, waits for your permission, can't be decoded, or the media item was removed. The clip is gray. See [Offline media and relinking](offline-media-and-relinking.md). |
 | Sync number | A red number such as **+12** or **-12** | The clip is that many frames out of step with its linked clip. See [Keep linked clips in sync](links-and-groups.md#keep-linked-clips-in-sync). |
+| Reverse | `rev` | The clip plays backward. See [Play a clip backward](speed-freeze-frames-and-punch-zoom.md#play-a-clip-backward). |
+| Time remap | `remap` | The clip's speed follows a curve. See [Shape the speed with a curve](speed-freeze-frames-and-punch-zoom.md#shape-the-speed-with-a-curve-time-remap). |
+| Muted by remap | `muted` (red) | Sound linked to a remapped video clip is silent. |
 | Speed | `0.5x`, `2x` or `1.33x` | The video or audio clip plays faster or slower than its media. See [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md) and [Change a clip's speed with Rate stretch](advanced-trimming.md#change-a-clips-speed-with-rate-stretch). |
 | Freeze frame | A snowflake, in the place of the speed | The clip holds one frame of its video. See [Hold a frame (freeze frame)](speed-freeze-frames-and-punch-zoom.md#hold-a-frame-freeze-frame). |
 | Link | A chain icon | The clip is linked to another clip, for example a video and its sound. See [Linking and grouping clips](links-and-groups.md). |
