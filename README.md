@@ -301,6 +301,7 @@ The default keys (spec §18). Every key can be changed in Settings > Shortcuts; 
 | Nudge layers 10 px up | `Shift+Up` | `⇧Up` | Preview |
 | Nudge layers 1 px down | `Down` | `Down` | Preview |
 | Nudge layers 10 px down | `Shift+Down` | `⇧Down` | Preview |
+| Mask mode (toggle) | `Alt+M` | `⌥M` | Timeline, Preview |
 | Preview zoom: Fit | `Ctrl+0` | `⌘0` | Preview |
 | Preview zoom 100% | `Ctrl+1` | `⌘1` | Preview |
 | Preview zoom 200% | `Ctrl+2` | `⌘2` | Preview |

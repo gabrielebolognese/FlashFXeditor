@@ -2,6 +2,8 @@
 // through the layer matrix (unit quad -> target px: the layer's transform with its pane's viewport
 // applied on the CPU) and the view matrix (target px -> clip space).
 // Fragment outputs are premultiplied; the pipelines blend with (one, one-minus-src-alpha).
+import { MASK_DATA_WIDTH, MASK_HEADER_TEXELS, MASK_KIND_CODE, MASK_MODE_CODE, MASK_TEXELS, MIN_FEATHER } from "../../core/masks/maskCoverage.js";
+import { MASK_DATA_LEAD } from "./maskTargets.js";
 
 /** Per-layer uniforms: 31 vec4 (496 bytes), at a 512-byte dynamic offset. Packed by `layerUniforms.ts`. */
 const DECLARATIONS = /* wgsl */ `
@@ -734,12 +736,38 @@ export const COMPOSITE_WGSL = /* wgsl */ `${COMMON}${BLEND_FUNCTIONS}
 @group(1) @binding(0) var pictureTex: texture_2d<f32>;
 @group(1) @binding(1) var matteTex: texture_2d<f32>;
 @group(1) @binding(2) var backdropTex: texture_2d<f32>;
+@group(1) @binding(3) var maskTex: texture_2d<f32>;
+@group(1) @binding(4) var matteMaskTex: texture_2d<f32>;
 
-fn matted(p: vec2i) -> vec4f {
-  let s = textureLoad(pictureTex, p, 0);
+// Masks (spec §21.18, Batch 73): a clip's coverage at target px \`p\`. The map (three rows in the stop
+// colors, drawRecords MASK_MAP) takes p to its content box's unit square; the coverage texture is read
+// bilinearly, clamped at its edges; behind the viewer it is 0.
+fn coverage(tex: texture_2d<f32>, r0: vec4f, r1: vec4f, r2: vec4f, p: vec2f) -> f32 {
+  let h = vec3f(p, 1.0);
+  let q = vec3f(dot(r0.xyz, h), dot(r1.xyz, h), dot(r2.xyz, h));
+  if (q.z <= 1e-6) { return 0.0; }
+  let size = vec2i(textureDimensions(tex));
+  let t = (q.xy / q.z) * vec2f(size) - 0.5;
+  let f = floor(t);
+  let w = t - f;
+  let hi = size - vec2i(1);
+  let i0 = clamp(vec2i(f), vec2i(0), hi);
+  let i1 = clamp(vec2i(f) + vec2i(1), vec2i(0), hi);
+  let a = textureLoad(tex, i0, 0).r;
+  let b = textureLoad(tex, vec2i(i1.x, i0.y), 0).r;
+  let c = textureLoad(tex, vec2i(i0.x, i1.y), 0).r;
+  let d = textureLoad(tex, i1, 0).r;
+  return mix(mix(a, b, w.x), mix(c, d, w.x), w.y);
+}
+
+fn matted(p: vec2i, at: vec2f) -> vec4f {
+  var s = textureLoad(pictureTex, p, 0);
+  // The clip's masks first, then the matte (whose clip's own masks apply to the matte picture).
+  if (layer.stopColor[6].x > 0.5) { s = s * coverage(maskTex, layer.stopColor[0], layer.stopColor[1], layer.stopColor[2], at); }
   let matte = i32(layer.tfx.x + 0.5);
   if (matte == 0) { return s; }
-  let m = textureLoad(matteTex, p, 0);
+  var m = textureLoad(matteTex, p, 0);
+  if (layer.stopColor[6].y > 0.5) { m = m * coverage(matteMaskTex, layer.stopColor[3], layer.stopColor[4], layer.stopColor[5], at); }
   var c = m.a;
   if (matte >= 3) { c = dot(m.rgb, vec3f(0.2126, 0.7152, 0.0722)); }
   if (matte == 2 || matte == 4) { c = 1.0 - c; }
@@ -748,13 +776,13 @@ fn matted(p: vec2i) -> vec4f {
 
 @fragment
 fn fs(in: VertexOut) -> @location(0) vec4f {
-  return matted(vec2i(in.position.xy));
+  return matted(vec2i(in.position.xy), in.position.xy);
 }
 
 @fragment
 fn fsBackdrop(in: VertexOut) -> @location(0) vec4f {
   let p = vec2i(in.position.xy);
-  let s = matted(p);
+  let s = matted(p, in.position.xy);
   let b = textureLoad(backdropTex, p, 0);
   let mode = i32(layer.tfx.w + 0.5);
   let cs = select(vec3f(0.0), s.rgb / max(s.a, 1e-6), s.a > 0.0);
@@ -762,5 +790,106 @@ fn fsBackdrop(in: VertexOut) -> @location(0) vec4f {
   let blended = vec3f(blendChannel(cb.r, cs.r, mode), blendChannel(cb.g, cs.g, mode), blendChannel(cb.b, cs.b, mode));
   let rgb = s.rgb * (1.0 - b.a) + b.rgb * (1.0 - s.a) + s.a * b.a * blended;
   return vec4f(rgb, s.a + b.a - s.a * b.a);
+}
+`;
+
+/**
+ * The coverage of a clip's masks (spec §21.18, Batch 73): one full-target triangle strip over its coverage
+ * texture; each texel evaluates the packed block (core/masks/maskCoverage.ts `maskStackCoverage`, line
+ * for line) at its center in content px. `dataTex` (rgba32float, MASK_DATA_WIDTH texels a row) holds the
+ * lead texel (content px per texel) and then the block.
+ * Ported from FlashFX-v2 src/engine/renderer.ts (MASK_SHADER) @ a91c675, adapted.
+ */
+export const MASK_WGSL = /* wgsl */ `
+@group(0) @binding(0) var dataTex: texture_2d<f32>;
+
+fn texel(i: i32) -> vec4f {
+  let j = i + ${MASK_DATA_LEAD};
+  return textureLoad(dataTex, vec2i(j % ${MASK_DATA_WIDTH}, j / ${MASK_DATA_WIDTH}), 0);
+}
+
+@vertex
+fn vs(@builtin(vertex_index) index: u32) -> @builtin(position) vec4f {
+  var corners = array<vec2f, 4>(vec2f(-1.0, -1.0), vec2f(1.0, -1.0), vec2f(-1.0, 1.0), vec2f(1.0, 1.0));
+  return vec4f(corners[index], 0.0, 1.0);
+}
+
+fn boxSD(p: vec2f, hs: vec2f, r: f32) -> f32 {
+  let q = abs(p) - hs + vec2f(r);
+  return length(max(q, vec2f(0.0))) + min(max(q.x, q.y), 0.0) - r;
+}
+
+fn ellipseSD(p: vec2f, ax: f32, ay: f32) -> f32 {
+  let a = max(ax, 0.001);
+  let b = max(ay, 0.001);
+  let k1 = length(p / vec2f(a, b));
+  let k2 = length(p / vec2f(a * a, b * b));
+  if (k2 < 1e-9) { return -min(a, b); }
+  return k1 * (k1 - 1.0) / max(k2, 0.0001);
+}
+
+fn outlineSD(first: i32, count: i32, p: vec2f) -> f32 {
+  var minD = 1e30;
+  var winding = 0;
+  for (var k = 0; k < count; k++) {
+    let s = texel(first + k);
+    let a = s.xy;
+    let e = s.zw - a;
+    let w = p - a;
+    let ee = dot(e, e);
+    let t = select(0.0, clamp(dot(w, e) / ee, 0.0, 1.0), ee > 1e-12);
+    minD = min(minD, length(w - e * t));
+    let isLeft = e.x * w.y - e.y * w.x;
+    if (a.y <= p.y) {
+      if (a.y + e.y > p.y && isLeft > 0.0) { winding += 1; }
+    } else if (a.y + e.y <= p.y && isLeft < 0.0) { winding -= 1; }
+  }
+  return select(minD, -minD, winding != 0);
+}
+
+fn maskAt(i: i32, p: vec2f) -> f32 {
+  let base = ${MASK_HEADER_TEXELS} + i * ${MASK_TEXELS};
+  let t0 = texel(base);
+  let t1 = texel(base + 1);
+  let t2 = texel(base + 2);
+  let kind = i32(t0.x + 0.5);
+  let feather = max(t2.y, ${MIN_FEATHER.toFixed(2)});
+  let expansion = t2.z;
+  var sd: f32;
+  if (kind == ${MASK_KIND_CODE.path}) {
+    let bounds = texel(base + 3);
+    let pad = feather + 1.0 + max(expansion, 0.0);
+    let outside = p.x < bounds.x - pad || p.y < bounds.y - pad || p.x > bounds.z + pad || p.y > bounds.w + pad;
+    let count = i32(t1.y + 0.5);
+    if (outside || count < 2) { sd = 1e30; } else { sd = outlineSD(i32(t1.x + 0.5), count, p); }
+  } else if (kind == ${MASK_KIND_CODE.ellipse}) {
+    sd = ellipseSD(p - t1.xy, t1.z, t1.w);
+  } else {
+    sd = boxSD(p - t1.xy, t1.zw, t2.x);
+  }
+  var a = 1.0 - smoothstep(-feather, feather, sd - expansion);
+  if (t0.z > 0.5) { a = 1.0 - a; }
+  return a;
+}
+
+@fragment
+fn fs(@builtin(position) position: vec4f) -> @location(0) vec4f {
+  let scale = texel(-1).xy;
+  let p = position.xy * scale;
+  let header = texel(0);
+  let count = i32(header.x + 0.5);
+  if (count <= 0) { return vec4f(1.0); }
+  let firstMode = i32(texel(${MASK_HEADER_TEXELS}).y + 0.5);
+  var acc = select(1.0, 0.0, firstMode == ${MASK_MODE_CODE.add});
+  for (var i = 0; i < count; i++) {
+    let t0 = texel(${MASK_HEADER_TEXELS} + i * ${MASK_TEXELS});
+    let c = maskAt(i, p);
+    let op = t0.w;
+    let mode = i32(t0.y + 0.5);
+    if (mode == ${MASK_MODE_CODE.add}) { acc = min(1.0, acc + op * c); }
+    else if (mode == ${MASK_MODE_CODE.subtract}) { acc = max(0.0, acc - op * c); }
+    else { acc = acc * (1.0 - op * (1.0 - c)); }
+  }
+  return vec4f(acc, 0.0, 0.0, 1.0);
 }
 `;

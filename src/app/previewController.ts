@@ -39,6 +39,7 @@ import { InlineTextEditor, type DraftText, type ShownText } from "../render/prev
 import { captionTransform, shownCueStyle } from "../render/preview/captionGizmo.js";
 import { captionLook } from "../render/text/captionLayout.js";
 import { NO_CROP_MODE, type CropModeState } from "../render/preview/cropGizmo.js";
+import { NO_MASK_MODE, type MaskModeState } from "../render/preview/maskGizmo.js";
 import { PreviewOverlayView } from "../render/preview/PreviewOverlayView.js";
 import { PreviewStatsOverlay } from "../render/preview/PreviewStatsOverlay.js";
 import { PreviewView } from "../render/preview/PreviewView.js";
@@ -141,6 +142,8 @@ export const previewView: PreviewView = new PreviewView({
   solids: () => canvasInput.solids ?? liveEdit.getState().solids,
   // A Shape section field scrub or color drag (Batch 66).
   shapeEdits: () => liveEdit.getState().shapes,
+  // A mask handle drag in mask mode, else a Masks section field scrub (Batch 73).
+  maskEdits: () => canvasInput.maskEdits ?? liveEdit.getState().masks,
   // Export frame waits for the fonts of its text layers.
   loadFonts: async (style, text) => {
     if (fontLibrary.ready(style, text)) return false;
@@ -189,6 +192,8 @@ export const canvasMenu = createStore<{ x: number; y: number } | null>(null);
  * section's header toggle and the crop chip over the canvas render from it (when it changes only).
  */
 export const cropMode = createStore<CropModeState>(NO_CROP_MODE);
+/** Mask mode on the canvas (Alt+M, Batch 73): the clip whose masks get handles. The Masks section renders from it. */
+export const maskMode = createStore<MaskModeState>(NO_MASK_MODE);
 /** Selection, hover, marquee and the transform gizmo on the preview canvas (spec §7.2, §7.3). */
 export const canvasInput: CanvasEditInput = new CanvasEditInput({
   document: documentStore,
@@ -214,6 +219,8 @@ export const canvasInput: CanvasEditInput = new CanvasEditInput({
   // Cue drafts, caption style scrubs and hovered presets move and size the caption's box live.
   captions: () => liveCaptions(),
   cropMode,
+  maskMode,
+  contentBox: (clipId) => previewView.contentBox(clipId),
   textEditor: {
     get editing() {
       return textEditor.editing;

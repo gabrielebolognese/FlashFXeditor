@@ -21,6 +21,7 @@ import { ease as bezierEase, type CubicBezier } from "../theme/easing.js";
 import { positionOnSegment, segmentAngle, type Vec2 } from "./positionPath.js";
 import { cubicBezier, EASINGS, springProgress, type EasingName } from "./easings.js";
 import { EASE_IDS, PENNER_EASES, type EaseId, type Frame, type KeyData, type Keyframes, type Transform } from "./types.js";
+import { maskPathPoints } from "../masks/maskPath.js";
 
 /** A key (spec §21.9): a number value, or an array for the vector properties (colors). */
 export type Key = KeyData;
@@ -87,6 +88,25 @@ export function isAnimatorProp(prop: string): boolean {
   return ANIMATOR_PROP_PATTERN.test(prop);
 }
 
+/**
+ * The keyframe properties of a clip's masks (spec §21.18, Batch 73): `masks.<id>.x|y|w|h|radius` (rectangles and
+ * ellipses), `masks.<id>.feather|expansion|opacity` (any mask) and `masks.<id>.path` (a path mask's points as one
+ * vector, `maskPathPoints` of core/masks/maskPath.ts; its length stays the base path's). Groups: 1 the mask id, 2 the field.
+ */
+export const MASK_PROP_PATTERN = /^masks\.([A-Za-z0-9_-]+)\.(x|y|w|h|radius|feather|expansion|opacity|path)$/;
+/** The same, as the template ids listed in the manifest and INTEROP.md. */
+export const MASK_KEYFRAME_PROPS = [
+  "masks.<id>.x", "masks.<id>.y", "masks.<id>.w", "masks.<id>.h", "masks.<id>.radius",
+  "masks.<id>.feather", "masks.<id>.expansion", "masks.<id>.opacity", "masks.<id>.path",
+] as const;
+
+export function isMaskProp(prop: string): boolean {
+  return MASK_PROP_PATTERN.test(prop);
+}
+
+/** Clip kinds that draw a picture: the ones that take masks (spec §21.18). */
+export const MASKABLE_KINDS: readonly string[] = ["video", "image", "text", "solid", "shape", "compound"];
+
 /** The clip kinds each new property is valid on (the section properties are valid on any clip with them). */
 const PROP_KINDS: Readonly<Record<string, readonly string[]>> = {
   "transform.anchor.x": ["video", "image", "solid", "text", "compound", "shape", "null"],
@@ -117,6 +137,7 @@ const PROP_KINDS: Readonly<Record<string, readonly string[]>> = {
 export function propValidFor(prop: string, kind: string): boolean {
   if (prop.startsWith("paths.")) return kind === "shape";
   if (prop.startsWith("animators.")) return kind === "text";
+  if (prop.startsWith("masks.")) return MASKABLE_KINDS.includes(kind);
   const kinds = PROP_KINDS[prop];
   return kinds === undefined || kinds.includes(kind);
 }
@@ -855,16 +876,47 @@ export function animatorPropIssue(prop: string, animators: unknown): string | nu
   return null;
 }
 
+/**
+ * What a clip lacks for keys of the mask property `prop` (its mask; a box field on a box mask, `path` on a path
+ * mask); null when it has it.
+ */
+export function maskPropIssue(prop: string, masks: unknown): string | null {
+  const match = MASK_PROP_PATTERN.exec(prop);
+  if (!match) return "not a mask property";
+  const list = Array.isArray(masks) ? (masks as { id?: unknown; shape?: { kind?: unknown; d?: unknown } }[]) : [];
+  const mask = list.find((candidate) => candidate?.id === match[1]);
+  if (!mask) return `the clip has no mask "${match[1]}"`;
+  const field = match[2] as string;
+  const kind = mask.shape?.kind;
+  if (field === "path" && kind !== "path") return "the mask is not a path";
+  if ((field === "x" || field === "y" || field === "w" || field === "h" || field === "radius") && kind === "path") return "the mask is a path";
+  if (field === "radius" && kind === "ellipse") return "an ellipse has no corner radius";
+  return null;
+}
+
 /** Whether a solid's `fill` is a plain color (the only fill `fill` keys can animate). */
 export function isColorFill(fill: unknown): boolean {
   return typeof fill === "object" && fill !== null && "r" in fill;
 }
 
 /** What is wrong with a clip's keyframes (spec §5.2 invariants, Batch 35): known properties, sorted integer frames, finite values, known eases, no empty list. */
-export function keyframeIssues(keyframes: Keyframes, clip?: { kind: string; fill?: unknown; paths?: unknown; animators?: unknown }): string[] {
+export function keyframeIssues(keyframes: Keyframes, clip?: { kind: string; fill?: unknown; paths?: unknown; animators?: unknown; masks?: unknown }): string[] {
   const issues: string[] = [];
   for (const [prop, keys] of Object.entries(keyframes)) {
-    if (isAnimatorProp(prop)) {
+    // A path mask's points (spec §21.18): one vector as long as the base path's.
+    let pathLength: number | null = null;
+    if (isMaskProp(prop)) {
+      if (clip && !MASKABLE_KINDS.includes(clip.kind)) issues.push(`keyframes.${prop}: not a property of a ${clip.kind} clip`);
+      else if (clip) {
+        const issue = maskPropIssue(prop, clip.masks);
+        if (issue) issues.push(`keyframes.${prop}: ${issue}`);
+        else if (prop.endsWith(".path")) {
+          const id = (MASK_PROP_PATTERN.exec(prop) as RegExpExecArray)[1];
+          const mask = (clip.masks as { id: string; shape: { d?: unknown } }[]).find((m) => m.id === id);
+          pathLength = typeof mask?.shape.d === "string" ? (maskPathPoints(mask.shape.d)?.length ?? null) : null;
+        }
+      }
+    } else if (isAnimatorProp(prop)) {
       if (clip && clip.kind !== "text") issues.push(`keyframes.${prop}: not a property of a ${clip.kind} clip`);
       else if (clip) {
         const issue = animatorPropIssue(prop, clip.animators);
@@ -881,6 +933,7 @@ export function keyframeIssues(keyframes: Keyframes, clip?: { kind: string; fill
     else if (clip && prop === "fill" && clip.kind === "solid" && !isColorFill(clip.fill)) issues.push("keyframes.fill: the solid's fill is not a plain color");
     const vector = isColorProp(prop);
     const point = isPointProp(prop);
+    const maskPath = isMaskProp(prop) && prop.endsWith(".path");
     if (!Array.isArray(keys) || keys.length === 0) {
       issues.push(`keyframes.${prop}: an empty list`);
       continue;
@@ -889,7 +942,10 @@ export function keyframeIssues(keyframes: Keyframes, clip?: { kind: string; fill
     for (const key of keys) {
       if (!Number.isInteger(key.frame)) issues.push(`keyframes.${prop}: frame ${key.frame} must be an integer`);
       if (!(key.frame > previous)) issues.push(`keyframes.${prop}: frame ${key.frame} must come after ${previous}`);
-      if (vector) {
+      if (maskPath) {
+        if (!Array.isArray(key.value) || key.value.length < 2 || !key.value.every((c) => Number.isFinite(c))) issues.push(`keyframes.${prop}: value at frame ${key.frame} must be the path's points [x, y, ...]`);
+        else if (pathLength !== null && key.value.length !== pathLength) issues.push(`keyframes.${prop}: value at frame ${key.frame} has ${key.value.length / 2} points, the path has ${pathLength / 2}`);
+      } else if (vector) {
         if (!Array.isArray(key.value) || key.value.length !== 4 || !key.value.every((channel) => Number.isFinite(channel))) issues.push(`keyframes.${prop}: value at frame ${key.frame} must be a color [r, g, b, a]`);
       } else if (point) {
         if (!Array.isArray(key.value) || key.value.length !== 2 || !key.value.every((c) => Number.isFinite(c))) issues.push(`keyframes.${prop}: value at frame ${key.frame} must be a point [x, y]`);

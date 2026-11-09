@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { RGBA } from "../../core/document/types.js";
-import { FULL_UV, type DrawList, type Layer } from "../compositor/drawList.js";
+import { FULL_UV, type DrawList, type Layer, type MaskFrame } from "../compositor/drawList.js";
 import { applyToPoint, IDENTITY, mutableIdentity, rectTransform, type Mat3 } from "../mat3.js";
-import { blurRegionInto, DrawRecords, MAX_BLUR_SIGMA, premultipliedInto, showBlurred, type BlurRegion } from "./drawRecords.js";
+import { blurRegionInto, DrawRecords, MASK_MAP, MAX_BLUR_SIGMA, premultipliedInto, showBlurred, writeMaskMap, type BlurRegion } from "./drawRecords.js";
 import { SHAPE_CODE } from "./layerUniforms.js";
 import type { Pane, TextureHandle, Viewport } from "./renderer.js";
 
@@ -226,8 +226,9 @@ describe("DrawRecords groups (spec §21.17, Batch 72)", () => {
     transform: IDENTITY,
     opacity: 1,
     blend,
+    mask: null,
     layers: [solid(RED)],
-    matte: matte ? { mode, layers: matte } : null,
+    matte: matte ? { mode, layers: matte, mask: null } : null,
   });
 
   it("puts a group's layers and matte into its pictures, then a composite record over the frame", () => {
@@ -250,7 +251,7 @@ describe("DrawRecords groups (spec §21.17, Batch 72)", () => {
     // The frame quad in target px.
     expect(corner(composite.uniform.transform, 1, 1)).toEqual({ x: 200, y: 400 });
     expect(records.groupCount).toBe(1);
-    expect(records.groups[0]).toEqual({ backdrop: true, matte: true });
+    expect(records.groups[0]).toEqual({ backdrop: true, matte: true, mask: null, matteMask: null });
   });
 
   it("marks hardware modes as needing no backdrop and a group without a matte as matte 0", () => {
@@ -258,8 +259,8 @@ describe("DrawRecords groups (spec §21.17, Batch 72)", () => {
     const count = records.build([pane(list([groupLayer("screen", null), groupLayer("normal", [])]), IDENTITY)], 400, 400);
     expect(records.groupCount).toBe(2);
     expect(records.groups.slice(0, 2)).toEqual([
-      { backdrop: false, matte: false },
-      { backdrop: false, matte: true },
+      { backdrop: false, matte: false, mask: null, matteMask: null },
+      { backdrop: false, matte: true, mask: null, matteMask: null },
     ]);
     const composites = Array.from({ length: count }, (_, i) => records.at(i)).filter((r) => r.kind === "composite");
     expect(composites.map((r) => [r.group, r.uniform.fx?.code, r.uniform.fx?.dx])).toEqual([
@@ -272,7 +273,7 @@ describe("DrawRecords groups (spec §21.17, Batch 72)", () => {
     const records = new DrawRecords(usable);
     const dead = new FakeTexture(10, 10);
     dead.destroy();
-    const layer: Layer = { kind: "group", transform: IDENTITY, opacity: 1, blend: "multiply", layers: [{ kind: "texture", texture: dead, transform: IDENTITY, opacity: 1, crop: FULL_UV, flipX: false, flipY: false }], matte: null };
+    const layer: Layer = { kind: "group", transform: IDENTITY, opacity: 1, blend: "multiply", mask: null, layers: [{ kind: "texture", texture: dead, transform: IDENTITY, opacity: 1, crop: FULL_UV, flipX: false, flipY: false }], matte: null };
     expect(records.build([pane(list([layer]), IDENTITY)], 400, 400)).toBe(1);
     expect(records.groupCount).toBe(0);
   });
@@ -280,9 +281,61 @@ describe("DrawRecords groups (spec §21.17, Batch 72)", () => {
   it("draws a group inside a group plainly into the outer picture", () => {
     const records = new DrawRecords(usable);
     const inner = groupLayer("screen", null);
-    const outer: Layer = { kind: "group", transform: IDENTITY, opacity: 1, blend: "multiply", layers: [inner], matte: null };
+    const outer: Layer = { kind: "group", transform: IDENTITY, opacity: 1, blend: "multiply", mask: null, layers: [inner], matte: null };
     const count = records.build([pane(list([outer]), IDENTITY)], 400, 400);
     expect(count).toBe(3);
     expect([records.at(1).group, records.at(1).role, records.at(2).kind]).toEqual([1, 1, "composite"]);
+  });
+});
+
+describe("DrawRecords masks (spec §21.18, Batch 73)", () => {
+  const RED_SOLID: Layer = { kind: "solid", color: { r: 1, g: 0, b: 0, a: 1 }, transform: rectTransform(0, 0, 10, 10), opacity: 1 };
+  const frame = (persp: MaskFrame["persp"] = null): MaskFrame => ({ clipId: "c", data: new Float32Array(8), length: 8, version: 7, width: 40, height: 20, model: [1, 0, 0, 1, 10, 20], persp });
+  const mapAt = (maps: Float32Array, offset: number, x: number, y: number) => {
+    const q = [0, 1, 2].map((r) => (maps[offset + 4 * r] as number) * x + (maps[offset + 4 * r + 1] as number) * y + (maps[offset + 4 * r + 2] as number));
+    return [(q[0] as number) / (q[2] as number), (q[1] as number) / (q[2] as number)];
+  };
+
+  it("a masked group's composite holds the map from target px to its content box's unit square", () => {
+    const records = new DrawRecords(usable);
+    const group: Layer = { kind: "group", transform: IDENTITY, opacity: 1, blend: "normal", mask: frame(), layers: [RED_SOLID], matte: null };
+    const count = records.build([pane(list([group]), [2, 0, 0, 2, 50, 0])], 400, 400);
+    const composite = records.at(count - 1);
+    expect(composite.kind).toBe("composite");
+    expect(records.groups[0]?.mask?.version).toBe(7);
+    const maps = composite.uniform.style.stopColor;
+    expect([maps[MASK_MAP.flags], maps[MASK_MAP.flags + 1]]).toEqual([1, 0]);
+    // Content (20, 10) -> project (30, 30) -> target (110, 60): the box's center.
+    const center = mapAt(maps, MASK_MAP.mask, 110, 60);
+    expect(center[0]).toBeCloseTo(0.5, 6);
+    expect(center[1]).toBeCloseTo(0.5, 6);
+    const corner = mapAt(maps, MASK_MAP.mask, 70, 40);
+    expect(corner[0]).toBeCloseTo(0, 6);
+    expect(corner[1]).toBeCloseTo(0, 6);
+  });
+
+  it("a 2.5D clip's map goes through its projection; a matte clip's mask has its own map", () => {
+    const persp: NonNullable<MaskFrame["persp"]> = [1, 0, 0.1, 1, 5, 0, 0.0005, 0.001, 1];
+    const records = new DrawRecords(usable);
+    const group: Layer = { kind: "group", transform: IDENTITY, opacity: 1, blend: "normal", mask: frame(persp), layers: [RED_SOLID], matte: { mode: "alpha", layers: [RED_SOLID], mask: frame() } };
+    const count = records.build([pane(list([group]), IDENTITY)], 400, 400);
+    const maps = records.at(count - 1).uniform.style.stopColor;
+    expect([maps[MASK_MAP.flags], maps[MASK_MAP.flags + 1]]).toEqual([1, 1]);
+    // Forward: unit (0.25, 0.75) -> content (10, 15) -> project (20, 35) -> through the projection.
+    const px = 20, py = 35;
+    const w = persp[6] * px + persp[7] * py + persp[8];
+    const tx = (persp[0] * px + persp[2] * py + persp[4]) / w;
+    const ty = (persp[1] * px + persp[3] * py + persp[5]) / w;
+    const back = mapAt(maps, MASK_MAP.mask, tx, ty);
+    expect(back[0]).toBeCloseTo(0.25, 5);
+    expect(back[1]).toBeCloseTo(0.75, 5);
+    const matte = mapAt(maps, MASK_MAP.matteMask, 30, 30);
+    expect(matte[0]).toBeCloseTo(0.5, 6);
+  });
+
+  it("a mask whose box cannot be inverted is dropped", () => {
+    const out = new Float32Array(12);
+    expect(writeMaskMap(out, 0, IDENTITY, { ...frame(), width: 0 })).toBe(false);
+    expect(writeMaskMap(out, 0, IDENTITY, frame())).toBe(true);
   });
 });

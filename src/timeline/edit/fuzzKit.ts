@@ -120,6 +120,10 @@ import { closeSilences, cutSilences, REMOVE_SILENCE_LABEL, silencePlan, silenceT
 import { addNull, convertFromMotionPath, convertToMotionPath, parentCandidates, setAutoOrient, setParent, smoothMotionPath } from "./rig.js";
 import { resetDepth, setBackfaceHidden, setDepthSort } from "./depth.js";
 import { matteCandidates, setBlend, setMatte, setMatteMode, setMatteOnly } from "./compositing.js";
+import { addMask, applyMaskPreset, commitMaskGesture, deleteMaskPoint, insertMaskPoint, isMaskable, maskContentSize, removeAllMasks, removeMask, reorderMask, setMaskField, setMaskFlags, setMaskStopwatch, toggleMaskKey } from "./masks.js";
+import { masksAt, MASK_NUMBER_FIELDS, maskHasField } from "../../core/masks/maskEval.js";
+import type { Mask } from "../../core/document/types.js";
+import { maskPathPoints, maskPathData } from "../../core/masks/maskPath.js";
 import { BLEND_MODES, MATTE_MODES } from "../../core/document/types.js";
 import { isVisualClip } from "../../core/effects/trackMatte.js";
 import { setPerspective } from "../../core/commands/projectCommands.js";
@@ -847,9 +851,10 @@ export type FuzzArea =
   | "markers"
   | "rig"
   | "depth"
-  | "compositing";
+  | "compositing"
+  | "masks";
 
-export const FUZZ_AREAS: readonly FuzzArea[] = ["move", "trim", "split", "delete", "gaps", "links", "tracks", "keyframes", "transitions", "fades", "speed", "audio", "silence", "clipboard", "props", "solids", "text", "captions", "media", "markers", "rig", "depth", "compositing"];
+export const FUZZ_AREAS: readonly FuzzArea[] = ["move", "trim", "split", "delete", "gaps", "links", "tracks", "keyframes", "transitions", "fades", "speed", "audio", "silence", "clipboard", "props", "solids", "text", "captions", "media", "markers", "rig", "depth", "compositing", "masks"];
 
 export interface FuzzOp {
   name: string;
@@ -1997,6 +2002,92 @@ const COMPOSITING_OPS: FuzzOp[] = [
   }),
 ];
 
+/** Masks (Batch 73, spec §21.18): add, fields, flags, stopwatches and keys, canvas gestures, path points, presets, removal (weighted as one area, about as often as compositing). */
+const fl = (rng: Rng, a: number, b: number): number => a + rng.next() * (b - a);
+const maskSize = (p: Project) => (clip: Clip) => maskContentSize(p, clip) ?? { w: 400, h: 120 };
+const maskedClip = (p: Project, rng: Rng) => pickClip(p, rng, (c) => isMaskable(c) && ((c as { masks?: Mask[] }).masks?.length ?? 0) > 0) as (Clip & { masks: Mask[] }) | null;
+const MASK_OPS: FuzzOp[] = [
+  op("masks.add", "masks", (store, rng) => {
+    const p = store.getState();
+    const clip = pickClip(p, rng, isMaskable);
+    return clip ? exec(store, addMask(p, selection(p, rng, clip, false), rng.pick(["rect", "ellipse", "path"] as const), maskSize(p))) : false;
+  }, { weight: 0.6 }),
+  op("masks.field", "masks", (store, rng) => {
+    const p = store.getState();
+    const clip = maskedClip(p, rng);
+    if (!clip) return false;
+    const mask = rng.pick(clip.masks);
+    const field = rng.pick(MASK_NUMBER_FIELDS.filter((f) => maskHasField(mask, f)));
+    const value = field === "opacity" ? fl(rng, -0.2, 1.2) : fl(rng, -50, 600);
+    return exec(store, setMaskField(p, clip.id, mask.id, field, value, clip.start + rng.int(0, clip.duration)));
+  }, { weight: 0.6 }),
+  op("masks.flags", "masks", (store, rng) => {
+    const p = store.getState();
+    const clip = maskedClip(p, rng);
+    if (!clip) return false;
+    const mask = rng.pick(clip.masks);
+    return exec(store, setMaskFlags(p, clip.id, mask.id, rng.chance(0.5) ? { mode: rng.pick(["add", "subtract", "intersect"] as const) } : { inverted: !mask.inverted }));
+  }, { weight: 0.4 }),
+  op("masks.stopwatch", "masks", (store, rng) => {
+    const p = store.getState();
+    const clip = maskedClip(p, rng);
+    if (!clip) return false;
+    const mask = rng.pick(clip.masks);
+    const field = rng.pick([...MASK_NUMBER_FIELDS, "path" as const].filter((f) => maskHasField(mask, f)));
+    return exec(store, setMaskStopwatch(p, clip.id, mask.id, field, rng.chance(0.7), clip.start + rng.int(0, clip.duration)));
+  }, { weight: 0.6 }),
+  op("masks.key", "masks", (store, rng) => {
+    const p = store.getState();
+    const clip = maskedClip(p, rng);
+    if (!clip) return false;
+    const mask = rng.pick(clip.masks);
+    const field = rng.pick([...MASK_NUMBER_FIELDS, "path" as const].filter((f) => maskHasField(mask, f)));
+    return exec(store, toggleMaskKey(p, clip.id, mask.id, field, clip.start + rng.int(0, clip.duration)));
+  }, { weight: 0.4 }),
+  op("masks.gesture", "masks", (store, rng) => {
+    const p = store.getState();
+    const clip = maskedClip(p, rng);
+    if (!clip) return false;
+    const at = clip.start + rng.int(0, clip.duration);
+    const before = masksAt(clip, at - clip.start);
+    const after = structuredClone(before) as Mask[];
+    const mask = rng.pick(after);
+    if (mask.shape.kind === "path") {
+      const points = maskPathPoints(mask.shape.d);
+      if (points) mask.shape.d = maskPathData(mask.shape.d, points.map((v) => v + fl(rng, -20, 20)));
+    } else {
+      mask.shape.x += fl(rng, -40, 40);
+      mask.shape.w = Math.max(0, mask.shape.w + fl(rng, -40, 40));
+    }
+    if (rng.chance(0.3)) mask.feather = fl(rng, 0, 80);
+    return exec(store, commitMaskGesture(p, clip.id, before, after, at));
+  }, { weight: 0.6 }),
+  op("masks.points", "masks", (store, rng) => {
+    const p = store.getState();
+    const clip = maskedClip(p, rng);
+    const mask = clip ? clip.masks.find((m) => m.shape.kind === "path") : undefined;
+    if (!clip || !mask || mask.shape.kind !== "path") return false;
+    const count = (maskPathPoints(mask.shape.d)?.length ?? 0) / 2;
+    return exec(store, rng.chance(0.6) ? insertMaskPoint(p, clip.id, mask.id, { sub: 0, seg: rng.int(0, Math.max(1, count - 1)) }, fl(rng, 0.1, 0.9)) : deleteMaskPoint(p, clip.id, mask.id, rng.int(0, count)));
+  }, { weight: 0.4 }),
+  op("masks.preset", "masks", (store, rng) => {
+    const p = store.getState();
+    const clip = pickClip(p, rng, isMaskable);
+    return clip ? exec(store, applyMaskPreset(p, [clip.id], rng.pick(["wipeIn", "circleReveal"] as const), maskSize(p))) : false;
+  }, { weight: 0.4 }),
+  op("masks.order", "masks", (store, rng) => {
+    const p = store.getState();
+    const clip = maskedClip(p, rng);
+    return clip ? exec(store, reorderMask(p, clip.id, rng.pick(clip.masks).id, rng.pick([-1, 1] as const))) : false;
+  }, { weight: 0.4 }),
+  op("masks.remove", "masks", (store, rng) => {
+    const p = store.getState();
+    const clip = maskedClip(p, rng);
+    if (!clip) return false;
+    return exec(store, rng.chance(0.8) ? removeMask(p, clip.id, rng.pick(clip.masks).id) : removeAllMasks(p, [clip.id]));
+  }, { weight: 0.4 }),
+];
+
 /** Every edit operation of the catalogue, with random but sensible arguments. */
 export const FUZZ_OPS: readonly FuzzOp[] = [
   ...MOVE_OPS,
@@ -2022,6 +2113,7 @@ export const FUZZ_OPS: readonly FuzzOp[] = [
   ...RIG_OPS,
   ...DEPTH_OPS,
   ...COMPOSITING_OPS,
+  ...MASK_OPS,
 ];
 
 /** The operations of some areas. */

@@ -67,6 +67,8 @@
 //   track order). The 2D parent of a clip does not pass its own 3D placement on (the Batch 69 rig is 2D).
 // Layer structs and arrays are reused between frames; evaluating allocates nothing once warm.
 import { isVisualClip } from "../../core/effects/trackMatte.js";
+import { masksAt } from "../../core/masks/maskEval.js";
+import { maskBlockFloats, packMasks } from "../../core/masks/maskCoverage.js";
 import { sequenceView } from "../../core/document/sequences.js";
 import { isRgba } from "../../core/document/color.js";
 import { animatedOpacity, animatedTransform, maxKeyedScale } from "../../core/document/keyframes.js";
@@ -75,7 +77,7 @@ import { painterOrder, type DepthSortItem } from "../../core/space/camera3d.js";
 import { facesAway, isDepthTransform, newHomography, projectedCorners, viewingDistance, writeProjection, type Homography } from "../projection.js";
 import { framesToSourceUs, secondsToFrames } from "../../core/document/time.js";
 import { handleTimeUs, TRANSITION_CODE, transitionFx, transitionMix } from "../../core/document/transitions.js";
-import type { CaptionClip, CaptionStyle, CaptionWord, Clip, ClipId, CompoundClip, Crop, Frame, MatteMode, MediaClip, MediaId, Project, RGBA, ShadowStyle, ShapeClip, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
+import type { CaptionClip, CaptionStyle, CaptionWord, Clip, ClipId, CompoundClip, Crop, Frame, Mask, MatteMode, MediaClip, MediaId, Project, RGBA, ShadowStyle, ShapeClip, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
 import { pathFramesAt, type PathFrameScratch } from "./shapeFrames.js";
 import { activeWordIndex, captionPlace, defaultCaptionStyle, effectiveCaptionStyle } from "../../text/captions.js";
 import { activeAnim, animUnit, isPlayable, newUnitState, presence, resetUnitState, typedCount, unitProgress, writeUnitShape, type ActiveAnim, type UnitState } from "../../text/anim.js";
@@ -100,7 +102,7 @@ import { GLYPH_SLOT, TINT_SLOT, decodeGlyphChars, isKinetic, newKineticScratch, 
 import { counterGlyphs } from "../../text/counter.js";
 import { finestUnit } from "../text/animUnits.js";
 import { isGradientFill } from "../../core/document/fill.js";
-import { HIGHLIGHT_SLOT, MATTE_SLOT, TRANSITION_SLOT, type CaptionHighlightFrame, type GroupCompositeLayer, type PlainCompositeLayer, type CompoundCompositeLayer, type CaptionWordBoxes, type Composite, type CompositeLayer, type ShapeCompositeLayer, type ShapePathFrame, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextCompositeLayer, type TransitionCompositeLayer } from "./drawList.js";
+import { HIGHLIGHT_SLOT, MATTE_SLOT, TRANSITION_SLOT, type MaskFrame, type CaptionHighlightFrame, type GroupCompositeLayer, type PlainCompositeLayer, type CompoundCompositeLayer, type CaptionWordBoxes, type Composite, type CompositeLayer, type ShapeCompositeLayer, type ShapePathFrame, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextCompositeLayer, type TransitionCompositeLayer } from "./drawList.js";
 
 /** How far from the playhead the clips next to it count as cut neighbours (seconds). */
 export const NEIGHBOR_SECONDS = 2;
@@ -211,7 +213,7 @@ interface WritableComposite extends Composite {
 type WritableGroupLayer = Omit<GroupCompositeLayer, "layers" | "matte"> & {
   layers: PlainCompositeLayer[];
   matte: GroupCompositeLayer["matte"];
-  matteValue: { mode: MatteMode; layers: readonly PlainCompositeLayer[] };
+  matteValue: { mode: MatteMode; layers: readonly PlainCompositeLayer[]; mask: MaskFrame | null };
   /** Evaluates the matte clip (made on first use; plain: it groups nothing). */
   child: Compositor | null;
 };
@@ -225,7 +227,15 @@ type LiveMaps = [
   LiveCaptions | null,
   ReadonlyMap<ClipId, SolidLook> | null,
   ReadonlyMap<ClipId, ShapeClip> | null,
+  ReadonlyMap<ClipId, readonly Mask[]> | null,
 ];
+
+/** A clip's content box at the frame: its content px (`width` x `height`) -> project px. */
+type ContentBox = { model: MutableMat3; width: number; height: number };
+type WritableMaskFrame = Omit<MaskFrame, "model"> & { model: MutableMat3 };
+
+/** Versions of packed mask blocks, unique across compositors: equal versions hold equal data. */
+let maskVersions = 0;
 type WritableCompoundLayer = Omit<CompoundCompositeLayer, "model" | "inner"> & { model: MutableMat3; inner: Composite; child: Compositor };
 /** A shape layer with the frames its keyed paths are written into (per path index). */
 type WritableShapeLayer = Omit<ShapeCompositeLayer, "model" | "paths"> & { model: MutableMat3; paths: readonly ShapePathFrame[]; keyed: ShapePathFrame[]; scratch: PathFrameScratch[] };
@@ -337,7 +347,14 @@ export class Compositor {
   /** Clips with a blend mode or a track matte (spec §21.17, Batch 72), grouped in the frame. */
   private readonly groupPool: WritableGroupLayer[] = [];
   /** The live values of the evaluation in progress (passed on to the matte clips' evaluation). */
-  private readonly live: LiveMaps = [null, null, null, null, null, null, null, null];
+  private readonly live: LiveMaps = [null, null, null, null, null, null, null, null, null];
+  /** Masks (spec §21.18, Batch 73): each drawn clip's content box at the frame (noted by the writers). */
+  private readonly contentBoxes = new Map<ClipId, ContentBox>();
+  /** Masks: the mask frame of each masked clip, its block kept while its data stays the same (the renderer caches its coverage by version). */
+  private readonly maskStates = new Map<ClipId, WritableMaskFrame>();
+  /** The mask frames of this evaluation (a matte clip's are read by the compositor it is the matte of). */
+  readonly maskFrames = new Map<ClipId, MaskFrame>();
+  private maskScratch = new Float32Array(256);
 
   /**
    * `offline`: what offline media show; without it every media clip is drawn as online. `plain`: the
@@ -364,6 +381,7 @@ export class Compositor {
     captions: LiveCaptions | null = null,
     solids: ReadonlyMap<ClipId, SolidLook> | null = null,
     shapeEdits: ReadonlyMap<ClipId, ShapeClip> | null = null,
+    maskEdits: ReadonlyMap<ClipId, readonly Mask[]> | null = null,
   ): Composite {
     const out = this.out;
     const { width, height, background } = doc.settings;
@@ -383,6 +401,8 @@ export class Compositor {
     live[5] = captions;
     live[6] = solids;
     live[7] = shapeEdits;
+    live[8] = maskEdits;
+    this.maskFrames.clear();
     let groups = 0;
     let media = 0;
     let solidLayers = 0;
@@ -519,7 +539,7 @@ export class Compositor {
         }
       } else if (clip.kind === "solid") {
         const layer = (this.solidPool[solidLayers] ??= newSolidLayer());
-        if (this.writeSolid(layer, doc, animatedSolidLook(clip, solids?.get(clip.id) ?? clip, rel, this.solidScratch), transform, opacity * fadeFactor(clip, frame))) {
+        if (this.writeSolid(layer, doc, animatedSolidLook(clip, solids?.get(clip.id) ?? clip, rel, this.solidScratch), transform, opacity * fadeFactor(clip, frame), clip.id)) {
           out.layers.push(layer);
           solidLayers += 1;
         }
@@ -569,19 +589,22 @@ export class Compositor {
    * the clip itself or a clip with no picture is ignored; a matte clip off the frame gives an empty matte.
    */
   private group(doc: Project, clip: Clip, frame: Frame, first: number, index: number): boolean {
+    // Masks (spec §21.18): computed by plain compositors too (a masked matte clip is read by the clip it keys).
+    const mask = this.maskFrame(clip, frame, first);
     if (this.plain) return false;
     const blend = clip.blend ?? "normal";
     const source = clip.matte ? doc.clips[clip.matte.clipId] : undefined;
     // A matte clip that is gone, is the clip itself, draws no picture or is not in this sequence is ignored.
     const view = clip.matte && source && source.id !== clip.id && isVisualClip(source) ? matteView(doc, source.id) : null;
     const matte = view ? clip.matte : null;
-    if (blend === "normal" && !matte) return false;
+    if (blend === "normal" && !matte && !mask) return false;
     const layers = this.out.layers;
     if (layers.length === first) return false;
     const group = (this.groupPool[index] ??= newGroupLayer());
     group.trackId = clip.trackId;
     group.clipId = clip.id;
     group.blend = blend;
+    group.mask = mask;
     group.layers.length = 0;
     for (let i = first; i < layers.length; i++) group.layers.push(layers[i] as PlainCompositeLayer);
     const depth = this.depths[first] ?? 0;
@@ -601,11 +624,70 @@ export class Compositor {
         }
       }
       group.matteValue.layers = matteLayers;
+      // A masked matte clip keys through its masks (spec §21.18, the Batch 72 follow-up).
+      group.matteValue.mask = child.maskFrames.get(matte.clipId) ?? null;
       group.matte = group.matteValue;
     }
     layers.push(group);
     this.depths.push(depth);
     return true;
+  }
+
+  /**
+   * The masks of `clip` at the frame (spec §21.18, Batch 73) packed over its content box, for its layers
+   * pushed from `first` on: null when it has none or drew nothing. A live gesture's masks (`maskEdits`)
+   * replace the clip's. The block keeps its version while its data stays the same (the coverage is cached).
+   */
+  private maskFrame(clip: Clip, frame: Frame, first: number): MaskFrame | null {
+    const live = this.live[8];
+    if ((clip.masks?.length ?? 0) === 0 && !live?.has(clip.id)) return null;
+    const layers = this.out.layers;
+    const box = this.contentBoxes.get(clip.id);
+    if (layers.length === first || !box || !(box.width > 0) || !(box.height > 0)) return null;
+    const masks = live?.get(clip.id) ?? masksAt(clip, frame - clip.start);
+    if (masks.length === 0) return null;
+    const need = maskBlockFloats(masks);
+    if (this.maskScratch.length < need) this.maskScratch = new Float32Array(Math.max(need, this.maskScratch.length * 2));
+    const scratch = this.maskScratch;
+    const length = packMasks(masks, box.width, box.height, scratch);
+    let out = this.maskStates.get(clip.id);
+    if (!out) {
+      out = { clipId: clip.id, data: new Float32Array(0), length: 0, version: 0, width: 0, height: 0, model: mutableIdentity(), persp: null };
+      this.maskStates.set(clip.id, out);
+    }
+    let same = out.length === length;
+    for (let i = 0; same && i < length; i++) same = out.data[i] === scratch[i];
+    if (!same) {
+      if (out.data.length < length) out.data = new Float32Array(length);
+      out.data.set(scratch.subarray(0, length));
+      out.length = length;
+      out.version = ++maskVersions;
+    }
+    out.width = box.width;
+    out.height = box.height;
+    for (let i = 0; i < 6; i++) out.model[i] = box.model[i] as number;
+    // The clip's projection (2.5D; every layer of a clip shares it); in a transition the side the masks are of.
+    const lead = layers[first] as CompositeLayer;
+    out.persp = lead.kind === "dissolve" ? ((lead.from.clipId === clip.id ? lead.from.persp : lead.to.persp) ?? null) : lead.kind === "group" ? null : (lead.persp ?? null);
+    this.maskFrames.set(clip.id, out);
+    return out;
+  }
+
+  /** The content box of `clipId` at the last frame it was drawn (content px -> project px; the canvas mask mode lays its handles out by it), or null. */
+  contentBox(clipId: ClipId): { readonly model: Mat3; readonly width: number; readonly height: number } | null {
+    return this.contentBoxes.get(clipId) ?? null;
+  }
+
+  /** Notes the content box of `clipId` (its content px `width` x `height` laid out by `model`) for its masks. */
+  private noteContent(clipId: ClipId, model: Mat3, width: number, height: number): void {
+    let box = this.contentBoxes.get(clipId);
+    if (!box) {
+      box = { model: mutableIdentity(), width: 0, height: 0 };
+      this.contentBoxes.set(clipId, box);
+    }
+    for (let i = 0; i < 6; i++) box.model[i] = model[i] as number;
+    box.width = width;
+    box.height = height;
   }
 
   /**
@@ -667,14 +749,14 @@ export class Compositor {
     layer.child.depthSort = sequence.depthSort === true;
     layer.inner = layer.child.evaluate(sequenceView(doc, sequence), innerFrame);
     const { w, h } = sequence.size;
-    const m = multiplyInto(layer.model, writeModel(this.step, transform, w, h, doc.settings.width, doc.settings.height), setMat(this.step2, w, 0, 0, h, 0, 0));
+    this.noteContent(clip.id, writeModel(this.step, transform, w, h, doc.settings.width, doc.settings.height), w, h);
+    const m = multiplyInto(layer.model, this.step, setMat(this.step2, w, 0, 0, h, 0, 0));
     layer.trackId = clip.trackId;
     layer.clipId = clip.id;
     layer.sequenceId = clip.sequenceId;
     layer.width = w;
     layer.height = h;
     layer.scale = Math.max(Math.hypot(m[0], m[1]) / w, Math.hypot(m[2], m[3]) / h);
-    // TODO(batch 73): masks on a compound clip.
     // TODO(batch 74): the effect stack of a compound clip (applied to its target before it is drawn).
     layer.opacity = clamp01(opacity) * fadeFactor(clip, frame);
     return true;
@@ -920,6 +1002,7 @@ export class Compositor {
     if (flipH || flipV) multiplyInto(m, setMat(step, flipH ? -1 : 1, 0, 0, flipV ? -1 : 1, flipH ? 1 : 0, flipV ? 1 : 0), m);
     multiplyInto(m, setMat(step, shownWidth, 0, 0, shownHeight, 0, 0), m);
     multiplyInto(m, writeModel(step, transform, shownWidth, shownHeight, doc.settings.width, doc.settings.height), m);
+    this.noteContent(clip.id, step, shownWidth, shownHeight);
 
     // The picture's rounded rectangle (spec §21.7): the visible part in shown px at scale 1, its corners at most half the shorter side.
     const frameW = (right - left) * shownWidth;
@@ -988,6 +1071,7 @@ export class Compositor {
     const raster = layout.raster;
     if (!raster) return false;
     const m = writeModel(layer.model, transform, layout.width, layout.height, doc.settings.width, doc.settings.height);
+    if (pass === 0) this.noteContent(clip.id, m, layout.width, layout.height);
     // Flips mirror the text inside its box.
     if (transform.flipH || transform.flipV) multiplyInto(m, m, setMat(this.step, transform.flipH ? -1 : 1, 0, 0, transform.flipV ? -1 : 1, transform.flipH ? layout.width : 0, transform.flipV ? layout.height : 0));
     const own = Math.max(Math.abs(transform.scale), Math.abs(transform.scaleY ?? transform.scale));
@@ -1085,6 +1169,7 @@ export class Compositor {
     const y1 = (1 - clamp01(shownCrop.bottom)) * height;
     if (x1 <= x0 || y1 <= y0) return 0;
     const m = writeModel(slate.transform, transform, width, height, doc.settings.width, doc.settings.height);
+    this.noteContent(clip.id, m, width, height);
     multiplyInto(m, m, setMat(this.step, x1 - x0, 0, 0, y1 - y0, x0, y0));
     copyColor(slate.color, look.fill);
     slate.to = null;
@@ -1153,6 +1238,7 @@ export class Compositor {
     const { w, h } = clip.size;
     if (!(w > 0) || !(h > 0) || clip.paths.length === 0) return false;
     const m = writeModel(layer.model, transform, w, h, doc.settings.width, doc.settings.height);
+    this.noteContent(clip.id, m, w, h);
     if (transform.flipH || transform.flipV) multiplyInto(m, m, setMat(this.step, transform.flipH ? -1 : 1, 0, 0, transform.flipV ? -1 : 1, transform.flipH ? w : 0, transform.flipV ? h : 0));
     layer.trackId = clip.trackId;
     layer.clipId = clip.id;
@@ -1165,10 +1251,11 @@ export class Compositor {
   }
 
   /** A solid in `look` (its own, or a live one): its size's box as its shape, in its color or gradient, with its stroke and shadow. */
-  private writeSolid(layer: WritableSolidLayer, doc: Project, look: SolidLook, transform: Transform, opacity: number): boolean {
+  private writeSolid(layer: WritableSolidLayer, doc: Project, look: SolidLook, transform: Transform, opacity: number, clipId: ClipId): boolean {
     const { fill, size } = look;
     if (!(size.w > 0) || !(size.h > 0)) return false;
     const m = writeModel(layer.transform, transform, size.w, size.h, doc.settings.width, doc.settings.height);
+    this.noteContent(clipId, m, size.w, size.h);
     multiplyInto(m, m, setMat(this.step, size.w, 0, 0, size.h, 0, 0));
     // Flips mirror the fill inside the box (a gradient turns upside down).
     if (transform.flipH || transform.flipV) multiplyInto(m, m, setMat(this.step, transform.flipH ? -1 : 1, 0, 0, transform.flipV ? -1 : 1, transform.flipH ? 1 : 0, transform.flipV ? 1 : 0));
@@ -1251,7 +1338,7 @@ function matteView(doc: Project, clipId: ClipId): Project | null {
 }
 
 function newGroupLayer(): WritableGroupLayer {
-  return { kind: "group", trackId: "", clipId: "", blend: "normal", layers: [], matte: null, matteValue: { mode: "alpha", layers: [] }, child: null };
+  return { kind: "group", trackId: "", clipId: "", blend: "normal", mask: null, layers: [], matte: null, matteValue: { mode: "alpha", layers: [], mask: null }, child: null };
 }
 
 /** The box a layer lays out (its matrix and the box size it maps): the unit quad, or its content px. */

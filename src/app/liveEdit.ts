@@ -8,7 +8,7 @@
 // (or, in the Selected scope, the selected cues' own styles: spec §20.3).
 // A Solid field scrub or a fill color dragged (Batch 34) gives the solids' looks; a Shape section scrub or
 // color drag (Batch 66) gives the edited shape clips.
-import type { CaptionStyle, ClipId, Crop, RGBA, ShapeClip, TrackId, Transform } from "../core/document/types.js";
+import type { CaptionStyle, ClipId, Crop, Mask, RGBA, ShapeClip, TrackId, Transform } from "../core/document/types.js";
 import { createStore, type Store } from "../core/store/createStore.js";
 import type { LiveAnims, LiveText } from "../render/compositor/Compositor.js";
 import type { SolidLook } from "../timeline/edit/solid.js";
@@ -31,10 +31,12 @@ export interface LiveEdit {
   solids: ReadonlyMap<ClipId, SolidLook> | null;
   /** Shape clips as a Shape section scrub or a color drag edits them (whole clips, drawn instead of the document's). */
   shapes: ReadonlyMap<ClipId, ShapeClip> | null;
+  /** Clips' masks as a Masks section field scrub edits them (Batch 73; drawn instead of the document's). */
+  masks: ReadonlyMap<ClipId, readonly Mask[]> | null;
   background: RGBA | null;
 }
 
-export const NO_LIVE_EDIT: LiveEdit = { transforms: null, opacities: null, crops: null, texts: null, anims: null, cues: null, captionStyles: null, cueStyles: null, solids: null, shapes: null, background: null };
+export const NO_LIVE_EDIT: LiveEdit = { transforms: null, opacities: null, crops: null, texts: null, anims: null, cues: null, captionStyles: null, cueStyles: null, solids: null, shapes: null, masks: null, background: null };
 
 export const liveEdit = createStore<LiveEdit>(NO_LIVE_EDIT);
 

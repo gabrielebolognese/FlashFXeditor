@@ -1,0 +1,651 @@
+{
+  "schemaVersion": 17,
+  "id": "5b0f7d3e-2c81-4a96-9e47-81c3d2a6f0b5",
+  "name": "Interop masks",
+  "settings": {
+    "width": 360,
+    "height": 640,
+    "fps": {
+      "num": 30,
+      "den": 1
+    },
+    "background": {
+      "r": 0,
+      "g": 0,
+      "b": 0,
+      "a": 1
+    },
+    "sampleRate": 48000
+  },
+  "media": {
+    "video": {
+      "id": "video",
+      "kind": "video",
+      "name": "clip.mp4",
+      "file": {
+        "relPath": "media/clip.mp4"
+      },
+      "durationUs": 2000000,
+      "hasAudio": true,
+      "analysis": {
+        "thumbs": "none",
+        "peaks": "none"
+      },
+      "addedAt": "2026-11-09T12:00:00.000Z",
+      "width": 270,
+      "height": 480,
+      "fps": {
+        "num": 30,
+        "den": 1
+      },
+      "codec": "h264",
+      "audioCodec": "aac",
+      "size": 18761
+    }
+  },
+  "bins": [],
+  "tracks": [
+    {
+      "id": "v1",
+      "kind": "video",
+      "name": "V1",
+      "clipIds": [
+        "feather-video",
+        "subtract",
+        "intersect",
+        "invert",
+        "title",
+        "morph",
+        "matte-video"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v2",
+      "kind": "video",
+      "name": "V2",
+      "clipIds": [
+        "matte"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    }
+  ],
+  "clips": {
+    "feather-video": {
+      "kind": "video",
+      "name": "feather-video",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "feather-video",
+      "trackId": "v1",
+      "start": 0,
+      "duration": 10,
+      "mediaId": "video",
+      "masks": [
+        {
+          "id": "e",
+          "shape": {
+            "kind": "ellipse",
+            "x": 35,
+            "y": 60,
+            "w": 200,
+            "h": 360
+          },
+          "mode": "add",
+          "feather": 40,
+          "expansion": 0,
+          "opacity": 1,
+          "inverted": false
+        }
+      ]
+    },
+    "subtract": {
+      "kind": "solid",
+      "name": "subtract",
+      "enabled": true,
+      "fill": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "shape": "rect",
+      "size": {
+        "w": 360,
+        "h": 640
+      },
+      "cornerRadius": 0,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "id": "subtract",
+      "trackId": "v1",
+      "start": 10,
+      "duration": 10,
+      "masks": [
+        {
+          "id": "r",
+          "shape": {
+            "kind": "rect",
+            "x": 40,
+            "y": 120,
+            "w": 280,
+            "h": 400,
+            "radius": 24
+          },
+          "mode": "add",
+          "feather": 0,
+          "expansion": 0,
+          "opacity": 1,
+          "inverted": false
+        },
+        {
+          "id": "hole",
+          "shape": {
+            "kind": "ellipse",
+            "x": 100,
+            "y": 220,
+            "w": 160,
+            "h": 200
+          },
+          "mode": "subtract",
+          "feather": 6,
+          "expansion": 0,
+          "opacity": 1,
+          "inverted": false
+        }
+      ]
+    },
+    "intersect": {
+      "kind": "solid",
+      "name": "intersect",
+      "enabled": true,
+      "fill": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "shape": "rect",
+      "size": {
+        "w": 360,
+        "h": 640
+      },
+      "cornerRadius": 0,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "id": "intersect",
+      "trackId": "v1",
+      "start": 20,
+      "duration": 10,
+      "masks": [
+        {
+          "id": "a",
+          "shape": {
+            "kind": "ellipse",
+            "x": 20,
+            "y": 160,
+            "w": 240,
+            "h": 320
+          },
+          "mode": "add",
+          "feather": 0,
+          "expansion": 0,
+          "opacity": 1,
+          "inverted": false
+        },
+        {
+          "id": "b",
+          "shape": {
+            "kind": "ellipse",
+            "x": 100,
+            "y": 160,
+            "w": 240,
+            "h": 320
+          },
+          "mode": "intersect",
+          "feather": 0,
+          "expansion": 0,
+          "opacity": 1,
+          "inverted": false
+        }
+      ]
+    },
+    "invert": {
+      "kind": "solid",
+      "name": "invert",
+      "enabled": true,
+      "fill": {
+        "r": 0.95,
+        "g": 0.75,
+        "b": 0.2,
+        "a": 1
+      },
+      "shape": "rect",
+      "size": {
+        "w": 360,
+        "h": 640
+      },
+      "cornerRadius": 0,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "id": "invert",
+      "trackId": "v1",
+      "start": 30,
+      "duration": 10,
+      "masks": [
+        {
+          "id": "e",
+          "shape": {
+            "kind": "ellipse",
+            "x": 80,
+            "y": 220,
+            "w": 200,
+            "h": 200
+          },
+          "mode": "add",
+          "feather": 12,
+          "expansion": 0,
+          "opacity": 1,
+          "inverted": true
+        }
+      ]
+    },
+    "title": {
+      "kind": "text",
+      "id": "title",
+      "trackId": "v1",
+      "name": "Title",
+      "start": 40,
+      "duration": 20,
+      "enabled": true,
+      "text": {
+        "value": "REVEAL\nTITLE",
+        "box": {
+          "mode": "auto",
+          "width": 300
+        }
+      },
+      "style": {
+        "fontFamily": "Inter",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 72,
+        "fill": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": false,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "masks": [
+        {
+          "id": "wipe",
+          "shape": {
+            "kind": "rect",
+            "x": 0,
+            "y": -200,
+            "w": 0,
+            "h": 1000,
+            "radius": 0
+          },
+          "mode": "add",
+          "feather": 0,
+          "expansion": 0,
+          "opacity": 1,
+          "inverted": false
+        }
+      ],
+      "keyframes": {
+        "masks.wipe.w": [
+          {
+            "frame": 0,
+            "value": 0,
+            "ease": "linear"
+          },
+          {
+            "frame": 19,
+            "value": 360,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    "morph": {
+      "kind": "solid",
+      "name": "morph",
+      "enabled": true,
+      "fill": {
+        "r": 0.3,
+        "g": 0.8,
+        "b": 0.95,
+        "a": 1
+      },
+      "shape": "rect",
+      "size": {
+        "w": 360,
+        "h": 640
+      },
+      "cornerRadius": 0,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "id": "morph",
+      "trackId": "v1",
+      "start": 60,
+      "duration": 20,
+      "masks": [
+        {
+          "id": "p",
+          "shape": {
+            "kind": "path",
+            "d": "M80 220L280 220L280 420L80 420Z"
+          },
+          "mode": "add",
+          "feather": 2,
+          "expansion": 0,
+          "opacity": 1,
+          "inverted": false
+        }
+      ],
+      "keyframes": {
+        "masks.p.path": [
+          {
+            "frame": 0,
+            "value": [
+              80,
+              220,
+              280,
+              220,
+              280,
+              420,
+              80,
+              420
+            ],
+            "ease": "linear"
+          },
+          {
+            "frame": 19,
+            "value": [
+              180,
+              170,
+              330,
+              320,
+              180,
+              470,
+              30,
+              320
+            ],
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    "matte-video": {
+      "kind": "video",
+      "name": "matte-video",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "matte-video",
+      "trackId": "v1",
+      "start": 80,
+      "duration": 10,
+      "mediaId": "video",
+      "masks": [
+        {
+          "id": "r",
+          "shape": {
+            "kind": "rect",
+            "x": 0,
+            "y": 0,
+            "w": 270,
+            "h": 300,
+            "radius": 0
+          },
+          "mode": "add",
+          "feather": 0,
+          "expansion": 0,
+          "opacity": 1,
+          "inverted": false
+        }
+      ],
+      "matte": {
+        "clipId": "matte",
+        "mode": "alpha"
+      }
+    },
+    "matte": {
+      "kind": "solid",
+      "name": "matte",
+      "enabled": true,
+      "fill": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "shape": "rect",
+      "size": {
+        "w": 360,
+        "h": 640
+      },
+      "cornerRadius": 0,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "id": "matte",
+      "trackId": "v2",
+      "start": 80,
+      "duration": 10,
+      "matteOnly": true,
+      "masks": [
+        {
+          "id": "e",
+          "shape": {
+            "kind": "ellipse",
+            "x": 60,
+            "y": 140,
+            "w": 240,
+            "h": 360
+          },
+          "mode": "add",
+          "feather": 20,
+          "expansion": 0,
+          "opacity": 1,
+          "inverted": false
+        }
+      ]
+    }
+  },
+  "markers": [],
+  "captionTracks": {},
+  "textPresetsLocal": [],
+  "sequences": {},
+  "meta": {
+    "createdAt": "2026-11-09T12:00:00.000Z",
+    "modifiedAt": "2026-11-09T12:00:00.000Z",
+    "appVersion": "1.1.0",
+    "generator": {
+      "name": "interop-fixture",
+      "version": "1",
+      "source": "fixtures/interop/masks (Batch 73)"
+    }
+  }
+}

@@ -107,6 +107,8 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   { id: "toggle.linkedSelection", keys: ["Shift+S"], scopes: G },
   // Not in §18 (Batch 37 follow-up): Premiere's Shift+S is Linked selection here.
   { id: "toggle.audioScrub", keys: ["Alt+S"], scopes: G },
+  // Masks (spec §21.18, Batch 73): Alt+M is free (M, Shift+M and Mod+Shift+M are the markers').
+  { id: "canvas.maskMode", keys: ["Alt+M"], scopes: TL_PV },
   { id: "tool.select", keys: ["V"], scopes: G },
   { id: "tool.razor", keys: ["C"], scopes: G },
   { id: "tool.hand", keys: ["H"], scopes: G },

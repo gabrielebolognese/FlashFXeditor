@@ -21,6 +21,7 @@ import { projectSettingsLocked } from "./conversionController.js";
 import { MAX_CLIP_NAME } from "./cutController.js";
 import { patchLiveEdit } from "./liveEdit.js";
 import { canvasInput, cropMode } from "./previewController.js";
+import { addMasks, presetMasks, removeSelectedMasks } from "./maskController.js";
 import { actions, appSettings, documentStore, sessionStore } from "./services.js";
 import { reportTrimLimit } from "./timelineController.js";
 
@@ -230,6 +231,13 @@ export function installPropertiesController(): () => void {
     actions.register("crop.toFrame", () => quickCrop("frame")),
     actions.register("crop.reset", () => quickCrop("reset")),
     actions.register("crop.toggleMode", toggleCropMode),
+    // Masks (Batch 73).
+    actions.register("clip.mask.addRect", () => addMasks("rect")),
+    actions.register("clip.mask.addEllipse", () => addMasks("ellipse")),
+    actions.register("clip.mask.addPath", () => addMasks("path")),
+    actions.register("clip.mask.wipeIn", () => presetMasks("wipeIn")),
+    actions.register("clip.mask.circleReveal", () => presetMasks("circleReveal")),
+    actions.register("clip.mask.removeAll", removeSelectedMasks),
   ];
   return () => {
     for (const stop of stops) stop();

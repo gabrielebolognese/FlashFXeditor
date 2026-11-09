@@ -24,7 +24,10 @@ import type { BackendRenderer } from "./backend.js";
 import { blurRegionInto, DrawRecords, newRecordUniform, pathRegionInto, premultipliedInto, ROLE, showBlurred, showPath, writePathUniform, type BlurRegion, type DrawRecord, type QuadKind, type Rect } from "./drawRecords.js";
 import { fitWithin, hasAlphaFormat } from "./fitWithin.js";
 import type { GlContext } from "./GlContext.js";
-import { BLUR_FRAGMENT, COMPOSITE_BACKDROP_FRAGMENT, COMPOSITE_FRAGMENT, DISSOLVE_FRAGMENT, DISSOLVE_VERTEX, FULLSCREEN_VERTEX, LAYER_VERTEX, PATH_COVER_FRAGMENT, PATH_COVER_VERTEX, PATH_STENCIL_FRAGMENT, PATH_STENCIL_VERTEX, SCALE_ALPHA_FRAGMENT, SCALE_FRAGMENT, SOLID_FRAGMENT, TEXTURED_FRAGMENT } from "./glShaders.js";
+import { coverageSize, evictCoverage, maskDataRows, pickCoverage, writeMaskData, type CoverageEntry } from "./maskTargets.js";
+import { MASK_DATA_WIDTH } from "../../core/masks/maskCoverage.js";
+import type { MaskFrame } from "../compositor/drawList.js";
+import { BLUR_FRAGMENT, COMPOSITE_BACKDROP_FRAGMENT, COMPOSITE_FRAGMENT, DISSOLVE_FRAGMENT, DISSOLVE_VERTEX, FULLSCREEN_VERTEX, LAYER_VERTEX, MASK_FRAGMENT, PATH_COVER_FRAGMENT, PATH_COVER_VERTEX, PATH_STENCIL_FRAGMENT, PATH_STENCIL_VERTEX, SCALE_ALPHA_FRAGMENT, SCALE_FRAGMENT, SOLID_FRAGMENT, TEXTURED_FRAGMENT } from "./glShaders.js";
 import { isHdrColorSpace, toneMapToCanvas } from "./hdr.js";
 import { layerFloats, LAYER_SIZE, LAYER_STRIDE, packLayer, packMat3, pixelsToClipInto } from "./layerUniforms.js";
 import { mipLevelCount, textureBytes } from "./mipmaps.js";
@@ -166,10 +169,21 @@ interface GlGroupTarget {
 }
 
 /** Blend modes and track mattes (Batch 72), built on the first group. */
+/** See WebGpuRenderer's GpuCoverage: a masked clip's coverage (R8, its framebuffer) and its block's data texture (RGBA32F). */
+interface GlCoverage extends CoverageEntry {
+  texture: WebGLTexture | null;
+  framebuffer: WebGLFramebuffer | null;
+  data: WebGLTexture | null;
+  dataRows: number;
+}
+
 interface GlComposite {
   /** The hardware modes (normal, screen, add: blend states) and the others (the W3C composite with the backdrop). */
   hardware: Program;
   backdrop: Program;
+  /** Masks (Batch 73): the coverage pass and the kept coverages. */
+  mask: WebGLProgram;
+  coverages: GlCoverage[];
   groups: GlGroupTarget[];
   /** The copy of the target the non-hardware modes read. */
   copy: GlTexture | null;
@@ -233,6 +247,11 @@ export class WebGl2Renderer implements BackendRenderer {
   private readonly groupTargets: GlGroupTarget[] = [];
   /** See WebGpuRenderer.backdropCopies. */
   backdropCopies = 0;
+  /** See WebGpuRenderer.maskCoveragePasses. */
+  maskCoveragePasses = 0;
+  /** This draw's coverages (Batch 73): group g's clip at `2 (g - 1)`, its matte clip's at `2 (g - 1) + 1`. */
+  private readonly groupMasks: (WebGLTexture | null)[] = [];
+  private maskStaging = new Float32Array(MASK_DATA_WIDTH * 4);
 
   private readonly owner: SurfaceOwner = {
     generation: () => this.resources?.generation ?? -1,
@@ -353,6 +372,7 @@ export class WebGl2Renderer implements BackendRenderer {
         }
         composite.copy?.destroy();
         composite.copy = null;
+        for (const entry of composite.coverages.splice(0)) deleteCoverage(res.gl, entry);
       }
       this.dropScratch(res);
       this.dropPathScratch(res);
@@ -470,6 +490,11 @@ export class WebGl2Renderer implements BackendRenderer {
       gl.bindTexture(gl.TEXTURE_2D, group.matte ? group.matte.surface.texture : null);
       gl.activeTexture(gl.TEXTURE2);
       gl.bindTexture(gl.TEXTURE_2D, backdrop && composite.copy ? composite.copy.surface.texture : null);
+      // Masks (spec §21.18): the clip's coverage and its matte clip's (flags in the uniform say which apply).
+      gl.activeTexture(gl.TEXTURE3);
+      gl.bindTexture(gl.TEXTURE_2D, this.groupMasks[2 * (record.group - 1)] ?? null);
+      gl.activeTexture(gl.TEXTURE4);
+      gl.bindTexture(gl.TEXTURE_2D, this.groupMasks[2 * (record.group - 1) + 1] ?? null);
       const code = record.uniform.fx?.code ?? 0;
       if (backdrop) gl.disable(gl.BLEND);
       else if (code === SCREEN_CODE) gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_COLOR, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -478,6 +503,10 @@ export class WebGl2Renderer implements BackendRenderer {
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
       // The pictures are drawn into on the next draw: leave none bound.
+      gl.bindTexture(gl.TEXTURE_2D, null);
+      gl.activeTexture(gl.TEXTURE3);
+      gl.bindTexture(gl.TEXTURE_2D, null);
+      gl.activeTexture(gl.TEXTURE2);
       gl.bindTexture(gl.TEXTURE_2D, null);
       gl.activeTexture(gl.TEXTURE1);
       gl.bindTexture(gl.TEXTURE_2D, null);
@@ -570,6 +599,13 @@ export class WebGl2Renderer implements BackendRenderer {
     const composite = (res.composite ??= this.buildComposite(res));
     const pool = composite.groups;
     this.groupTargets.length = 0;
+    // Masks (spec §21.18): the coverages first (their passes set their own viewport, program and blending).
+    this.groupMasks.length = 0;
+    for (let g = 1; g <= this.records.groupCount; g++) {
+      const info = this.records.groups[g - 1];
+      this.groupMasks.push(info?.mask ? this.coverage(res, composite, info.mask) : null, info?.matteMask ? this.coverage(res, composite, info.matteMask) : null);
+    }
+    evictCoverage(composite.coverages, this.draws, BLUR_KEEP_DRAWS, (entry) => deleteCoverage(gl, entry));
     this.setView(width, height, true);
     gl.viewport(0, 0, width, height);
     gl.enable(gl.BLEND);
@@ -625,6 +661,59 @@ export class WebGl2Renderer implements BackendRenderer {
     }
   }
 
+  /** See WebGpuRenderer.coverage: the kept coverage of `mask` when it holds the block's version, else drawn. */
+  private coverage(res: Resources, composite: GlComposite, mask: MaskFrame): WebGLTexture | null {
+    const { gl } = res;
+    const picked = pickCoverage(composite.coverages, mask, this.draws);
+    if (picked && !picked.draw && picked.entry.texture) return picked.entry.texture;
+    let entry = picked?.entry ?? null;
+    if (!entry) {
+      entry = { clipId: mask.clipId, version: 0, width: 0, height: 0, used: this.draws, texture: null, framebuffer: null, data: null, dataRows: 0 };
+      composite.coverages.push(entry);
+    }
+    const size = coverageSize(mask.width, mask.height);
+    if (!entry.texture || entry.width !== size.width || entry.height !== size.height) {
+      if (entry.texture) gl.deleteTexture(entry.texture);
+      if (entry.framebuffer) gl.deleteFramebuffer(entry.framebuffer);
+      entry.texture = nearestTexture(gl);
+      gl.texStorage2D(gl.TEXTURE_2D, 1, gl.R8, size.width, size.height);
+      entry.framebuffer = gl.createFramebuffer();
+      gl.bindFramebuffer(gl.FRAMEBUFFER, entry.framebuffer);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, entry.texture, 0);
+      entry.width = size.width;
+      entry.height = size.height;
+    }
+    const rows = maskDataRows(mask);
+    if (!entry.data || entry.dataRows < rows) {
+      if (entry.data) gl.deleteTexture(entry.data);
+      entry.data = nearestTexture(gl);
+      gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, MASK_DATA_WIDTH, rows);
+      entry.dataRows = rows;
+    }
+    const floats = rows * MASK_DATA_WIDTH * 4;
+    if (this.maskStaging.length < floats) this.maskStaging = new Float32Array(floats);
+    writeMaskData(this.maskStaging, mask, size.width, size.height);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, entry.data);
+    // The block is data, not a picture: no premultiplication on the way in.
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, MASK_DATA_WIDTH, rows, gl.RGBA, gl.FLOAT, this.maskStaging, 0);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, entry.framebuffer);
+    gl.viewport(0, 0, size.width, size.height);
+    gl.disable(gl.SCISSOR_TEST);
+    gl.disable(gl.BLEND);
+    gl.useProgram(composite.mask);
+    this.current = null;
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    entry.clipId = mask.clipId;
+    entry.version = mask.version;
+    entry.used = this.draws;
+    this.maskCoveragePasses += 1;
+    return entry.texture;
+  }
+
   /** The copy of the target the non-hardware modes read (one, the target's size). */
   private backdropCopy(res: Resources, composite: GlComposite, width: number, height: number): GlTexture {
     if (!composite.copy || !composite.copy.valid || composite.copy.width !== width || composite.copy.height !== height) {
@@ -643,9 +732,14 @@ export class WebGl2Renderer implements BackendRenderer {
       gl.uniform1i(gl.getUniformLocation(made, "u_picture"), 0);
       gl.uniform1i(gl.getUniformLocation(made, "u_matte"), 1);
       gl.uniform1i(gl.getUniformLocation(made, "u_backdrop"), 2);
+      gl.uniform1i(gl.getUniformLocation(made, "u_mask"), 3);
+      gl.uniform1i(gl.getUniformLocation(made, "u_matteMask"), 4);
       return { program: made, view: gl.getUniformLocation(made, "u_view"), layer: gl.getUniformLocation(made, "u_layer"), mipmapped: null, blur: null, viewDraw: -1 };
     };
-    const composite = { hardware: program("composite", COMPOSITE_FRAGMENT), backdrop: program("composite backdrop", COMPOSITE_BACKDROP_FRAGMENT), groups: [], copy: null, copyUsed: 0 };
+    const mask = linkProgram(gl, "mask coverage", FULLSCREEN_VERTEX, MASK_FRAGMENT);
+    gl.useProgram(mask);
+    gl.uniform1i(gl.getUniformLocation(mask, "u_data"), 0);
+    const composite = { hardware: program("composite", COMPOSITE_FRAGMENT), backdrop: program("composite backdrop", COMPOSITE_BACKDROP_FRAGMENT), mask, coverages: [], groups: [], copy: null, copyUsed: 0 };
     gl.useProgram(null);
     this.current = null;
     return composite;
@@ -1192,4 +1286,25 @@ function linkProgram(gl: WebGL2RenderingContext, label: string, vertex: string, 
   gl.deleteShader(vs);
   gl.deleteShader(fs);
   return program;
+}
+
+/** A bound texture read with texelFetch only (nearest, no mips: complete without levels). */
+function nearestTexture(gl: WebGL2RenderingContext): WebGLTexture {
+  const texture = gl.createTexture();
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  return texture;
+}
+
+function deleteCoverage(gl: WebGL2RenderingContext, entry: GlCoverage): void {
+  if (entry.texture) gl.deleteTexture(entry.texture);
+  if (entry.framebuffer) gl.deleteFramebuffer(entry.framebuffer);
+  if (entry.data) gl.deleteTexture(entry.data);
+  entry.texture = null;
+  entry.framebuffer = null;
+  entry.data = null;
 }

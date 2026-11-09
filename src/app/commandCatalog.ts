@@ -366,6 +366,13 @@ export const COMMANDS: readonly CommandInfo[] = [
   clip("crop.toFrame", "Crop to frame", { icon: Frame }),
   clip("crop.reset", "Reset crop", { icon: RotateCcw }),
   clip("crop.toggleMode", "Crop mode", { icon: Crop, keywords: "enter leave crop" }),
+  // Masks (spec §21.18, Batch 73)
+  clip("clip.mask.addRect", "Add rectangle mask", { icon: Square, keywords: "mask rectangle box reveal cut out" }),
+  clip("clip.mask.addEllipse", "Add ellipse mask", { icon: Circle, keywords: "mask ellipse circle oval reveal vignette" }),
+  clip("clip.mask.addPath", "Add path mask", { icon: Spline, keywords: "mask path pen bezier rotoscope shape" }),
+  clip("clip.mask.wipeIn", "Mask preset: Wipe in", { icon: Square, keywords: "mask reveal wipe left right animate" }),
+  clip("clip.mask.circleReveal", "Mask preset: Circle reveal", { icon: Circle, keywords: "mask reveal iris circle animate" }),
+  clip("clip.mask.removeAll", "Remove masks", { icon: Shapes, keywords: "mask delete clear" }),
 
   // Speed (spec §11, Batch 27)
   speed("clip.speedPanel", "Speed…", { icon: Gauge, keywords: "rate duration" }),
@@ -543,6 +550,7 @@ export const COMMANDS: readonly CommandInfo[] = [
   canvas("canvas.bringForward", "Bring forward", { icon: BringToFront, keywords: "track above order" }),
   canvas("canvas.sendBackward", "Send backward", { icon: SendToBack, keywords: "track below order" }),
   canvas("canvas.lockTrack", "Lock the layer's track", { icon: Lock }),
+  canvas("canvas.maskMode", "Mask mode (toggle)", { icon: Shapes, keywords: "mask edit points handles feather path" }),
   canvas("canvas.duplicate", "Duplicate layer (+20 px)", { icon: CopyPlus, scopes: PV }),
   canvas("canvas.zoomFit", "Preview zoom: Fit", { icon: Expand }),
   canvas("canvas.zoom25", "Preview zoom 25%"),

@@ -58,7 +58,7 @@ import { isAbortError, isWorkerCrash, type FramePriority } from "../../media/wor
 import { newUnitState, type UnitState } from "../../text/anim.js";
 import type { NeighborFrame, UpcomingText } from "../compositor/Compositor.js";
 import { transitionFx, type TransitionFx } from "../../core/document/transitions.js";
-import { type CaptionHighlightFrame, type Composite, type CompoundCompositeLayer, type DissolveLayer, type DrawList, type GroupCompositeLayer, type GroupLayer, type Layer, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextGlyphDraw, type TextCompositeLayer, type TextureLayer, type TransitionCompositeLayer, type UvRect } from "../compositor/drawList.js";
+import { type CaptionHighlightFrame, type Composite, type CompoundCompositeLayer, type DissolveLayer, type DrawList, type GroupCompositeLayer, type GroupLayer, type Layer, type MaskFrame, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextGlyphDraw, type TextCompositeLayer, type TextureLayer, type TransitionCompositeLayer, type UvRect } from "../compositor/drawList.js";
 import type { TextureHandle } from "../gpu/renderer.js";
 import { multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import type { Homography } from "../projection.js";
@@ -316,10 +316,12 @@ export class LayerTextures {
     if (out.list.layers.length === 0) return null;
     this.groupCount += 1;
     out.blend = layer.blend;
+    out.mask = layer.mask;
     out.matte = null;
     if (layer.matte) {
       this.resolveLayers(pane, out.matteList, layer.matte.layers, composite, priority);
       out.matteValue.mode = layer.matte.mode;
+      out.matteValue.mask = layer.matte.mask;
       out.matte = out.matteValue;
     }
     return out;
@@ -390,7 +392,7 @@ export class LayerTextures {
 
   /** A compound clip: its sequence resolved by its own resolver, drawn into its texture (unchanged: kept), shown as one layer. */
   private resolveCompound(pane: 0 | 1, layer: CompoundCompositeLayer, priority: FramePriority): TextureLayer | null {
-    // TODO(batch 73): masks, TODO(batch 74): effects run on the compound target here.
+    // TODO(batch 74): effects run on the compound target here (masks apply through the group path).
     const targets = this.deps.compounds;
     if (!targets) return null;
     const scale = this.renderScale * layer.scale;
@@ -714,6 +716,8 @@ export class LayerTextures {
     if (layer.kind === "group") {
       // Blend mode and track matte (spec §21.17): the clip's layers and its matte's, exactly.
       const { blend, matte } = layer;
+      const mask = layer.mask ? copyMaskFrame(layer.mask) : null;
+      const matteMask = matte?.mask ? copyMaskFrame(matte.mask) : null;
       const mode = matte?.mode ?? null;
       const matteLayers = matte ? [...matte.layers] : null;
       const inner: Layer[] = [];
@@ -723,9 +727,9 @@ export class LayerTextures {
       if (mode && matteLayers) {
         const keyed: Layer[] = [];
         await this.exactLayers(matteLayers, keyed, composite, maxLongEdge, renderScale, unpins);
-        resolvedMatte = { mode, layers: keyed };
+        resolvedMatte = { mode, layers: keyed, mask: matteMask };
       }
-      layers.push({ kind: "group", transform: mutableIdentity(), opacity: 1, persp: null, blend, layers: inner, matte: resolvedMatte });
+      layers.push({ kind: "group", transform: mutableIdentity(), opacity: 1, persp: null, blend, mask, layers: inner, matte: resolvedMatte });
       return;
     }
     if (layer.kind === "shape") {
@@ -1281,7 +1285,7 @@ export class LayerTextures {
 type WritableGroupLayer = Omit<GroupLayer, "layers" | "matte"> & {
   layers: Layer[];
   matte: GroupLayer["matte"];
-  matteValue: { mode: MatteMode; layers: Layer[] };
+  matteValue: { mode: MatteMode; layers: Layer[]; mask: MaskFrame | null };
   list: WritableList;
   matteList: WritableList;
 };
@@ -1289,7 +1293,12 @@ type WritableGroupLayer = Omit<GroupLayer, "layers" | "matte"> & {
 function newGroupLayer(): WritableGroupLayer {
   const list = newList();
   const matteList = newList();
-  return { kind: "group", transform: mutableIdentity(), opacity: 1, persp: null, blend: "normal", layers: list.layers, matte: null, matteValue: { mode: "alpha", layers: matteList.layers }, list, matteList };
+  return { kind: "group", transform: mutableIdentity(), opacity: 1, persp: null, blend: "normal", mask: null, layers: list.layers, matte: null, matteValue: { mode: "alpha", layers: matteList.layers, mask: null }, list, matteList };
+}
+
+/** A copy of a mask frame (export holds its layers across awaits; the compositor reuses its frames). */
+function copyMaskFrame(mask: MaskFrame): MaskFrame {
+  return { ...mask, data: mask.data.slice(0, mask.length), model: [...mask.model] as unknown as MaskFrame["model"], persp: mask.persp ? ([...mask.persp] as unknown as MaskFrame["persp"]) : null };
 }
 
 function newTextureLayer(): WritableTextureLayer {

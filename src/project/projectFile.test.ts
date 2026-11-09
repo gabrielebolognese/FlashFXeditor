@@ -80,7 +80,7 @@ describe("migration hook", () => {
   it("leaves a current file alone", () => {
     const raw = v1();
     expect(migrateProject(raw)).toEqual(raw);
-    expect(SCHEMA_VERSION).toBe(16);
+    expect(SCHEMA_VERSION).toBe(17);
   });
 
   it("opens a schema 1 project (Batch 41): no bins yet, media without sizes", () => {
@@ -115,7 +115,7 @@ describe("migration hook", () => {
     const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
     raw.schemaVersion = 3;
     const parsed = parseProjectFile(JSON.stringify(raw));
-    expect(parsed.schemaVersion).toBe(16);
+    expect(parsed.schemaVersion).toBe(17);
     expect(parsed.meta).not.toHaveProperty("generator");
     expect(parsed.clips).toEqual(project.clips);
     expect(parsed.media).toEqual(project.media);
@@ -126,7 +126,7 @@ describe("migration hook", () => {
     const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
     raw.schemaVersion = 13;
     const parsed = parseProjectFile(JSON.stringify(raw));
-    expect(parsed.schemaVersion).toBe(16);
+    expect(parsed.schemaVersion).toBe(17);
     expect(parsed.settings).not.toHaveProperty("perspective");
     expect(parsed.clips).toEqual(project.clips);
     const clip = Object.values(project.clips).find((c) => "transform" in c) as Project["clips"][string] & { transform: Record<string, unknown> };
@@ -144,7 +144,7 @@ describe("migration hook", () => {
     const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
     raw.schemaVersion = 15;
     const parsed = parseProjectFile(JSON.stringify(raw));
-    expect(parsed.schemaVersion).toBe(16);
+    expect(parsed.schemaVersion).toBe(17);
     expect(parsed.clips).toEqual(project.clips);
     const visual = Object.values(project.clips).filter((c) => c.kind === "video" || c.kind === "text" || c.kind === "solid" || c.kind === "image");
     const [a, b] = visual as [Project["clips"][string], Project["clips"][string]];
@@ -156,6 +156,28 @@ describe("migration hook", () => {
     const bad = JSON.parse(serializeProject(matted, STAMP)) as { clips: Record<string, Record<string, unknown>> };
     (bad.clips[a.id] as Record<string, unknown>).blend = "glow";
     expect(() => parseProjectFile(JSON.stringify(bad))).toThrow(/blend/);
+  });
+
+  it("opens a schema 16 project (before Batch 73) unchanged: no masks; keeps them and their keys through save and open", () => {
+    const project = richProject();
+    const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
+    raw.schemaVersion = 16;
+    const parsed = parseProjectFile(JSON.stringify(raw));
+    expect(parsed.schemaVersion).toBe(17);
+    expect(parsed.clips).toEqual(project.clips);
+    const solid = Object.values(project.clips).find((c) => c.kind === "solid") as Project["clips"][string];
+    expect(solid).toBeDefined();
+    const masks = [
+      { id: "e", shape: { kind: "ellipse", x: 10, y: 10, w: 50, h: 40 }, mode: "add", feather: 40, expansion: 0, opacity: 1, inverted: false },
+      { id: "p", shape: { kind: "path", d: "M0 0L10 0L10 10Z" }, mode: "subtract", feather: 0, expansion: -2, opacity: 0.5, inverted: true },
+    ];
+    const keyframes = { "masks.p.path": [{ frame: 0, value: [0, 0, 10, 0, 10, 10], ease: "linear" }, { frame: 5, value: [0, 0, 20, 0, 20, 20], ease: "linear" }] };
+    const masked = { ...project, clips: { ...project.clips, [solid.id]: { ...solid, masks, keyframes } } } as Project;
+    const back = parseProjectFile(serializeProject(masked, STAMP));
+    expect(back.clips[solid.id]).toMatchObject({ masks, keyframes });
+    const bad = JSON.parse(serializeProject(masked, STAMP)) as { clips: Record<string, { masks: { mode: string }[] }> };
+    (bad.clips[solid.id]?.masks[0] as { mode: string }).mode = "xor";
+    expect(() => parseProjectFile(JSON.stringify(bad))).toThrow(/mode/);
   });
 
   it("keeps meta.generator and a clip's fallbackOf through save and open, and refuses malformed ones", () => {

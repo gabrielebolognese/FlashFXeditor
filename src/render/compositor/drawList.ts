@@ -149,16 +149,35 @@ export interface PathLayer extends LayerBase {
 }
 
 /**
- * A clip drawn with a blend mode or a track matte (spec §21.17, Batch 72): its `layers` are drawn on
- * their own into a transparent picture of the frame, kept where the `matte` layers' picture is opaque
- * or bright (`mode`), and that picture is blended over what is below with `blend`. Its own `transform`
- * is the identity and its `opacity` 1 (the clip's opacity is in its layers). Groups do not nest.
+ * A clip's masks at a frame (spec §21.18, Batch 73): the packed block (core/masks/maskCoverage.ts, its
+ * first `length` floats) over the clip's content box (`width` x `height` content px laid out by `model`,
+ * then `persp` for a 2.5D clip). `version` changes whenever the data does and is unique across
+ * compositors: the renderer keeps a clip's coverage texture while it stays the same.
+ */
+export interface MaskFrame {
+  clipId: ClipId;
+  data: Float32Array;
+  length: number;
+  version: number;
+  width: number;
+  height: number;
+  model: Mat3;
+  persp: Homography | null;
+}
+
+/**
+ * A clip drawn with a blend mode, a track matte or masks (spec §21.17, §21.18): its `layers` are drawn on
+ * their own into a transparent picture of the frame, kept where its `mask` covers it and where the `matte`
+ * layers' picture (itself kept where the matte clip's own `mask` covers it) is opaque or bright (`mode`),
+ * and that picture is blended over what is below with `blend`. Its own `transform` is the identity and its
+ * `opacity` 1 (the clip's opacity is in its layers). Groups do not nest.
  */
 export interface GroupLayer extends LayerBase {
   kind: "group";
   blend: BlendMode;
+  mask: MaskFrame | null;
   layers: readonly Layer[];
-  matte: { mode: MatteMode; layers: readonly Layer[] } | null;
+  matte: { mode: MatteMode; layers: readonly Layer[]; mask: MaskFrame | null } | null;
 }
 
 export type Layer = TextureLayer | DissolveLayer | SolidLayer | PathLayer | GroupLayer;
@@ -357,7 +376,7 @@ export interface ShapeCompositeLayer {
 }
 
 /**
- * A clip with a blend mode or a track matte at its frame (spec §21.17, Batch 72): the composite layers
+ * A clip with a blend mode, a track matte or masks at its frame (spec §21.17, §21.18): the composite layers
  * the clip drew (`layers`), and those of its matte clip at the frame (`matte.layers`, empty while the
  * matte clip is not at the frame; its media on `trackId + MATTE_SLOT` slots). Resolved to a `GroupLayer`.
  */
@@ -366,8 +385,10 @@ export interface GroupCompositeLayer {
   trackId: TrackId;
   clipId: ClipId;
   blend: BlendMode;
+  /** The clip's masks (spec §21.18); null without. */
+  mask: MaskFrame | null;
   layers: readonly PlainCompositeLayer[];
-  matte: { mode: MatteMode; layers: readonly PlainCompositeLayer[] } | null;
+  matte: { mode: MatteMode; layers: readonly PlainCompositeLayer[]; mask: MaskFrame | null } | null;
   /** Always null: the projection of a 2.5D clip is on its layers. */
   persp?: null;
 }

@@ -2,8 +2,8 @@
   "manifestVersion": 1,
   "app": "shorts-editor",
   "appVersion": "1.1.0",
-  "lastBatch": 72,
-  "schemaVersion": 16,
+  "lastBatch": 73,
+  "schemaVersion": 17,
   "project": {
     "file": "project.json",
     "fontsManifest": "fonts/fonts.json",
@@ -292,7 +292,23 @@
       "exclusion"
     ],
     "trackMatte": true,
-    "masks": false,
+    "masks": true,
+    "maskModes": [
+      "add",
+      "subtract",
+      "intersect"
+    ],
+    "maskKeyframeProps": [
+      "masks.<id>.x",
+      "masks.<id>.y",
+      "masks.<id>.w",
+      "masks.<id>.h",
+      "masks.<id>.radius",
+      "masks.<id>.feather",
+      "masks.<id>.expansion",
+      "masks.<id>.opacity",
+      "masks.<id>.path"
+    ],
     "adjustment": false
   },
   "vector": {

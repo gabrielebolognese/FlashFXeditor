@@ -1,7 +1,7 @@
 // The persistent document (spec §5.2). Plain JSON only: no classes, Maps, Sets or undefined-valued
 // keys, so a Project can be serialized as-is and diffed by Immer patches.
 
-export const SCHEMA_VERSION = 16;
+export const SCHEMA_VERSION = 17;
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: JsonValue };
@@ -555,6 +555,45 @@ export interface TrackMatte {
   mode: MatteMode;
 }
 
+/** How a mask combines with the masks above it (spec §21.18, Batch 73), in the UI's order. */
+export const MASK_MODES = ["add", "subtract", "intersect"] as const;
+export type MaskMode = (typeof MASK_MODES)[number];
+
+/** The mask shape kinds (spec §21.18). */
+export const MASK_KINDS = ["rect", "ellipse", "path"] as const;
+export type MaskKind = (typeof MASK_KINDS)[number];
+
+/** A rectangle or an ellipse in the clip's content px: (x, y) its top left corner, w x h its size; `radius` rounds a rectangle's corners. */
+export interface MaskBox {
+  kind: "rect" | "ellipse";
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  radius?: number;
+}
+
+/** A closed outline in the clip's content px, as SVG path data (every subpath is closed). */
+export interface MaskPath {
+  kind: "path";
+  d: string;
+}
+
+/**
+ * A mask (spec §21.18, Batch 73): the clip shows only where its masks, combined in order, cover it.
+ * `feather` softens the edge (content px, each side), `expansion` grows (or with a negative value shrinks)
+ * the shape, `opacity` scales the mask's coverage (0..1), `inverted` uses the outside.
+ */
+export interface Mask {
+  id: string;
+  shape: MaskBox | MaskPath;
+  mode: MaskMode;
+  feather: number;
+  expansion: number;
+  opacity: number;
+  inverted: boolean;
+}
+
 export const CLIP_KINDS = ["video", "audio", "image", "text", "solid", "caption", "compound", "shape", "null"] as const;
 export type ClipKind = (typeof CLIP_KINDS)[number];
 
@@ -584,6 +623,8 @@ export interface ClipBase {
   matte?: TrackMatte;
   /** The clip is not drawn on its own (it is another clip's matte); absent = drawn. */
   matteOnly?: boolean;
+  /** Visual clips (spec §21.18, Batch 73): the clip shows only where these masks, combined in order, cover it; absent or empty = whole. */
+  masks?: Mask[];
 }
 
 export interface MediaClip extends ClipBase {

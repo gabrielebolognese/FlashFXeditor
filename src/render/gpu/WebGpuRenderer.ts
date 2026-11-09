@@ -16,7 +16,7 @@
 // triangles, then a cover rectangle painted where the stencil says inside and the stencil cleared),
 // resolved into a pooled texture that the draw shows as a textured quad with the shape's opacity.
 import type { RGBA } from "../../core/document/types.js";
-import type { DrawList } from "../compositor/drawList.js";
+import type { DrawList, MaskFrame } from "../compositor/drawList.js";
 import { IDENTITY, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import type { BackendRenderer } from "./backend.js";
 import { blurRegionInto, DrawRecords, newRecordUniform, pathRegionInto, premultipliedInto, ROLE, setRect, showBlurred, showPath, writePathUniform, type BlurRegion, type DrawRecord, type QuadKind, type Rect } from "./drawRecords.js";
@@ -27,7 +27,9 @@ import { layerFloats, LAYER_SIZE, LAYER_STRIDE, packLayer, packMat3, pixelsToCli
 import { generateMipmaps, mipLevelCount, textureBytes, type MipGenerator } from "./mipmaps.js";
 import { paddedBytesPerRow, unpadAndUnpremultiply } from "./readback.js";
 import type { AlphaPlane, CanvasTarget, DeviceEvent, OffscreenTarget, Pane, RenderTarget, TextureHandle, TextureOptions, Viewport } from "./renderer.js";
-import { BLUR_WGSL, COMPOSITE_WGSL, DISSOLVE_WGSL, MIPMAP_WGSL, PATH_RESOLVE_WGSL, PATH_WGSL, SCALE_ALPHA_WGSL, SCALE_WGSL, SOLID_WGSL, TEXTURED_WGSL } from "./shaders.js";
+import { coverageSize, evictCoverage, maskDataRows, pickCoverage, writeMaskData, type CoverageEntry } from "./maskTargets.js";
+import { MASK_DATA_WIDTH } from "../../core/masks/maskCoverage.js";
+import { BLUR_WGSL, COMPOSITE_WGSL, DISSOLVE_WGSL, MASK_WGSL, MIPMAP_WGSL, PATH_RESOLVE_WGSL, PATH_WGSL, SCALE_ALPHA_WGSL, SCALE_WGSL, SOLID_WGSL, TEXTURED_WGSL } from "./shaders.js";
 
 /** Textures, offscreen targets and mip levels are rgba8 (spec §9.3); canvases use the preferred format. */
 const TEXTURE_FORMAT: GPUTextureFormat = "rgba8unorm";
@@ -81,8 +83,22 @@ interface GroupTarget {
   bindGroup: GPUBindGroup | null;
   boundMatte: GPUTextureView | null;
   boundBackdrop: GPUTextureView | null;
+  /** Masks (Batch 73): this draw's coverage of its clip and of its matte clip, and the ones it was bound with. */
+  mask: GPUTextureView | null;
+  matteMask: GPUTextureView | null;
+  boundMask: GPUTextureView | null;
+  boundMatteMask: GPUTextureView | null;
   /** The draw that last used it. */
   used: number;
+}
+
+/** A masked clip's coverage (spec §21.18, maskTargets.ts): r8unorm over its content box, and its block's data texture. */
+interface GpuCoverage extends CoverageEntry {
+  texture: GPUTexture | null;
+  view: GPUTextureView | null;
+  data: GPUTexture | null;
+  dataRows: number;
+  dataGroup: GPUBindGroup | null;
 }
 
 /** The copy of a target the non-hardware blend modes read (its format and size). */
@@ -114,6 +130,10 @@ interface CompositeResources {
   dummyView: GPUTextureView;
   groups: GroupTarget[];
   backdrops: BackdropTarget[];
+  /** Masks (Batch 73): the coverage pass and the kept coverages. */
+  maskPipeline: GPURenderPipeline;
+  maskLayout: GPUBindGroupLayout;
+  coverages: GpuCoverage[];
 }
 
 /** Everything that belongs to one GPUDevice. */
@@ -289,6 +309,9 @@ export class WebGpuRenderer implements BackendRenderer {
    * groups all use normal, screen or add makes none (the acceptance counter, `__editor` dev stats).
    */
   backdropCopies = 0;
+  /** Coverage passes drawn (spec §21.18, Batch 73): static masks draw none after their first frame (`__editor` dev stats). */
+  maskCoveragePasses = 0;
+  private maskStaging = new Float32Array(MASK_DATA_WIDTH * 4);
 
   constructor(private readonly gpu: GpuDevice) {
     this.canvasFormat = typeof navigator !== "undefined" && navigator.gpu ? navigator.gpu.getPreferredCanvasFormat() : "bgra8unorm";
@@ -420,6 +443,7 @@ export class WebGpuRenderer implements BackendRenderer {
         entry.matte?.destroy();
       }
       for (const entry of composite.backdrops.splice(0)) entry.texture.destroy();
+      for (const entry of composite.coverages.splice(0)) destroyCoverage(entry);
     }
     this.groupTargets.length = 0;
     const path = this.resources?.path;
@@ -584,11 +608,15 @@ export class WebGpuRenderer implements BackendRenderer {
         }
       }
       if (!group) {
-        group = { width, height, picture: this.newTexture(res, width, height, { label: "group picture" }), matte: null, bindGroup: null, boundMatte: null, boundBackdrop: null, used: this.draws };
+        group = { width, height, picture: this.newTexture(res, width, height, { label: "group picture" }), matte: null, bindGroup: null, boundMatte: null, boundBackdrop: null, mask: null, matteMask: null, boundMask: null, boundMatteMask: null, used: this.draws };
         pool.push(group);
       }
       group.used = this.draws;
       this.groupTargets.push(group);
+      // Masks (spec §21.18): the coverage of the clip and of its matte clip (drawn only when their blocks changed).
+      const info = this.records.groups[g - 1];
+      group.mask = info?.mask ? this.coverage(res, encoder, composite, info.mask) : null;
+      group.matteMask = info?.matteMask ? this.coverage(res, encoder, composite, info.matteMask) : null;
       this.groupPass(res, encoder, pipelines, count, g, ROLE.layers, group.picture, width, height);
       if (this.records.groups[g - 1]?.matte) {
         group.matte ??= this.newTexture(res, width, height, { label: "group matte" });
@@ -608,7 +636,52 @@ export class WebGpuRenderer implements BackendRenderer {
       entry.texture.destroy();
       composite.backdrops.splice(i, 1);
     }
+    evictCoverage(composite.coverages, this.draws, BLUR_KEEP_DRAWS, destroyCoverage);
     return composite;
+  }
+
+  /**
+   * The coverage of `mask` (spec §21.18, maskTargets.ts): the kept texture when it holds the block's
+   * version, else drawn (encoded before the group's passes) into the clip's texture or a new one.
+   */
+  private coverage(res: DeviceResources, encoder: GPUCommandEncoder, composite: CompositeResources, mask: MaskFrame): GPUTextureView | null {
+    const picked = pickCoverage(composite.coverages, mask, this.draws);
+    if (picked && !picked.draw && picked.entry.view) return picked.entry.view;
+    let entry = picked?.entry ?? null;
+    if (!entry) {
+      entry = { clipId: mask.clipId, version: 0, width: 0, height: 0, used: this.draws, texture: null, view: null, data: null, dataRows: 0, dataGroup: null };
+      composite.coverages.push(entry);
+    }
+    const { device } = res;
+    const size = coverageSize(mask.width, mask.height);
+    if (!entry.texture || entry.width !== size.width || entry.height !== size.height) {
+      entry.texture?.destroy();
+      entry.texture = device.createTexture({ label: "mask coverage", size: [size.width, size.height], format: "r8unorm", usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING });
+      entry.view = entry.texture.createView();
+      entry.width = size.width;
+      entry.height = size.height;
+    }
+    const rows = maskDataRows(mask);
+    if (!entry.data || entry.dataRows < rows) {
+      entry.data?.destroy();
+      entry.data = device.createTexture({ label: "mask data", size: [MASK_DATA_WIDTH, rows], format: "rgba32float", usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST });
+      entry.dataRows = rows;
+      entry.dataGroup = device.createBindGroup({ label: "mask data", layout: composite.maskLayout, entries: [{ binding: 0, resource: entry.data.createView() }] });
+    }
+    const floats = rows * MASK_DATA_WIDTH * 4;
+    if (this.maskStaging.length < floats) this.maskStaging = new Float32Array(floats);
+    writeMaskData(this.maskStaging, mask, size.width, size.height);
+    device.queue.writeTexture({ texture: entry.data }, this.maskStaging, { bytesPerRow: MASK_DATA_WIDTH * 16, rowsPerImage: rows }, [MASK_DATA_WIDTH, rows]);
+    const pass = encoder.beginRenderPass({ label: "mask coverage", colorAttachments: [{ view: entry.view as GPUTextureView, loadOp: "clear", storeOp: "store", clearValue: [0, 0, 0, 0] }] });
+    pass.setPipeline(composite.maskPipeline);
+    pass.setBindGroup(0, entry.dataGroup);
+    pass.draw(4);
+    pass.end();
+    entry.clipId = mask.clipId;
+    entry.version = mask.version;
+    entry.used = this.draws;
+    this.maskCoveragePasses += 1;
+    return entry.view;
   }
 
   private groupPass(res: DeviceResources, encoder: GPUCommandEncoder, pipelines: Pipelines, count: number, group: number, role: number, into: GpuTexture, width: number, height: number): void {
@@ -643,7 +716,7 @@ export class WebGpuRenderer implements BackendRenderer {
   private compositeBindGroup(res: DeviceResources, composite: CompositeResources, group: GroupTarget, backdrop: BackdropTarget | null): GPUBindGroup {
     const matte = group.matte?.view ?? null;
     const behind = backdrop?.view ?? null;
-    if (!group.bindGroup || group.boundMatte !== matte || group.boundBackdrop !== behind) {
+    if (!group.bindGroup || group.boundMatte !== matte || group.boundBackdrop !== behind || group.boundMask !== group.mask || group.boundMatteMask !== group.matteMask) {
       group.bindGroup = res.device.createBindGroup({
         label: "composite",
         layout: composite.layout,
@@ -651,10 +724,14 @@ export class WebGpuRenderer implements BackendRenderer {
           { binding: 0, resource: group.picture.view },
           { binding: 1, resource: matte ?? composite.dummyView },
           { binding: 2, resource: behind ?? composite.dummyView },
+          { binding: 3, resource: group.mask ?? composite.dummyView },
+          { binding: 4, resource: group.matteMask ?? composite.dummyView },
         ],
       });
       group.boundMatte = matte;
       group.boundBackdrop = behind;
+      group.boundMask = group.mask;
+      group.boundMatteMask = group.matteMask;
     }
     return group.bindGroup;
   }
@@ -685,7 +762,21 @@ export class WebGpuRenderer implements BackendRenderer {
         { binding: 0, visibility: GPUShaderStage.FRAGMENT, texture },
         { binding: 1, visibility: GPUShaderStage.FRAGMENT, texture },
         { binding: 2, visibility: GPUShaderStage.FRAGMENT, texture },
+        { binding: 3, visibility: GPUShaderStage.FRAGMENT, texture },
+        { binding: 4, visibility: GPUShaderStage.FRAGMENT, texture },
       ],
+    });
+    const maskLayout = device.createBindGroupLayout({ label: "mask data", entries: [{ binding: 0, visibility: GPUShaderStage.FRAGMENT, texture }] });
+    const maskModule = device.createShaderModule({ label: "mask coverage", code: MASK_WGSL });
+    void maskModule.getCompilationInfo().then((info) => {
+      for (const message of info.messages) if (message.type === "error") console.error(`[gpu] mask shader: ${message.message} (line ${message.lineNum})`);
+    });
+    const maskPipeline = device.createRenderPipeline({
+      label: "mask coverage",
+      layout: device.createPipelineLayout({ label: "mask coverage", bindGroupLayouts: [maskLayout] }),
+      vertex: { module: maskModule, entryPoint: "vs" },
+      fragment: { module: maskModule, entryPoint: "fs", targets: [{ format: "r8unorm" }] },
+      primitive: { topology: "triangle-strip" },
     });
     const module = device.createShaderModule({ label: "composite", code: COMPOSITE_WGSL });
     void module.getCompilationInfo().then((info) => {
@@ -701,6 +792,9 @@ export class WebGpuRenderer implements BackendRenderer {
       dummyView: dummy.createView(),
       groups: [],
       backdrops: [],
+      maskPipeline,
+      maskLayout,
+      coverages: [],
     };
   }
 
@@ -1344,4 +1438,12 @@ function groupBindGroup(res: Pick<DeviceResources, "device" | "groupLayout" | "v
       { binding: 1, resource: { buffer: res.layerBuffer, size: LAYER_SIZE } },
     ],
   });
+}
+
+function destroyCoverage(entry: GpuCoverage): void {
+  entry.texture?.destroy();
+  entry.data?.destroy();
+  entry.texture = null;
+  entry.view = null;
+  entry.data = null;
 }

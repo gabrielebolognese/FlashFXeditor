@@ -40,7 +40,7 @@
 //   project size, whatever the quality mode and whatever is on screen.
 // - The backing store is resized inside `render`, so a resize never shows a cleared canvas.
 import { ShapeGeometryCache, workerBuilder, type ShapeGeometryStats } from "../shapes/ShapeGeometryCache.js";
-import type { ClipId, Crop, Frame, Project, RGBA, ShapeClip, TextSpan, TextStyle, Transform } from "../../core/document/types.js";
+import type { ClipId, Crop, Frame, Mask, Project, RGBA, ShapeClip, TextSpan, TextStyle, Transform } from "../../core/document/types.js";
 import { watchDevicePixelRatio } from "../../core/scheduler/devicePixelRatio.js";
 import type { FrameScheduler, RenderView } from "../../core/scheduler/FrameScheduler.js";
 import { createStore, type Store } from "../../core/store/createStore.js";
@@ -107,6 +107,8 @@ export interface PreviewViewDeps extends Omit<LayerTexturesDeps, "onChange" | "w
   solids?(): ReadonlyMap<ClipId, SolidLook> | null;
   /** Shape clips as a Shape section scrub or color drag edits them (Batch 66). */
   shapeEdits?(): ReadonlyMap<ClipId, ShapeClip> | null;
+  /** The canvas mask mode's live masks by clip id while a mask is dragged (Batch 73). */
+  maskEdits?(): ReadonlyMap<ClipId, readonly Mask[]> | null;
   /** Loads the fonts of `style` for `text` (Export frame); resolves true when it had to wait for them. */
   loadFonts?(style: TextStyle, text: string): Promise<boolean>;
   /** True when playback fell behind on the media this playback (1/2 and 1/4 then play its proxy). */
@@ -407,6 +409,7 @@ export class PreviewView implements RenderView {
       override ? null : (this.deps.captions?.() ?? null),
       override ? null : (this.deps.solids?.() ?? null),
       override ? null : (this.deps.shapeEdits?.() ?? null),
+      override ? null : (this.deps.maskEdits?.() ?? null),
     );
     const background = override ? null : (this.deps.background?.() ?? null);
     if (background) composite.background = background;
@@ -715,6 +718,11 @@ export class PreviewView implements RenderView {
     return () => {
       this.viewListeners.delete(listener);
     };
+  }
+
+  /** The content box of `clipId` as the last render drew it (content px -> project px; the canvas mask mode, Batch 73), or null. */
+  contentBox(clipId: ClipId): { readonly model: Mat3; readonly width: number; readonly height: number } | null {
+    return this.compositor.contentBox(clipId);
   }
 
   /**

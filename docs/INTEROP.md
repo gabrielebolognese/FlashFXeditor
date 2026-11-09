@@ -748,6 +748,50 @@ At the i-th of the transition's `before + after` frames the progress is `(i + 1)
 
 The title clip `title` on another video track then carries `"matteOnly": true`. Schema 15 projects open unchanged (migration 15 to 16 changes nothing). `fixtures/interop/compositing` is a complete project: a test chart of the 13 modes (a gradient blended over color bars), a multiply texture over paper, a screen light leak, a video inside a text matte and an inverted luma matte, with an expected frame of each. `npm run test:render` renders them on both backends.
 
+### 5.12 Masks (manifest keys `compositing.masks`, `compositing.maskModes`, `compositing.maskKeyframeProps`; schema 17)
+
+**Masks.** A visual clip (`video`, `image`, `text`, `solid`, `shape`, `compound`) may carry `masks`: a list of shapes that limit where its picture shows. Each mask has a unique `id` within the clip and a `shape`: a box `{ "kind": "rect" | "ellipse", "x", "y", "w", "h", "radius"? }` (top-left corner and size; `radius` rounds a rectangle's corners) or a path `{ "kind": "path", "d": "..." }` (SVG path data: `M`, `L`, `C`, `Q`, `Z` and their relative forms; every subpath is closed; overlaps fill by the nonzero rule). Coordinates are in the clip's **content px**: the media's shown size (after its rotation metadata, before crop) for video and image, `size` for solids and shapes, the sequence size for a compound, and the laid-out text box for text. The mask moves, scales, rotates and tilts with the clip.
+
+**Edges and combining.** `feather` (px, at least 0) softens the edge evenly inside and outside it (a feather of 40 ramps from opaque 40 px inside the outline to clear 40 px outside); `expansion` (px, negative shrinks) grows the shape before feathering; `opacity` (0 to 1) scales the mask's strength; `inverted: true` keeps the outside instead. Masks combine in list order into one coverage: `add` adds to it (capped at 1), `subtract` removes from it, `intersect` keeps only where both are. A list that starts with `subtract` or `intersect` starts from the whole clip. An empty or absent list shows the whole clip.
+
+**Animation.** Keyframe props `masks.<id>.x`, `.y`, `.w`, `.h`, `.radius`, `.feather`, `.expansion`, `.opacity` take numbers; `masks.<id>.path` takes the vector of all the path's point coordinates (`[x0, y0, x1, y1, ...]` in the order they appear in `d`, control points included) and keeps the structure of the base `d`. A path key with another point count than the base path is ignored (the base path shows). The manifest key `compositing.maskKeyframeProps` lists the props.
+
+**Order.** A clip draws: its content (with crop), its masks, its transform, opacity and fades, then its track matte and blend mode (§5.11). A clip used as a track matte keys through its own masks. In a transition the masks of the clip that dominates the frame apply to the transition's picture. Not supported: mask tracking.
+
+```json Clip.solid
+{
+  "id": "reveal",
+  "trackId": "v1",
+  "kind": "solid",
+  "name": "Soft spotlight",
+  "start": 0,
+  "duration": 90,
+  "enabled": true,
+  "fill": { "r": 1, "g": 1, "b": 1, "a": 1 },
+  "shape": "rect",
+  "size": { "w": 1080, "h": 1920 },
+  "cornerRadius": 0,
+  "transform": { "x": 0, "y": 0, "scale": 1, "rotation": 0, "anchor": { "x": 0.5, "y": 0.5 }, "flipH": false, "flipV": false },
+  "opacity": 1,
+  "masks": [
+    { "id": "spot", "shape": { "kind": "ellipse", "x": 140, "y": 560, "w": 800, "h": 800 }, "mode": "add", "feather": 40, "expansion": 0, "opacity": 1, "inverted": false },
+    { "id": "hole", "shape": { "kind": "rect", "x": 440, "y": 860, "w": 200, "h": 200, "radius": 24 }, "mode": "subtract", "feather": 0, "expansion": 0, "opacity": 1, "inverted": false }
+  ],
+  "keyframes": {
+    "masks.spot.w": [
+      { "frame": 0, "value": 0, "ease": "linear" },
+      { "frame": 29, "value": 800, "ease": "linear" }
+    ]
+  }
+}
+```
+
+```json Mask
+{ "id": "shape", "shape": { "kind": "path", "d": "M80 220L280 220L280 420L80 420Z" }, "mode": "intersect", "feather": 2, "expansion": -4, "opacity": 0.8, "inverted": true }
+```
+
+A morph keys the path's points: `"masks.shape.path": [{ "frame": 0, "value": [80, 220, 280, 220, 280, 420, 80, 420], "ease": "linear" }, { "frame": 29, "value": [180, 170, 330, 320, 180, 470, 30, 320], "ease": "linear" }]`. Schema 16 projects open unchanged (migration 16 to 17 changes nothing). `fixtures/interop/masks` is a complete project: a video inside a feathered ellipse, subtract, intersect and invert on solids, a title revealed by a keyed rectangle, a path morph and a masked matte source, with an expected frame of each. `npm run test:render` renders them on both backends.
+
 ## 6. Captions and word timings
 
 The caption track's `captionTracks[<track id>].style` styles every cue; a cue's `styleOverride` sets only the fields it changes. A cue is a `caption` clip with `text` (`\n` for line breaks) and optional `words`: `start` and `end` are integer frames relative to the cue's start, `end` after `start`. A word may start before the cue or end after it: an in-trim keeps the words it hides (negative frames), so a trim back shows them again. With word timings the active word is highlighted as the style's `highlight` says.
@@ -1028,7 +1072,7 @@ One keyframe: a value at a frame relative to the clip start. A key's `ease` shap
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
 | `frame` | integer | yes |  | Relative to the clip start; one key per frame, sorted. Any integer: after a head trim keys before the clip start (negative) or past its end are kept so a trim back restores them. Integer frames at the project frame rate. |
-| `value` | number, or number[] (1 to 4 items) | yes |  | The value: a number, or for a color property an array [r, g, b, a] (straight alpha, 0..1, interpolated per channel). |
+| `value` | number, or number[] (1 to 4096 items) | yes |  | The value: a number, or for a color property an array [r, g, b, a] (straight alpha, 0..1, interpolated per channel), a point [x, y], or a path mask's points [x0, y0, x1, y1, ...] (Batch 73). |
 | `ease` | `"linear"` | `"easeIn"` | `"easeOut"` | `"easeInOut"` | `"hold"` | `"smooth"` | `"snap"` | `"overshoot"` | `"sineIn"` | `"sineOut"` | `"sineInOut"` | `"quadIn"` | `"quadOut"` | `"quadInOut"` | `"cubicIn"` | `"cubicOut"` | `"cubicInOut"` | `"quartIn"` | `"quartOut"` | `"quartInOut"` | `"quintIn"` | `"quintOut"` | `"quintInOut"` | `"expoIn"` | `"expoOut"` | `"expoInOut"` | `"circIn"` | `"circOut"` | `"circInOut"` | `"backIn"` | `"backOut"` | `"backInOut"` | `"elasticIn"` | `"elasticOut"` | `"elasticInOut"` | `"bounceIn"` | `"bounceOut"` | `"bounceInOut"` | `"bezier"` | `"spring"` | yes | `"linear"` | The curve to the next key. |
 | `bezier` | number[] (4 items) | no |  | Ease `bezier`: the CSS cubic-bezier(x1, y1, x2, y2); x1 and x2 are 0..1 (Batch 60). |
 | `spring` | [KeySpring](#keyspring) | no |  | Ease `spring`: damping and frequency; 0.7 and 4 when absent (Batch 60). |
@@ -1048,7 +1092,7 @@ The parameters of a `spring` ease: a damped cosine over the segment that ends ex
 
 Keyframe lists by property id, each sorted by frame.
 
-Value: object of [Keyframe](#keyframe)[] (keys: `transform.x`, `transform.y`, `transform.scale`, `transform.scaleY`, `transform.rotation`, `opacity`, `volume.gainDb`, `transform.anchor.x`, `transform.anchor.y`, `crop.left`, `crop.top`, `crop.right`, `crop.bottom`, `size.w`, `size.h`, `cornerRadius`, `fill`, `stroke.width`, `stroke.color`, `stroke.dashOffset`, `shadow.x`, `shadow.y`, `shadow.blur`, `shadow.spread`, `shadow.color`, `style.fontSize`, `style.letterSpacing`, `style.fill`, `text.counter.value`, `transform.position`, `transform.rotationX`, `transform.rotationY`, `transform.z`, and keys matching `^paths\.([A-Za-z0-9_-]+)\.(trim\.(?:start|end|offset)|stroke\.(?:width|color|dashOffset)|fill|primitive\.([A-Za-z]+))$`, `^animators\.([A-Za-z0-9_-]+)\.(selector\.(?:start|end|offset)|props\.(?:x|y|scale|rotation|opacity|blur|tracking|fill))$`).
+Value: object of [Keyframe](#keyframe)[] (keys: `transform.x`, `transform.y`, `transform.scale`, `transform.scaleY`, `transform.rotation`, `opacity`, `volume.gainDb`, `transform.anchor.x`, `transform.anchor.y`, `crop.left`, `crop.top`, `crop.right`, `crop.bottom`, `size.w`, `size.h`, `cornerRadius`, `fill`, `stroke.width`, `stroke.color`, `stroke.dashOffset`, `shadow.x`, `shadow.y`, `shadow.blur`, `shadow.spread`, `shadow.color`, `style.fontSize`, `style.letterSpacing`, `style.fill`, `text.counter.value`, `transform.position`, `transform.rotationX`, `transform.rotationY`, `transform.z`, and keys matching `^paths\.([A-Za-z0-9_-]+)\.(trim\.(?:start|end|offset)|stroke\.(?:width|color|dashOffset)|fill|primitive\.([A-Za-z]+))$`, `^animators\.([A-Za-z0-9_-]+)\.(selector\.(?:start|end|offset)|props\.(?:x|y|scale|rotation|opacity|blur|tracking|fill))$`, `^masks\.([A-Za-z0-9_-]+)\.(x|y|w|h|radius|feather|expansion|opacity|path)$`).
 
 #### Transition
 
@@ -1074,6 +1118,42 @@ A track matte (Batch 72): the clip shows only where the matte clip is opaque (al
 | --- | --- | --- | --- | --- |
 | `clipId` | string (not empty) | yes |  | A visual clip of a video track in the same sequence (not the clip itself). While it is not at the frame the matte is empty: alpha and luma hide the clip, the inverted modes show it whole. |
 | `mode` | `"alpha"` | `"alphaInverted"` | `"luma"` | `"lumaInverted"` | yes | `"alpha"` | What of the matte clip is used. |
+
+#### Mask
+
+A mask (Batch 73): the clip shows only where its masks, combined in order, cover it. Values are in the clip's content px (a picture's own px, a solid's size, a text box, a shape's view box, a compound's sequence frame).
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `id` | string (not empty) | yes |  | Unique among the clip's masks: letters, digits, `_` or `-` (keyframe ids are `masks.<id>.<field>`). |
+| `shape` | [MaskBox](#maskbox) | [MaskPath](#maskpath) | yes |  | A rectangle or ellipse box, or a closed path. |
+| `mode` | `"add"` | `"subtract"` | `"intersect"` | yes | `"add"` | How it combines with the masks before it: add (union), subtract, intersect. A first mask that subtracts or intersects starts from the whole clip. |
+| `feather` | number (>= 0) | yes | `0` | Edge softness on each side of the outline, content px (0 keeps a one pixel antialiased edge). |
+| `expansion` | number | yes | `0` | Grows the shape by this many content px (negative shrinks it). |
+| `opacity` | number (>= 0, <= 1) | yes | `1` | Scales the mask's coverage. |
+| `inverted` | boolean | yes | `false` | Uses the outside of the shape. |
+
+#### MaskBox
+
+A rectangle or an ellipse mask shape (Batch 73), content px.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `kind` | `"rect"` | `"ellipse"` | yes |  | Kind. |
+| `x` | number | yes |  | Left edge. |
+| `y` | number | yes |  | Top edge. |
+| `w` | number (>= 0) | yes |  | Width. |
+| `h` | number (>= 0) | yes |  | Height. |
+| `radius` | number (>= 0) | no | `0` | Rectangles: corner radius (at most half the shorter side). |
+
+#### MaskPath
+
+A path mask shape (Batch 73): SVG path data in content px; every subpath is closed. Its points (every coordinate pair of the parsed M, L, C form in order) are the value of `masks.<id>.path` keys.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `kind` | `"path"` | yes |  | Kind. |
+| `d` | string | yes |  | SVG path data (M L H V C S Q T A Z, absolute or relative). |
 
 #### FallbackOf
 
@@ -1502,7 +1582,7 @@ project.json.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `schemaVersion` | integer (>= 1) | yes | `16` | The schema version; this build writes and reads up to the current one. |
+| `schemaVersion` | integer (>= 1) | yes | `17` | The schema version; this build writes and reads up to the current one. |
 | `id` | string (not empty) | yes |  | Unique id, never changes (uuid v4 recommended). |
 | `name` | string | yes |  | Project name. |
 | `settings` | [Settings](#settings) | yes |  | Frame and time base. |
@@ -1545,6 +1625,7 @@ The fields every clip has.
 | `blend` | `"normal"` | `"darken"` | `"multiply"` | `"colorBurn"` | `"lighten"` | `"screen"` | `"colorDodge"` | `"add"` | `"overlay"` | `"softLight"` | `"hardLight"` | `"difference"` | `"exclusion"` | no | `"normal"` | Visual clips (Batch 72): how the clip blends with the picture below it (W3C formulas; `add` is linear dodge). |
 | `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
 | `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
+| `masks` | [Mask](#mask)[] | no |  | Visual clips (Batch 73): masks combined in order; absent or empty = the whole clip shows. |
 
 #### Clip.video
 
@@ -1569,6 +1650,7 @@ A video clip.
 | `blend` | `"normal"` | `"darken"` | `"multiply"` | `"colorBurn"` | `"lighten"` | `"screen"` | `"colorDodge"` | `"add"` | `"overlay"` | `"softLight"` | `"hardLight"` | `"difference"` | `"exclusion"` | no | `"normal"` | Visual clips (Batch 72): how the clip blends with the picture below it (W3C formulas; `add` is linear dodge). |
 | `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
 | `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
+| `masks` | [Mask](#mask)[] | no |  | Visual clips (Batch 73): masks combined in order; absent or empty = the whole clip shows. |
 | `mediaId` | string (not empty) | yes |  | The media item it plays; a clip whose item was removed stays as an offline clip. |
 | `in` | integer (>= 0) | yes |  | Source in point. Integer microseconds. |
 | `out` | integer (>= 1) | yes |  | Source out point; `out - in` equals `duration * speed` frame times (within one frame). Integer microseconds. |
@@ -1608,6 +1690,7 @@ A audio clip.
 | `blend` | `"normal"` | `"darken"` | `"multiply"` | `"colorBurn"` | `"lighten"` | `"screen"` | `"colorDodge"` | `"add"` | `"overlay"` | `"softLight"` | `"hardLight"` | `"difference"` | `"exclusion"` | no | `"normal"` | Visual clips (Batch 72): how the clip blends with the picture below it (W3C formulas; `add` is linear dodge). |
 | `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
 | `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
+| `masks` | [Mask](#mask)[] | no |  | Visual clips (Batch 73): masks combined in order; absent or empty = the whole clip shows. |
 | `mediaId` | string (not empty) | yes |  | The media item it plays; a clip whose item was removed stays as an offline clip. |
 | `in` | integer (>= 0) | yes |  | Source in point. Integer microseconds. |
 | `out` | integer (>= 1) | yes |  | Source out point; `out - in` equals `duration * speed` frame times (within one frame). Integer microseconds. |
@@ -1644,6 +1727,7 @@ A image clip.
 | `blend` | `"normal"` | `"darken"` | `"multiply"` | `"colorBurn"` | `"lighten"` | `"screen"` | `"colorDodge"` | `"add"` | `"overlay"` | `"softLight"` | `"hardLight"` | `"difference"` | `"exclusion"` | no | `"normal"` | Visual clips (Batch 72): how the clip blends with the picture below it (W3C formulas; `add` is linear dodge). |
 | `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
 | `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
+| `masks` | [Mask](#mask)[] | no |  | Visual clips (Batch 73): masks combined in order; absent or empty = the whole clip shows. |
 | `mediaId` | string (not empty) | yes |  | The media item it plays; a clip whose item was removed stays as an offline clip. |
 | `in` | integer (>= 0) | yes |  | Source in point. Integer microseconds. |
 | `out` | integer (>= 1) | yes |  | Source out point; `out - in` equals `duration * speed` frame times (within one frame). Integer microseconds. |
@@ -1683,6 +1767,7 @@ A text clip.
 | `blend` | `"normal"` | `"darken"` | `"multiply"` | `"colorBurn"` | `"lighten"` | `"screen"` | `"colorDodge"` | `"add"` | `"overlay"` | `"softLight"` | `"hardLight"` | `"difference"` | `"exclusion"` | no | `"normal"` | Visual clips (Batch 72): how the clip blends with the picture below it (W3C formulas; `add` is linear dodge). |
 | `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
 | `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
+| `masks` | [Mask](#mask)[] | no |  | Visual clips (Batch 73): masks combined in order; absent or empty = the whole clip shows. |
 | `text` | [TextContent](#textcontent) | yes |  | What it says. |
 | `style` | [TextStyle](#textstyle) | yes |  | Its look. |
 | `animIn` | [TextAnim](#textanim) | no |  | In animation. |
@@ -1797,6 +1882,7 @@ A solid or shape layer: `size` project px at scale 1.
 | `blend` | `"normal"` | `"darken"` | `"multiply"` | `"colorBurn"` | `"lighten"` | `"screen"` | `"colorDodge"` | `"add"` | `"overlay"` | `"softLight"` | `"hardLight"` | `"difference"` | `"exclusion"` | no | `"normal"` | Visual clips (Batch 72): how the clip blends with the picture below it (W3C formulas; `add` is linear dodge). |
 | `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
 | `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
+| `masks` | [Mask](#mask)[] | no |  | Visual clips (Batch 73): masks combined in order; absent or empty = the whole clip shows. |
 | `fill` | [RGBA](#rgba) | [Gradient](#gradient) | [GradientFill](#gradientfill) | yes |  | A color or a vertical two-stop gradient. |
 | `shape` | `"rect"` | `"roundedRect"` | `"ellipse"` | `"line"` | yes | `"rect"` | The shape. |
 | `size` | [Size](#size) | yes |  | Width and height at scale 1, project px. |
@@ -1832,6 +1918,7 @@ A nested sequence shown as one layer (Batch 62): inner frame = `offset + (frame 
 | `blend` | `"normal"` | `"darken"` | `"multiply"` | `"colorBurn"` | `"lighten"` | `"screen"` | `"colorDodge"` | `"add"` | `"overlay"` | `"softLight"` | `"hardLight"` | `"difference"` | `"exclusion"` | no | `"normal"` | Visual clips (Batch 72): how the clip blends with the picture below it (W3C formulas; `add` is linear dodge). |
 | `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
 | `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
+| `masks` | [Mask](#mask)[] | no |  | Visual clips (Batch 73): masks combined in order; absent or empty = the whole clip shows. |
 | `sequenceId` | string (not empty) | yes |  | The sequence it shows (a key of `Project.sequences`); instances may share one. |
 | `offset` | integer (>= 0) | yes | `0` | The sequence frame shown at the clip's first frame. Integer frames at the project frame rate. |
 | `transform` | [Transform](#transform) | yes |  | Placement. |
@@ -1863,6 +1950,7 @@ A vector graphic (Batch 65): paths drawn in order in a view box of `size` projec
 | `blend` | `"normal"` | `"darken"` | `"multiply"` | `"colorBurn"` | `"lighten"` | `"screen"` | `"colorDodge"` | `"add"` | `"overlay"` | `"softLight"` | `"hardLight"` | `"difference"` | `"exclusion"` | no | `"normal"` | Visual clips (Batch 72): how the clip blends with the picture below it (W3C formulas; `add` is linear dodge). |
 | `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
 | `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
+| `masks` | [Mask](#mask)[] | no |  | Visual clips (Batch 73): masks combined in order; absent or empty = the whole clip shows. |
 | `size` | [Size](#size) | yes |  | The view box: width and height at scale 1, project px. |
 | `paths` | [ShapePath](#shapepath)[] | yes | `[]` | The paths, bottom to top. |
 | `transform` | [Transform](#transform) | yes |  | Placement. |
@@ -1893,6 +1981,7 @@ An invisible controller (Batch 69): never drawn or exported, a parent for other 
 | `blend` | `"normal"` | `"darken"` | `"multiply"` | `"colorBurn"` | `"lighten"` | `"screen"` | `"colorDodge"` | `"add"` | `"overlay"` | `"softLight"` | `"hardLight"` | `"difference"` | `"exclusion"` | no | `"normal"` | Visual clips (Batch 72): how the clip blends with the picture below it (W3C formulas; `add` is linear dodge). |
 | `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
 | `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
+| `masks` | [Mask](#mask)[] | no |  | Visual clips (Batch 73): masks combined in order; absent or empty = the whole clip shows. |
 | `size` | [Size](#size) | yes | `{"w":100,"h":100}` | The selection outline: width and height at scale 1, project px. |
 | `transform` | [Transform](#transform) | yes |  | Placement. |
 | `keyframes` | [Keyframes](#keyframes) | no |  | Animated properties, including `transform.position`. |
@@ -2065,6 +2154,7 @@ A caption cue. Its style is its track's with `styleOverride` on top.
 | `blend` | `"normal"` | `"darken"` | `"multiply"` | `"colorBurn"` | `"lighten"` | `"screen"` | `"colorDodge"` | `"add"` | `"overlay"` | `"softLight"` | `"hardLight"` | `"difference"` | `"exclusion"` | no | `"normal"` | Visual clips (Batch 72): how the clip blends with the picture below it (W3C formulas; `add` is linear dodge). |
 | `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
 | `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
+| `masks` | [Mask](#mask)[] | no |  | Visual clips (Batch 73): masks combined in order; absent or empty = the whole clip shows. |
 | `text` | string | yes |  | Plain text with `\n` line breaks. |
 | `words` | [CaptionWord](#captionword)[] | no |  | Word timings (karaoke), relative to the cue start. |
 | `styleOverride` | [CaptionStyleOverride](#captionstyleoverride) | no |  | The cue's own style. |

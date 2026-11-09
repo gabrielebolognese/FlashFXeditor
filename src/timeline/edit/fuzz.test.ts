@@ -406,3 +406,17 @@ describe("Blend modes and track mattes (Batch 72)", { timeout: 60_000 }, () => {
     });
   }
 });
+
+describe("Masks (Batch 73)", { timeout: 60_000 }, () => {
+  // The masks ops are weighted as one area in the full fuzz: boosted here, where they are the subject.
+  const ops = opsOf("masks", "compositing", "split", "delete", "clipboard", "move", "speed", "transitions", "keyframes").map((op) => (op.area === "masks" ? { ...op, weight: (op.weight ?? 1) * 4 } : op));
+  for (const seed of [731, 732, 733]) {
+    it(`mask edits mixed with edits keep every invariant (seed ${seed})`, () => {
+      const result = property({ seed, steps: 400, ops });
+      expect(result.areas.get("masks") ?? 0).toBeGreaterThan(50);
+      // The run left masks and mask keys behind at all.
+      const clips = Object.values(result.final.clips) as { masks?: unknown[]; keyframes?: Record<string, unknown> }[];
+      expect(clips.some((clip) => (clip.masks?.length ?? 0) > 0)).toBe(true);
+    });
+  }
+});

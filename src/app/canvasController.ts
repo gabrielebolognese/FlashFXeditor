@@ -68,6 +68,13 @@ function lockTracks(): void {
   if (trackIds.length > 0) setTracksFlag(trackIds, "locked", true);
 }
 
+/** Alt+M (Batch 73): mask mode on the one selected layer, or off. Declined when neither applies. */
+function toggleMaskMode(): boolean {
+  if (canvasInput.exitMaskMode()) return true;
+  const ids = selectedLayerIds();
+  return ids.length === 1 && canvasInput.enterMaskMode(ids[0] as ClipId);
+}
+
 /** The menu closed: the keyboard goes back to the preview (the menu owned it as a dialog). */
 export function closeCanvasMenu(): void {
   if (!canvasMenu.getState()) return;
@@ -89,11 +96,12 @@ export function installCanvasController(): () => void {
     actions.register("canvas.bringForward", () => arrange("forward")),
     actions.register("canvas.sendBackward", () => arrange("backward")),
     actions.register("canvas.lockTrack", lockTracks),
+    actions.register("canvas.maskMode", toggleMaskMode),
     // Esc (spec §18 "Cancel gesture"): cancels a timeline or canvas gesture, else ends inline text
-    // editing (§7.7), else leaves crop mode (Batch 26), else closes Remove silence's row (Batch 38),
+    // editing (§7.7), else leaves crop mode (Batch 26) or mask mode (Batch 73), else closes Remove silence's row (Batch 38),
     // else the fullscreen preview (§7.8), else the Export tab (§16: back to the properties); declined
     // when none, so popovers and the browser get it.
-    actions.register("app.cancel", () => timelineView.cancelGesture() || canvasInput.cancel() || textEditor.end(true) || canvasInput.exitCropMode() || cancelRemoveSilence() || exitFullscreen() || closeExportTab() || closeCompound(sessionStore)),
+    actions.register("app.cancel", () => timelineView.cancelGesture() || canvasInput.cancel() || textEditor.end(true) || canvasInput.exitCropMode() || canvasInput.exitMaskMode() || cancelRemoveSilence() || exitFullscreen() || closeExportTab() || closeCompound(sessionStore)),
   ];
   return () => {
     for (const stop of stops) stop();

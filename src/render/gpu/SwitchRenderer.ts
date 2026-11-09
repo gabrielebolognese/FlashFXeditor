@@ -98,6 +98,10 @@ export class SwitchRenderer implements Renderer {
     return this.chosen?.backdropCopies ?? 0;
   }
 
+  get maskCoveragePasses(): number {
+    return this.chosen?.maskCoveragePasses ?? 0;
+  }
+
   subscribe(listener: (event: DeviceEvent) => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);

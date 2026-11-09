@@ -14,7 +14,7 @@
 // projective (`wRow` holds the bottom row) and the vertex stages output w, so the GPU interpolates UVs
 // perspective-correctly. Every step that grows or moves a quad multiplies the whole projective matrix.
 import type { GradientFill, RGBA } from "../../core/document/types.js";
-import type { DrawList, GroupLayer, Layer, PathDraw, PathLayer, SolidLayer, UvRect } from "../compositor/drawList.js";
+import type { DrawList, GroupLayer, Layer, MaskFrame, PathDraw, PathLayer, SolidLayer, UvRect } from "../compositor/drawList.js";
 import { blendCode, isHardwareBlend } from "../../core/effects/blendModes.js";
 import { matteCode } from "../../core/effects/trackMatte.js";
 import { invertInto, multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
@@ -60,11 +60,25 @@ export interface DrawRecord<T extends TextureHandle> {
   role: number;
 }
 
-/** The groups of a build (spec §21.17): per group, whether its composite reads the backdrop and whether it has a matte. */
+/**
+ * The groups of a build (spec §21.17): per group, whether its composite reads the backdrop and whether it
+ * has a matte; the masks (spec §21.18, Batch 73) of its clip and of its matte clip, whose coverage the
+ * composite multiplies the picture and the matte picture by.
+ */
 export interface GroupInfo {
   backdrop: boolean;
   matte: boolean;
+  mask: MaskFrame | null;
+  matteMask: MaskFrame | null;
 }
+
+/**
+ * Where a composite record keeps its mask maps (spec §21.18): in its style's stop colors (a composite has
+ * no gradient). Floats 0-11 hold the rows (as vec4, the 4th unused) of the clip's mask map, 12-23 the
+ * matte clip's, 24 and 25 whether each is on. A mask map takes a target px (x, y, 1) to the content box's
+ * unit square (x / w, y / h after the divide by the third row).
+ */
+export const MASK_MAP = { mask: 0, matteMask: 12, flags: 24 } as const;
 
 /** A record's uniform, writable. */
 export type RecordUniform = DrawRecord<TextureHandle>["uniform"];
@@ -228,9 +242,11 @@ export class DrawRecords<T extends TextureHandle> {
     this.role = ROLE.target;
     if (!drawn) return;
     this.groupCount = index;
-    const info = (this.groups[index - 1] ??= { backdrop: false, matte: false });
+    const info = (this.groups[index - 1] ??= { backdrop: false, matte: false, mask: null, matteMask: null });
     info.backdrop = !isHardwareBlend(layer.blend);
     info.matte = matte;
+    info.mask = layer.mask;
+    info.matteMask = matte ? (layer.matte?.mask ?? null) : null;
     const record = this.nextRecord("composite", scissor);
     record.group = index;
     const list = this.list as DrawList;
@@ -239,6 +255,12 @@ export class DrawRecords<T extends TextureHandle> {
     const fx = u.fx as { code: number; dx: number };
     fx.code = blendCode(layer.blend);
     fx.dx = matte && layer.matte ? matteCode(layer.matte.mode) : 0;
+    const maps = u.style.stopColor;
+    maps.fill(0);
+    if (info.mask && !writeMaskMap(maps, MASK_MAP.mask, view, info.mask)) info.mask = null;
+    if (info.matteMask && !writeMaskMap(maps, MASK_MAP.matteMask, view, info.matteMask)) info.matteMask = null;
+    maps[MASK_MAP.flags] = info.mask ? 1 : 0;
+    maps[MASK_MAP.flags + 1] = info.matteMask ? 1 : 0;
   }
 
   /** A flat color quad. */
@@ -537,6 +559,41 @@ function copyLayer<T extends TextureHandle>(record: DrawRecord<T>, view: Mat3, l
 }
 
 const projective = newHomography();
+const maskForward = newHomography();
+const maskBox = mutableIdentity();
+const IDENTITY_H: Homography = [1, 0, 0, 1, 0, 0, 0, 0, 1];
+
+/**
+ * Writes the mask map of `mask` (spec §21.18) at `offset` of `out`: the inverse of target px <- content box
+ * unit square (`view * persp * model * scale(w, h)`), as three vec4 rows. False when it cannot be inverted.
+ */
+export function writeMaskMap(out: Float32Array, offset: number, view: Mat3, mask: MaskFrame): boolean {
+  multiplyInto(maskBox, mask.model, setMat(maskBox, mask.width, 0, 0, mask.height, 0, 0));
+  const h = affineTimesHomography(maskForward, view, homographyTimesAffine(maskForward, mask.persp ?? IDENTITY_H, maskBox));
+  // Rows of the 3x3 [[a, c, tx], [b, d, ty], [g, h, i]].
+  const m00 = h[0], m01 = h[2], m02 = h[4];
+  const m10 = h[1], m11 = h[3], m12 = h[5];
+  const m20 = h[6], m21 = h[7], m22 = h[8];
+  const c00 = m11 * m22 - m12 * m21;
+  const c01 = m12 * m20 - m10 * m22;
+  const c02 = m10 * m21 - m11 * m20;
+  const det = m00 * c00 + m01 * c01 + m02 * c02;
+  if (!Number.isFinite(det) || Math.abs(det) < 1e-12) return false;
+  const k = 1 / det;
+  out[offset] = c00 * k;
+  out[offset + 1] = (m02 * m21 - m01 * m22) * k;
+  out[offset + 2] = (m01 * m12 - m02 * m11) * k;
+  out[offset + 3] = 0;
+  out[offset + 4] = c01 * k;
+  out[offset + 5] = (m00 * m22 - m02 * m20) * k;
+  out[offset + 6] = (m02 * m10 - m00 * m12) * k;
+  out[offset + 7] = 0;
+  out[offset + 8] = c02 * k;
+  out[offset + 9] = (m01 * m20 - m00 * m21) * k;
+  out[offset + 10] = (m00 * m11 - m01 * m10) * k;
+  out[offset + 11] = 0;
+  return true;
+}
 const pathToClip = mutableIdentity();
 
 /** `out`'s matrix = `left * h` (affine after projective; `h` is a homography, or a matrix `m` with the bottom row `w`). */

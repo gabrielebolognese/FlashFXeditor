@@ -4,9 +4,9 @@
 // the defaults of `normalize` all come from it. A batch that adds a field adds it here in the same commit
 // (spec §21.1). Pure: no DOM.
 import { MAX_GAIN_DB, MAX_SPEED, MIN_GAIN_DB } from "./limits.js";
-import { ANIMATOR_PROP_PATTERN, KEYFRAME_PROPS, SHAPE_PROP_PATTERN } from "./keyframes.js";
+import { ANIMATOR_PROP_PATTERN, KEYFRAME_PROPS, MASK_PROP_PATTERN, SHAPE_PROP_PATTERN } from "./keyframes.js";
 import { PRIMITIVE_LIMITS } from "../shapes/primitives.js";
-import { BLEND_MODES, MATTE_MODES, CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, LABEL_COLORS, PRESET_SET_IDS, SCHEMA_VERSION, FILL_RULES, LINE_CAPS, LINE_JOINS, SOLID_SHAPE_IDS, STROKE_ALIGNS, COUNTER_SEPARATORS, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_DIRECTIONS, TRANSITION_KINDS, type JsonValue } from "./types.js";
+import { BLEND_MODES, MASK_MODES, MATTE_MODES, CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, LABEL_COLORS, PRESET_SET_IDS, SCHEMA_VERSION, FILL_RULES, LINE_CAPS, LINE_JOINS, SOLID_SHAPE_IDS, STROKE_ALIGNS, COUNTER_SEPARATORS, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_DIRECTIONS, TRANSITION_KINDS, type JsonValue } from "./types.js";
 
 export type FieldType =
   | { t: "string"; nonEmpty?: boolean }
@@ -197,7 +197,7 @@ const SCHEMAS: ObjectSchema[] = [
     types: ["KeyData"],
     fields: {
       frame: req(int(), `Relative to the clip start; one key per frame, sorted. Any integer: after a head trim keys before the clip start (negative) or past its end are kept so a trim back restores them. ${FRAMES}`),
-      value: req({ t: "numberOrVector", max: 4 }, "The value: a number, or for a color property an array [r, g, b, a] (straight alpha, 0..1, interpolated per channel)."),
+      value: req({ t: "numberOrVector", max: 4096 }, "The value: a number, or for a color property an array [r, g, b, a] (straight alpha, 0..1, interpolated per channel), a point [x, y], or a path mask's points [x0, y0, x1, y1, ...] (Batch 73)."),
       ease: req(oneOf(EASE_IDS), "The curve to the next key.", "linear"),
       bezier: opt({ t: "array", item: num, length: 4 }, "Ease `bezier`: the CSS cubic-bezier(x1, y1, x2, y2); x1 and x2 are 0..1 (Batch 60)."),
       spring: opt(obj("KeySpring"), "Ease `spring`: damping and frequency; 0.7 and 4 when absent (Batch 60)."),
@@ -216,7 +216,7 @@ const SCHEMAS: ObjectSchema[] = [
     doc: "Keyframe lists by property id, each sorted by frame.",
     types: ["Keyframes"],
     fields: {},
-    value: { t: "record", item: { t: "array", item: obj("Keyframe") }, keys: KEYFRAME_PROPS, keyPatterns: [SHAPE_PROP_PATTERN.source, ANIMATOR_PROP_PATTERN.source] },
+    value: { t: "record", item: { t: "array", item: obj("Keyframe") }, keys: KEYFRAME_PROPS, keyPatterns: [SHAPE_PROP_PATTERN.source, ANIMATOR_PROP_PATTERN.source, MASK_PROP_PATTERN.source] },
   },
   {
     name: "Transition",
@@ -241,6 +241,42 @@ const SCHEMAS: ObjectSchema[] = [
     fields: {
       clipId: req(text, "A visual clip of a video track in the same sequence (not the clip itself). While it is not at the frame the matte is empty: alpha and luma hide the clip, the inverted modes show it whole."),
       mode: req(oneOf(MATTE_MODES), "What of the matte clip is used.", "alpha"),
+    },
+  },
+  {
+    name: "Mask",
+    doc: "A mask (Batch 73): the clip shows only where its masks, combined in order, cover it. Values are in the clip's content px (a picture's own px, a solid's size, a text box, a shape's view box, a compound's sequence frame).",
+    types: ["Mask"],
+    fields: {
+      id: req(text, "Unique among the clip's masks: letters, digits, `_` or `-` (keyframe ids are `masks.<id>.<field>`)."),
+      shape: req({ t: "union", options: [{ when: "w", label: "box", type: obj("MaskBox") }, { when: "d", label: "path", type: obj("MaskPath") }] }, "A rectangle or ellipse box, or a closed path."),
+      mode: req(oneOf(MASK_MODES), "How it combines with the masks before it: add (union), subtract, intersect. A first mask that subtracts or intersects starts from the whole clip.", "add"),
+      feather: req(nonNeg, "Edge softness on each side of the outline, content px (0 keeps a one pixel antialiased edge).", 0),
+      expansion: req(num, "Grows the shape by this many content px (negative shrinks it).", 0),
+      opacity: req(range(0, 1), "Scales the mask's coverage.", 1),
+      inverted: req(bool, "Uses the outside of the shape.", false),
+    },
+  },
+  {
+    name: "MaskBox",
+    doc: "A rectangle or an ellipse mask shape (Batch 73), content px.",
+    types: ["MaskBox"],
+    fields: {
+      kind: req(oneOf(["rect", "ellipse"]), "Kind."),
+      x: req(num, "Left edge."),
+      y: req(num, "Top edge."),
+      w: req(nonNeg, "Width."),
+      h: req(nonNeg, "Height."),
+      radius: opt(nonNeg, "Rectangles: corner radius (at most half the shorter side).", 0),
+    },
+  },
+  {
+    name: "MaskPath",
+    doc: "A path mask shape (Batch 73): SVG path data in content px; every subpath is closed. Its points (every coordinate pair of the parsed M, L, C form in order) are the value of `masks.<id>.path` keys.",
+    types: ["MaskPath"],
+    fields: {
+      kind: req(oneOf(["path"]), "Kind."),
+      d: req(str, "SVG path data (M L H V C S Q T A Z, absolute or relative)."),
     },
   },
   {
@@ -902,6 +938,7 @@ function clipBaseFields(kind?: string): Record<string, Field> {
     blend: opt(oneOf(BLEND_MODES), "Visual clips (Batch 72): how the clip blends with the picture below it (W3C formulas; `add` is linear dodge).", "normal"),
     matte: opt(obj("TrackMatte"), "Visual clips (Batch 72): the clip shows only through another clip's alpha or luma."),
     matteOnly: opt(bool, "Visual clips (Batch 72): not drawn on its own; it is another clip's matte.", false),
+    masks: opt(list(obj("Mask")), "Visual clips (Batch 73): masks combined in order; absent or empty = the whole clip shows."),
   };
 }
 

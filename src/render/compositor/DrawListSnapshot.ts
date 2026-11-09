@@ -3,7 +3,7 @@
 // the GPU redraw. Comparing allocates nothing once the buffers are big enough.
 import type { TextureHandle } from "../gpu/renderer.js";
 import type { GradientFill } from "../../core/document/types.js";
-import type { DissolveSide, DrawList, Layer } from "./drawList.js";
+import type { DissolveSide, DrawList, Layer, MaskFrame } from "./drawList.js";
 import { blendCode } from "../../core/effects/blendModes.js";
 import { matteCode } from "../../core/effects/trackMatte.js";
 
@@ -125,12 +125,30 @@ export class DrawListSnapshot {
         case "group":
           // Blend mode and track matte (spec §21.17): the mode, the layers, the matte's mode and layers.
           this.push(blendCode(layer.blend));
+          this.mask(layer.mask);
           this.layers(layer.layers);
           this.push(matteCode(layer.matte?.mode));
-          if (layer.matte) this.layers(layer.matte.layers);
+          if (layer.matte) {
+            this.mask(layer.matte.mask);
+            this.layers(layer.matte.layers);
+          }
           break;
       }
     }
+  }
+
+  /** Masks (spec §21.18): the block's version (equal versions hold equal data) and where its box lies. */
+  private mask(mask: MaskFrame | null): void {
+    if (!mask) {
+      this.push(0);
+      return;
+    }
+    this.push(mask.version);
+    this.push(mask.width);
+    this.push(mask.height);
+    for (let i = 0; i < 6; i++) this.push(mask.model[i] as number);
+    this.push(mask.persp ? 1 : 0);
+    if (mask.persp) for (let i = 0; i < 9; i++) this.push(mask.persp[i] as number);
   }
 
   /** Forgets the recorded list: the next `update` reports a change (a failed draw, a new device). */

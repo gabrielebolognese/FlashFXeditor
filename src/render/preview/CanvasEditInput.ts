@@ -48,7 +48,7 @@
 //   inline.
 import type { Command } from "../../core/commands/command.js";
 import { ancestorsOf, worldToLocal } from "../../core/document/rig.js";
-import type { CaptionStyle, Clip, ClipId, Crop, Project, TextContent, TextStyle, Transform } from "../../core/document/types.js";
+import type { CaptionStyle, Clip, ClipId, Crop, Mask, Project, TextContent, TextStyle, Transform } from "../../core/document/types.js";
 import { isEditableTarget } from "../../core/keyboard/KeyDispatcher.js";
 import { isSnapKey, type Platform } from "../../core/keyboard/keys.js";
 import type { FrameScheduler } from "../../core/scheduler/FrameScheduler.js";
@@ -105,6 +105,9 @@ import { solidSizeGesture, type SolidGestureStart } from "./solidGizmo.js";
 import { setSolids, solidLook, type SolidLook } from "../../timeline/edit/solid.js";
 import { setPathKeys } from "../../timeline/edit/rig.js";
 import { hitPath, liveByFrame, pathDragEdit, pathScene, type PathHit, type PathLive, type PathScene } from "./pathGizmo.js";
+import { hitMask, maskDrag as maskDragEdit, maskScene, maskSegmentAt, toContent, type MaskHit, type MaskModeState, type MaskScene, type MaskSpace } from "./maskGizmo.js";
+import { masksAt } from "../../core/masks/maskEval.js";
+import { commitMaskGesture, deleteMaskPoint, insertMaskPoint, isMaskable } from "../../timeline/edit/masks.js";
 import { projectPoint as projectThrough, unprojectPoint, viewingDistance, type Homography } from "../projection.js";
 
 /** Inline text editing as the canvas drives it (InlineTextEditor, spec §7.7). */
@@ -157,6 +160,10 @@ export interface CanvasEditDeps {
   textEditor?: CanvasTextEditing;
   /** The live caption values (the cue list's and the inline editor's drafts, style scrubs, hovered presets), or null: cue boxes follow them. */
   captions?(): LiveCaptions | null;
+  /** Mask mode (spec §21.18, Batch 73): the clip whose masks get canvas handles; without it there is no mask mode. */
+  maskMode?: Store<MaskModeState>;
+  /** A clip's content box as last drawn (content px -> project px), or null: mask handles are laid out by it. */
+  contentBox?(clipId: ClipId): MaskSpace | null;
 }
 
 /** What the overlay draws for selection and the gizmo; null parts are not drawn. */
@@ -193,6 +200,8 @@ export interface GizmoScene {
   nulls?: readonly Quad[];
   /** The tilt handles of one held layer (spec §21.15), in device px, or null. */
   tilt?: { x: Point; y: Point } | null;
+  /** Mask mode (Batch 73): the clip's masks with their handles, or null. */
+  mask?: MaskScene | null;
 }
 
 type GestureKind = "move" | "scale" | "rotate" | "anchor" | "crop" | "textSize" | "textWidth" | "captionSize" | "tiltX" | "tiltY";
@@ -288,6 +297,11 @@ export class CanvasEditInput {
   private textPress: number | null = null;
   /** A motion-path key or tangent handle being dragged (Batch 69): ephemeral edits, one command on release. */
   private pathDrag: { pointerId: number; clipId: ClipId; hit: PathHit; start: Point; offset: Point; live: PathLive | null } | null = null;
+  /**
+   * A mask handle, point or body being dragged in mask mode (Batch 73): `start` the masks shown at the
+   * press, `space` the content box then, `live` the dragged masks (the compositor draws them, P2).
+   */
+  private maskDrag: { pointerId: number; clipId: ClipId; index: number; hit: MaskHit; from: Point; space: MaskSpace; start: readonly Mask[]; live: ReadonlyMap<ClipId, readonly Mask[]> | null } | null = null;
   /** The pointer: client px, and canvas CSS px for the readout. */
   private pointer: { clientX: number; clientY: number; x: number; y: number } | null = null;
   private hover: ClipId | null = null;
@@ -381,7 +395,37 @@ export class CanvasEditInput {
 
   /** A gesture or marquee runs. */
   get active(): boolean {
-    return this.drag !== null || this.marquee !== null || this.textPress !== null || this.pathDrag !== null;
+    return this.drag !== null || this.marquee !== null || this.textPress !== null || this.pathDrag !== null || this.maskDrag !== null;
+  }
+
+  /** The clip in mask mode, or null. */
+  get maskTarget(): ClipId | null {
+    return this.deps.maskMode?.getState().target ?? null;
+  }
+
+  /** A mask drag's live masks by clip id (the compositor draws them instead of the clip's, P2), or null. */
+  get maskEdits(): ReadonlyMap<ClipId, readonly Mask[]> | null {
+    return this.maskDrag?.live ?? null;
+  }
+
+  /** Mask mode on a visual clip (Alt+M): its masks get handles on the canvas. False for others and locked clips. */
+  enterMaskMode(clipId: ClipId): boolean {
+    const store = this.deps.maskMode;
+    const project = this.deps.document.getState();
+    const clip = project.clips[clipId];
+    if (!store || !clip || !isMaskable(clip) || isClipLocked(project, clipId)) return false;
+    if (this.cropTarget !== null) this.exitCropMode();
+    if (store.getState().target !== clipId) store.set({ target: clipId });
+    return true;
+  }
+
+  /** Leaves mask mode (a running mask drag is dropped); true when it was on. */
+  exitMaskMode(): boolean {
+    const store = this.deps.maskMode;
+    if (!store || store.getState().target === null) return false;
+    if (this.maskDrag) this.cancel();
+    store.set({ target: null });
+    return true;
   }
 
   /** The snap toggle, inverted while S is held during a drag (one snap state with the timeline). */
@@ -441,6 +485,7 @@ export class CanvasEditInput {
       ),
       this.deps.session.selection.subscribe(() => {
         this.checkCropMode();
+        this.checkMaskMode();
         this.invalidate();
       }),
       this.deps.theme.subscribe((next) => {
@@ -451,7 +496,9 @@ export class CanvasEditInput {
       // An edit under a gesture (undo from the keyboard, an autosave reload) ends it with no change.
       this.deps.document.subscribe((state) => {
         if (this.drag && state !== this.drag.project) this.cancel();
+        if (this.maskDrag) this.cancel();
         this.checkCropMode();
+        this.checkMaskMode();
       }),
       // A font that loads moves text boxes and glyph bounds.
       onTextLayoutsChanged(() => this.invalidate()),
@@ -460,6 +507,15 @@ export class CanvasEditInput {
     if (cropMode) {
       this.stops.push(
         cropMode.subscribe(() => {
+          this.invalidate();
+          this.updateCursor();
+        }),
+      );
+    }
+    const maskMode = this.deps.maskMode;
+    if (maskMode) {
+      this.stops.push(
+        maskMode.subscribe(() => {
           this.invalidate();
           this.updateCursor();
         }),
@@ -479,8 +535,8 @@ export class CanvasEditInput {
 
   /** Esc (spec §6.8 for drags): drops a gesture or marquee with no document change; true when one ran. */
   cancel(): boolean {
-    const running = this.press !== null || this.drag !== null || this.marquee !== null || this.pathDrag !== null;
-    const pointerId = this.press?.pointerId ?? this.drag?.pointerId ?? this.marquee?.pointerId ?? this.textPress ?? this.pathDrag?.pointerId ?? undefined;
+    const running = this.press !== null || this.drag !== null || this.marquee !== null || this.pathDrag !== null || this.maskDrag !== null;
+    const pointerId = this.press?.pointerId ?? this.drag?.pointerId ?? this.marquee?.pointerId ?? this.textPress ?? this.pathDrag?.pointerId ?? this.maskDrag?.pointerId ?? undefined;
     if (this.drag?.kind === "crop") this.deps.crops?.write(null);
     if (this.textPress !== null) this.deps.textEditor?.release();
     this.press = null;
@@ -488,6 +544,7 @@ export class CanvasEditInput {
     this.marquee = null;
     this.textPress = null;
     this.pathDrag = null;
+    this.maskDrag = null;
     this.snapHeld = false;
     if (pointerId !== undefined && this.element?.hasPointerCapture?.(pointerId)) this.element.releasePointerCapture(pointerId);
     if (running) {
@@ -595,6 +652,45 @@ export class CanvasEditInput {
     if (!clip || !isCropClip(clip) || isClipLocked(project, target) || !alone) this.exitCropMode();
   }
 
+  /** Ends mask mode when its clip is gone or locked, or is no longer the one layer selected. */
+  private checkMaskMode(): void {
+    const target = this.maskTarget;
+    if (target === null) return;
+    const project = this.deps.document.getState();
+    const clip = project.clips[target];
+    const selection = this.deps.session.selection.getState();
+    const alone =
+      selection.kind === "clips" &&
+      selection.clipIds.has(target) &&
+      ![...selection.clipIds].some((id) => {
+        const other = project.clips[id];
+        return id !== target && other !== undefined && isLayerClip(other);
+      });
+    if (!clip || !isMaskable(clip) || isClipLocked(project, target) || !alone) this.exitMaskMode();
+  }
+
+  /** The masks of the clip in mask mode as shown now (a drag's live ones), its content box and its id; null when off or not drawn. */
+  private maskTargetNow(): { clipId: ClipId; masks: readonly Mask[]; space: MaskSpace } | null {
+    const clipId = this.maskTarget;
+    if (clipId === null || this.deps.textEditor?.editing) return null;
+    const clip = this.deps.document.getState().clips[clipId];
+    const space = this.deps.contentBox?.(clipId) ?? null;
+    if (!clip || !space || !(space.width > 0) || !(space.height > 0)) return null;
+    const playhead = this.deps.session.state.getState().playhead;
+    if (playhead < clip.start || playhead >= clip.start + clip.duration) return null;
+    const live = this.maskDrag?.clipId === clipId ? this.maskDrag.live?.get(clipId) : undefined;
+    return { clipId, masks: live ?? masksAt(clip as Clip & { masks?: Mask[] }, playhead - clip.start), space };
+  }
+
+  private maskSceneNow(): MaskScene | null {
+    const target = this.maskTargetNow();
+    return target ? maskScene(target.clipId, target.masks, target.space) : null;
+  }
+
+  private maskReach(placement: PreviewPlacement): number {
+    return (this.theme.gizmo.handleHit * placement.dpr) / 2 / placement.transform[0];
+  }
+
   /** What the overlay draws now. */
   scene(): GizmoScene {
     const layers = this.layers();
@@ -615,7 +711,8 @@ export class CanvasEditInput {
     const clips = this.deps.document.getState().clips;
     const nulls = outlined.filter((layer) => clips[layer.clipId]?.kind === "null").map(outlineQuad);
     // A 2.5D layer's box while dragged is its live projected quad (spec §21.15).
-    const box = (drag?.projected ? null : drag?.result?.box) ?? (marquee ? null : gizmoBoxOf(selected.map((layer) => layer.quad)));
+    const masking = !marquee && this.maskTarget !== null && selected.length === 1 && selected[0]?.clipId === this.maskTarget;
+    const box = masking ? null : ((drag?.projected ? null : drag?.result?.box) ?? (marquee ? null : gizmoBoxOf(selected.map((layer) => layer.quad))));
     const hoverLayer = !drag && !marquee && this.hover !== null ? layers.find((layer) => layer.clipId === this.hover && !selected.includes(layer)) : undefined;
     const single = selected.length === 1 ? selected[0] : undefined;
     const caption = marquee ? null : this.captionLayer(selected);
@@ -642,7 +739,8 @@ export class CanvasEditInput {
       captionBox: caption !== null,
       text: null,
       keyframe: box && !marquee && !cropLayer ? this.keyframeMark(selected) : null,
-      path: marquee ? null : this.pathSceneNow(),
+      path: marquee || masking ? null : this.pathSceneNow(),
+      mask: masking ? this.maskSceneNow() : null,
       nulls,
       tilt: this.tiltScene(box, single, caption !== null || cropLayer !== null || marquee !== null, drag),
     };
@@ -672,7 +770,7 @@ export class CanvasEditInput {
   // --- Pointer -----------------------------------------------------------------------------------
 
   private onPointerDown(event: PointerEvent): void {
-    if (event.button !== 0 || this.press || this.drag || this.marquee || this.textPress !== null || this.pathDrag !== null) return;
+    if (event.button !== 0 || this.press || this.drag || this.marquee || this.textPress !== null || this.pathDrag !== null || this.maskDrag !== null) return;
     if (this.deps.panning() || this.deps.session.state.getState().activeTool === "hand") return;
     const placement = this.deps.placement();
     const point = this.projectPoint(event, placement);
@@ -693,6 +791,32 @@ export class CanvasEditInput {
         return;
       }
       editor.end(true);
+    }
+    const mask = this.maskTargetNow();
+    if (mask) {
+      const scene = maskScene(mask.clipId, mask.masks, mask.space);
+      const hit = hitMask(scene, mask.masks, mask.space, point.x, point.y, this.maskReach(placement));
+      const from = hit ? toContent(mask.space, point.x, point.y) : null;
+      if (hit && from) {
+        event.preventDefault();
+        const project = this.deps.document.getState();
+        // Alt+click on a path point deletes it (an anchor with its curve controls; three anchors stay).
+        if (this.modifiers.alt && hit.kind === "point") {
+          const command = deleteMaskPoint(project, mask.clipId, scene.masks[hit.mask]?.maskId ?? "", hit.pair);
+          if (command) {
+            this.deps.scheduler.invalidate("preview");
+            this.deps.commit(command);
+          }
+          return;
+        }
+        const space: MaskSpace = { model: [...mask.space.model] as unknown as MaskSpace["model"], width: mask.space.width, height: mask.space.height };
+        this.maskDrag = { pointerId: event.pointerId, clipId: mask.clipId, index: hit.mask, hit, from, space, start: mask.masks, live: null };
+        this.deps.onDragStart();
+        this.element?.setPointerCapture?.(event.pointerId);
+        this.hover = null;
+        this.invalidate();
+        return;
+      }
     }
     const pathHit = this.pathHitAt(point, placement);
     if (pathHit) {
@@ -765,6 +889,10 @@ export class CanvasEditInput {
       this.updatePathDrag(event);
       return;
     }
+    if (this.maskDrag?.pointerId === event.pointerId) {
+      this.updateMaskDrag(event);
+      return;
+    }
     // The modifiers ride on pointer events too (a key pressed while the window had no focus).
     const mods = this.modifiersOf(event);
     if (mods.shift !== this.modifiers.shift || mods.alt !== this.modifiers.alt || mods.mod !== this.modifiers.mod) {
@@ -798,6 +926,10 @@ export class CanvasEditInput {
     }
     if (this.pathDrag?.pointerId === event.pointerId) {
       this.finishPathDrag(event);
+      return;
+    }
+    if (this.maskDrag?.pointerId === event.pointerId) {
+      this.finishMaskDrag(event);
       return;
     }
     if (!this.ownsPointer(event.pointerId)) return;
@@ -898,6 +1030,35 @@ export class CanvasEditInput {
     this.updateCursor();
   }
 
+  private updateMaskDrag(event: PointerEvent): void {
+    const drag = this.maskDrag;
+    const placement = this.deps.placement();
+    if (!drag || !placement) return;
+    const point = this.projectPoint(event, placement);
+    const to = point ? toContent(drag.space, point.x, point.y) : null;
+    if (!to) return;
+    drag.live = new Map([[drag.clipId, maskDragEdit(drag.start, drag.index, drag.hit, drag.from, to, this.modifiersOf(event).shift)]]);
+    this.deps.scheduler.invalidate("preview");
+    this.invalidate();
+  }
+
+  private finishMaskDrag(event: PointerEvent): void {
+    const drag = this.maskDrag;
+    this.maskDrag = null;
+    if (this.element?.hasPointerCapture?.(event.pointerId)) this.element.releasePointerCapture(event.pointerId);
+    const after = drag?.live?.get(drag.clipId);
+    if (drag && after) {
+      const project = this.deps.document.getState();
+      const command = commitMaskGesture(project, drag.clipId, drag.start, after, this.deps.session.state.getState().playhead);
+      // The document takes over from the live masks in the same frame.
+      this.deps.scheduler.invalidate("preview");
+      if (command) this.deps.commit(command);
+    }
+    this.updateHover(event);
+    this.invalidate();
+    this.updateCursor();
+  }
+
   private onContextMenu(event: MouseEvent): void {
     event.preventDefault();
     if (this.press || this.drag || this.marquee || this.deps.panning()) return;
@@ -929,6 +1090,23 @@ export class CanvasEditInput {
     const placement = this.deps.placement();
     const point = this.projectPoint(event, placement);
     if (!placement || !point) return;
+    const mask = this.maskTargetNow();
+    if (mask) {
+      // Mask mode: a double-click on a path's outline adds a point there (in the base path and every key).
+      const reach = this.maskReach(placement);
+      for (let i = mask.masks.length - 1; i >= 0; i--) {
+        const m = mask.masks[i] as Mask;
+        const at = maskSegmentAt(m, mask.space, point.x, point.y, reach);
+        if (!at) continue;
+        const command = insertMaskPoint(this.deps.document.getState(), mask.clipId, m.id, at, at.t);
+        if (command) {
+          this.deps.scheduler.invalidate("preview");
+          this.deps.commit(command);
+        }
+        return;
+      }
+      return;
+    }
     const top = layersUnder(this.layers(), point.x, point.y)[0];
     const target = this.cropTarget;
     if (target !== null && top?.clipId === target) {
@@ -1297,7 +1475,7 @@ export class CanvasEditInput {
   }
 
   private ownsPointer(pointerId: number): boolean {
-    return this.press?.pointerId === pointerId || this.drag?.pointerId === pointerId || this.marquee?.pointerId === pointerId;
+    return this.press?.pointerId === pointerId || this.drag?.pointerId === pointerId || this.marquee?.pointerId === pointerId || this.maskDrag?.pointerId === pointerId;
   }
 
   private modifiersOf(event: { shiftKey: boolean; altKey: boolean; ctrlKey: boolean; metaKey: boolean }) {
@@ -1408,7 +1586,14 @@ export class CanvasEditInput {
       return placement && drag.result ? resizeCursor(drag.result.box, placement.transform, drag.handle as HandleId) : "";
     }
     if (this.textPress !== null) return "text";
+    if (this.maskDrag) return this.maskDrag.hit.kind === "body" ? "move" : "crosshair";
     if (this.marquee || this.press || !this.over || !this.pointer || !placement) return "";
+    const mask = this.maskTargetNow();
+    if (mask) {
+      const point = this.projectPoint(this.pointer, placement);
+      const hit = point ? hitMask(maskScene(mask.clipId, mask.masks, mask.space), mask.masks, mask.space, point.x, point.y, this.maskReach(placement)) : null;
+      if (hit) return hit.kind === "body" ? "move" : "crosshair";
+    }
     const editor = this.deps.textEditor;
     if (editor?.editing) {
       const point = this.projectPoint(this.pointer, placement);

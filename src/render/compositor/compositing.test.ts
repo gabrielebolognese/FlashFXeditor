@@ -145,7 +145,7 @@ describe("DrawListSnapshot groups (Batch 72)", () => {
     width: 10,
     height: 10,
     background: { r: 0, g: 0, b: 0, a: 1 },
-    layers: [{ kind: "group" as const, transform: [1, 0, 0, 1, 0, 0] as const, opacity: 1, blend, layers: [solidLayer], matte: mode ? { mode, layers: [solidLayer] } : null }],
+    layers: [{ kind: "group" as const, transform: [1, 0, 0, 1, 0, 0] as const, opacity: 1, blend, mask: null, layers: [solidLayer], matte: mode ? { mode, layers: [solidLayer], mask: null } : null }],
   });
 
   it("sees a blend mode or matte change", () => {

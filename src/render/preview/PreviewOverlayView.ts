@@ -36,6 +36,7 @@ import type { Mat3 } from "../mat3.js";
 import type { Quad } from "./canvasLayers.js";
 import type { GizmoScene } from "./CanvasEditInput.js";
 import { flattenPath, type PathScene } from "./pathGizmo.js";
+import { flattenMaskScene, type MaskScene } from "./maskGizmo.js";
 import { CORNERS, EDGES, edgeHandlesShown, handlePoint, toScreen, type HandleId } from "./gizmo.js";
 import { ACTION_SAFE, centeredRect, gridLines, rulerStep, safeZoneOn, ticksIn, TITLE_SAFE } from "./overlays.js";
 import type { PreviewPlacement } from "./PreviewView.js";
@@ -212,6 +213,7 @@ export class PreviewOverlayView implements RenderView {
       out.push(scene.textBox ? 1 : 0, scene.captionBox ? 1 : 0);
       out.push(scene.keyframe ? (scene.keyframe.on ? 2 : 1) : 0);
       flattenPath(scene.path ?? null, out);
+      flattenMaskScene(scene.mask ?? null, out);
       const editing = scene.text;
       if (editing) {
         out.push(1);
@@ -273,6 +275,87 @@ export class PreviewOverlayView implements RenderView {
     ctx.restore();
   }
 
+  /**
+   * Mask mode (Batch 73): each mask's outline (dashed when it subtracts or is inverted), a box mask's 8
+   * handles, a path's anchors (squares) and curve controls (dots on a line to their anchor), and the
+   * feather handle (a diamond on a line from the box's right side).
+   */
+  private drawMasks(ctx: CanvasRenderingContext2D, t: Mat3, dpr: number, scene: MaskScene): void {
+    const { color, gizmo, preview } = this.theme;
+    const line = Math.max(1, Math.round(gizmo.lineWidth * dpr));
+    const size = Math.round(gizmo.handleSize * dpr);
+    const at = (x: number, y: number) => toScreen(t, { x, y });
+    ctx.save();
+    ctx.lineWidth = line;
+    for (const mark of scene.masks) {
+      ctx.strokeStyle = color.accent;
+      ctx.setLineDash(mark.dashed ? [preview.dash * dpr, preview.dash * dpr] : []);
+      ctx.beginPath();
+      let open = false;
+      for (let i = 0; i + 1 < mark.line.length; i += 2) {
+        const x = mark.line[i] as number;
+        const y = mark.line[i + 1] as number;
+        if (Number.isNaN(x)) {
+          if (open) ctx.closePath();
+          open = false;
+          continue;
+        }
+        const p = at(x, y);
+        if (!open) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+        open = true;
+      }
+      if (open) ctx.closePath();
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // The feather handle: a line from the box's right middle, a diamond at its end.
+      const f = at(mark.feather.x, mark.feather.y);
+      const right = mark.box.find((handle) => handle.id === "e");
+      if (right) {
+        const from = at(right.x, right.y);
+        ctx.strokeStyle = color.accentDim;
+        ctx.beginPath();
+        ctx.moveTo(from.x, from.y);
+        ctx.lineTo(f.x, f.y);
+        ctx.stroke();
+      }
+      ctx.fillStyle = color.accent;
+      ctx.beginPath();
+      ctx.moveTo(f.x, f.y - size / 2);
+      ctx.lineTo(f.x + size / 2, f.y);
+      ctx.lineTo(f.x, f.y + size / 2);
+      ctx.lineTo(f.x - size / 2, f.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = color.accent;
+      for (const control of mark.controls) {
+        const from = at(control.fromX, control.fromY);
+        const to = at(control.x, control.y);
+        ctx.beginPath();
+        ctx.moveTo(from.x, from.y);
+        ctx.lineTo(to.x, to.y);
+        ctx.stroke();
+      }
+      ctx.fillStyle = color.textPrimary;
+      for (const control of mark.controls) {
+        const p = at(control.x, control.y);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, size / 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      for (const point of [...mark.box, ...mark.anchors]) {
+        const p = at(point.x, point.y);
+        const x = Math.round(p.x - size / 2);
+        const y = Math.round(p.y - size / 2);
+        ctx.fillStyle = color.textPrimary;
+        ctx.fillRect(x, y, size, size);
+        ctx.strokeRect(x + line / 2, y + line / 2, size - line, size - line);
+      }
+    }
+    ctx.restore();
+  }
+
   /** The canvas selection and the gizmo (spec §7.2, §7.3), in device px. */
   private drawGizmo(ctx: CanvasRenderingContext2D, placement: PreviewPlacement, scene: GizmoScene): void {
     const { transform: t, dpr } = placement;
@@ -323,6 +406,7 @@ export class PreviewOverlayView implements RenderView {
       ctx.stroke();
     }
     if (scene.path) this.drawPath(ctx, t, dpr, scene.path);
+    if (scene.mask) this.drawMasks(ctx, t, dpr, scene.mask);
     if (scene.guides) this.drawGuides(ctx, t, dpr, scene.guides);
     const box = scene.box;
     if (box && scene.crop) this.drawCrop(ctx, t, dpr, box, scene.crop.media);

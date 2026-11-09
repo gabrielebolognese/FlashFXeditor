@@ -17,11 +17,12 @@ import type { Clip, ClipId, Project, TrackId } from "../../core/document/types.j
 import { selectedTrackIds, type Selection } from "../../core/store/selection.js";
 import { transitionAt, type Cut } from "../../timeline/edit/transitions.js";
 import { isCropClip } from "../../timeline/edit/crop.js";
+import { isMaskable } from "../../timeline/edit/masks.js";
 import { isLayerClip, isTransformClip } from "../../timeline/edit/transform.js";
 import { audioTargets, canDetach } from "../../timeline/edit/volume.js";
 
 /** The registered sections, top to bottom in their order of appearance. */
-export type SectionId = "clip" | "text" | "animation" | "animators" | "solid" | "shape" | "captionStyle" | "transform" | "crop" | "frame" | "opacity" | "compositing" | "speed" | "audio" | "transition" | "track" | "marker" | "project";
+export type SectionId = "clip" | "text" | "animation" | "animators" | "solid" | "shape" | "captionStyle" | "transform" | "crop" | "frame" | "opacity" | "compositing" | "masks" | "speed" | "audio" | "transition" | "track" | "marker" | "project";
 
 export type PropertiesContext =
   | { kind: "none" }
@@ -43,6 +44,8 @@ export type PropertiesContext =
       primary: ClipId;
       /** The layer clips among them: what Transform, Opacity and the transform quick actions edit. */
       layerIds: readonly ClipId[];
+      /** Visual clips that take masks (Batch 73). */
+      maskIds: readonly ClipId[];
       /** The layers and the null clips: what Transform and its keyframes edit (Batch 69). */
       transformIds: readonly ClipId[];
       /** The primary when it is a layer, else the first layer (the fields read their value from it). */
@@ -102,6 +105,10 @@ export function propertiesContext(selection: Selection, markerId: string | null,
         const clip = project.clips[id];
         return clip !== undefined && isLayerClip(clip);
       });
+      const maskIds = clipIds.filter((id) => {
+        const clip = project.clips[id];
+        return clip !== undefined && isMaskable(clip);
+      });
       const transformIds = clipIds.filter((id) => {
         const clip = project.clips[id];
         return clip !== undefined && isTransformClip(clip);
@@ -119,7 +126,7 @@ export function propertiesContext(selection: Selection, markerId: string | null,
       const cue = cueIds.length > 0 ? project.clips[cueIds[0] as ClipId] : undefined;
       const audioIds = audioTargets(project, clipIds);
       const detachIds = clipIds.filter((id) => canDetach(project, id));
-      return { kind: "clips", clipIds, primary, layerIds, transformIds, layerPrimary, mediaIds, speedIds, textIds, solidIds, shapeIds, audioIds, detachIds, captionTrackId: cue?.trackId ?? null, cueIds };
+      return { kind: "clips", clipIds, primary, layerIds, maskIds, transformIds, layerPrimary, mediaIds, speedIds, textIds, solidIds, shapeIds, audioIds, detachIds, captionTrackId: cue?.trackId ?? null, cueIds };
     }
   }
 }
@@ -161,6 +168,8 @@ export function sectionIds(context: PropertiesContext): SectionId[] {
       if (context.layerIds.length > 0) ids.push("opacity");
       // Compositing (Batch 72): blend mode and track matte of the visual clips.
       if (context.layerIds.length > 0) ids.push("compositing");
+      // Masks (Batch 73): masks of the visual clips.
+      if (context.maskIds.length > 0) ids.push("masks");
       if (context.speedIds.length > 0) ids.push("speed");
       if (context.audioIds.length > 0 || context.detachIds.length > 0) ids.push("audio");
       return ids;

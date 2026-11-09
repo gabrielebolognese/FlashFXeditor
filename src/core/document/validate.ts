@@ -7,7 +7,7 @@ import { usPerFrame } from "./time.js";
 import { sequenceDurationUs, sequenceRecordIssues } from "./sequence.js";
 import { pathDataIssue } from "../shapes/pathData.js";
 import { PRIMITIVE_LIMITS, PRIMITIVE_PARAMS } from "../shapes/primitives.js";
-import { BLEND_MODES, MATTE_MODES, CAPTION_HIGHLIGHTS, COUNTER_SEPARATORS, CUE_ANIM_KINDS, FILL_RULES, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_UNITS, isFreeze, isMediaClip, LABEL_COLORS, LINE_CAPS, LINE_JOINS, PRIMITIVE_KINDS, SOLID_SHAPE_IDS, type NullClip, type PrimitiveKind, type ShapeClip, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type CompoundClip, type Sequence, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextSpan, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
+import { BLEND_MODES, MASK_MODES, MATTE_MODES, CAPTION_HIGHLIGHTS, COUNTER_SEPARATORS, CUE_ANIM_KINDS, FILL_RULES, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_UNITS, isFreeze, isMediaClip, LABEL_COLORS, LINE_CAPS, LINE_JOINS, PRIMITIVE_KINDS, SOLID_SHAPE_IDS, type NullClip, type PrimitiveKind, type ShapeClip, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type CompoundClip, type Sequence, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextSpan, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
 
 export class DocumentInvariantError extends Error {
   readonly issues: readonly string[];
@@ -84,6 +84,7 @@ function clipIssues(project: Project, clip: Clip): string[] {
   if (clip.parentId !== undefined && typeof clip.parentId !== "string") issues.push(`${label}: parentId must be a clip id`);
   issues.push(...depthIssues(clip, label));
   issues.push(...compositingIssues(clip, label));
+  issues.push(...maskIssues(clip, label));
   // Frame styles (spec §21.7): pictures have rounded corners, an outline and a shadow.
   if (clip.kind === "video" || clip.kind === "image") issues.push(...frameIssues(clip, label));
   // Keyframes (Batch 35): known properties, one key per integer frame in order, finite values, known eases.
@@ -468,6 +469,57 @@ function compositingIssues(clip: Clip, label: string): string[] {
     if (typeof clip.matteOnly !== "boolean") issues.push(`${label}: matteOnly must be true or false`);
     else if (!visual && clip.matteOnly) issues.push(`${label}: a ${clip.kind} clip cannot be a matte`);
   }
+  return issues;
+}
+
+const MASK_MODE_SET: ReadonlySet<string> = new Set(MASK_MODES);
+const MASK_ID = /^[A-Za-z0-9_-]+$/;
+
+/**
+ * Masks (spec §21.18, Batch 73): visual clips only; each mask has a unique id (letters, digits, `_`, `-`),
+ * a box (finite x, y, w >= 0, h >= 0, radius >= 0) or path data that parses, a known mode, a feather >= 0,
+ * a finite expansion, an opacity in 0..1 and a boolean `inverted`.
+ */
+function maskIssues(clip: Clip, label: string): string[] {
+  const masks = clip.masks as unknown;
+  if (masks === undefined) return [];
+  if (!Array.isArray(masks)) return [`${label}: masks must be a list`];
+  const issues: string[] = [];
+  if (masks.length > 0 && !VISUAL_KINDS.has(clip.kind)) issues.push(`${label}: a ${clip.kind} clip takes no masks`);
+  const ids = new Set<string>();
+  masks.forEach((raw: unknown, index) => {
+    const at = `${label}: masks[${index}]`;
+    if (!isObjectLike(raw)) {
+      issues.push(`${at} must be an object`);
+      return;
+    }
+    const id = raw.id;
+    if (typeof id !== "string" || !MASK_ID.test(id)) issues.push(`${at}: id must be letters, digits, _ or -`);
+    else if (ids.has(id)) issues.push(`${at}: id "${id}" is used twice`);
+    else ids.add(id);
+    const shape = raw.shape as unknown;
+    if (!isObjectLike(shape)) issues.push(`${at}: shape must be an object`);
+    else if (shape.kind === "rect" || shape.kind === "ellipse") {
+      for (const key of ["x", "y", "w", "h"] as const) {
+        const value = shape[key];
+        if (typeof value !== "number" || !Number.isFinite(value)) issues.push(`${at}: shape.${key} must be a finite number`);
+        else if ((key === "w" || key === "h") && value < 0) issues.push(`${at}: shape.${key} must be at least 0`);
+      }
+      if (shape.radius !== undefined && !(typeof shape.radius === "number" && Number.isFinite(shape.radius) && shape.radius >= 0)) issues.push(`${at}: shape.radius must be at least 0`);
+      if (shape.radius !== undefined && shape.kind === "ellipse") issues.push(`${at}: an ellipse has no radius`);
+    } else if (shape.kind === "path") {
+      if (typeof shape.d !== "string") issues.push(`${at}: shape.d must be path data`);
+      else {
+        const problem = pathDataIssue(shape.d);
+        if (problem) issues.push(`${at}: shape.d ${problem}`);
+      }
+    } else issues.push(`${at}: shape.kind must be rect, ellipse or path`);
+    if (!MASK_MODE_SET.has(raw.mode as string)) issues.push(`${at}: mode must be add, subtract or intersect`);
+    if (!(typeof raw.feather === "number" && Number.isFinite(raw.feather) && raw.feather >= 0)) issues.push(`${at}: feather must be at least 0`);
+    if (!(typeof raw.expansion === "number" && Number.isFinite(raw.expansion))) issues.push(`${at}: expansion must be a finite number`);
+    if (!(typeof raw.opacity === "number" && raw.opacity >= 0 && raw.opacity <= 1)) issues.push(`${at}: opacity must be in 0..1`);
+    if (typeof raw.inverted !== "boolean") issues.push(`${at}: inverted must be true or false`);
+  });
   return issues;
 }
 

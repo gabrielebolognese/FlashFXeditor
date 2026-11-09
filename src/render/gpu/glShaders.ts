@@ -8,6 +8,8 @@
 // Orientation: textures hold their top row at row 0 (uploads, and framebuffers drawn with the view's
 // y turned so target px row 0 lands on row 0). The full-screen passes (scale, blur) only draw into
 // framebuffers, so their uv and gl_FragCoord rows count from that top row as WGSL's do.
+import { MASK_DATA_WIDTH, MASK_HEADER_TEXELS, MASK_KIND_CODE, MASK_MODE_CODE, MASK_TEXELS, MIN_FEATHER } from "../../core/masks/maskCoverage.js";
+import { MASK_DATA_LEAD } from "./maskTargets.js";
 
 /** `u_layer` entries (see layerUniforms.ts). */
 const LAYER = /* glsl */ `
@@ -624,18 +626,47 @@ function compositeFragment(backdrop: boolean): string {
 uniform sampler2D u_picture;
 uniform sampler2D u_matte;
 uniform sampler2D u_backdrop;
+uniform sampler2D u_mask;
+uniform sampler2D u_matteMask;
 out vec4 outColor;
 
+// Target px of the fragment, row 0 at the top (see texel()).
+vec2 targetPx() {
+  return vec2(gl_FragCoord.x, L_SHAPE.x > 0.5 ? L_SHAPE.y - gl_FragCoord.y : gl_FragCoord.y);
+}
+
 ivec2 texel() {
-  float y = L_SHAPE.x > 0.5 ? L_SHAPE.y - gl_FragCoord.y : gl_FragCoord.y;
-  return ivec2(int(gl_FragCoord.x), int(y));
+  vec2 p = targetPx();
+  return ivec2(int(p.x), int(p.y));
+}
+
+// See coverage() in COMPOSITE_WGSL (masks, spec §21.18).
+float coverage(sampler2D tex, vec4 r0, vec4 r1, vec4 r2, vec2 p) {
+  vec3 h = vec3(p, 1.0);
+  vec3 q = vec3(dot(r0.xyz, h), dot(r1.xyz, h), dot(r2.xyz, h));
+  if (q.z <= 1e-6) { return 0.0; }
+  ivec2 size = textureSize(tex, 0);
+  vec2 t = (q.xy / q.z) * vec2(size) - 0.5;
+  vec2 f = floor(t);
+  vec2 w = t - f;
+  ivec2 hi = size - ivec2(1);
+  ivec2 i0 = clamp(ivec2(f), ivec2(0), hi);
+  ivec2 i1 = clamp(ivec2(f) + ivec2(1), ivec2(0), hi);
+  float a = texelFetch(tex, i0, 0).r;
+  float b = texelFetch(tex, ivec2(i1.x, i0.y), 0).r;
+  float c = texelFetch(tex, ivec2(i0.x, i1.y), 0).r;
+  float d = texelFetch(tex, i1, 0).r;
+  return mix(mix(a, b, w.x), mix(c, d, w.x), w.y);
 }
 
 vec4 matted(ivec2 p) {
   vec4 s = texelFetch(u_picture, p, 0);
+  vec2 at = targetPx();
+  if (u_layer[27].x > 0.5) { s *= coverage(u_mask, u_layer[21], u_layer[22], u_layer[23], at); }
   int matte = int(L_TFX.x + 0.5);
   if (matte == 0) { return s; }
   vec4 m = texelFetch(u_matte, p, 0);
+  if (u_layer[27].y > 0.5) { m *= coverage(u_matteMask, u_layer[24], u_layer[25], u_layer[26], at); }
   float c = m.a;
   if (matte >= 3) { c = dot(m.rgb, vec3(0.2126, 0.7152, 0.0722)); }
   if (matte == 2 || matte == 4) { c = 1.0 - c; }
@@ -658,3 +689,94 @@ ${backdrop ? `  vec4 b = texelFetch(u_backdrop, p, 0);
 
 export const COMPOSITE_FRAGMENT = compositeFragment(false);
 export const COMPOSITE_BACKDROP_FRAGMENT = compositeFragment(true);
+
+/**
+ * See MASK_WGSL in shaders.ts: the coverage of a clip's masks over its coverage texture (drawn with
+ * FULLSCREEN_VERTEX). Rows count from the content box's top as gl_FragCoord rows from row 0, the row the
+ * composite reads first. Ported from FlashFX-v2 src/engine/renderer.ts (MASK_SHADER) @ a91c675, adapted.
+ */
+export const MASK_FRAGMENT = /* glsl */ `${HEADER}
+uniform sampler2D u_data;
+out vec4 outColor;
+
+vec4 texel(int i) {
+  int j = i + ${MASK_DATA_LEAD};
+  return texelFetch(u_data, ivec2(j % ${MASK_DATA_WIDTH}, j / ${MASK_DATA_WIDTH}), 0);
+}
+
+float boxSD(vec2 p, vec2 hs, float r) {
+  vec2 q = abs(p) - hs + vec2(r);
+  return length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0) - r;
+}
+
+float ellipseSD(vec2 p, float ax, float ay) {
+  float a = max(ax, 0.001);
+  float b = max(ay, 0.001);
+  float k1 = length(p / vec2(a, b));
+  float k2 = length(p / vec2(a * a, b * b));
+  if (k2 < 1e-9) { return -min(a, b); }
+  return k1 * (k1 - 1.0) / max(k2, 0.0001);
+}
+
+float outlineSD(int first, int count, vec2 p) {
+  float minD = 1e30;
+  int winding = 0;
+  for (int k = 0; k < count; k++) {
+    vec4 s = texel(first + k);
+    vec2 a = s.xy;
+    vec2 e = s.zw - a;
+    vec2 w = p - a;
+    float ee = dot(e, e);
+    float t = ee > 1e-12 ? clamp(dot(w, e) / ee, 0.0, 1.0) : 0.0;
+    minD = min(minD, length(w - e * t));
+    float isLeft = e.x * w.y - e.y * w.x;
+    if (a.y <= p.y) {
+      if (a.y + e.y > p.y && isLeft > 0.0) { winding += 1; }
+    } else if (a.y + e.y <= p.y && isLeft < 0.0) { winding -= 1; }
+  }
+  return winding != 0 ? -minD : minD;
+}
+
+float maskAt(int i, vec2 p) {
+  int base = ${MASK_HEADER_TEXELS} + i * ${MASK_TEXELS};
+  vec4 t0 = texel(base);
+  vec4 t1 = texel(base + 1);
+  vec4 t2 = texel(base + 2);
+  int kind = int(t0.x + 0.5);
+  float feather = max(t2.y, ${MIN_FEATHER.toFixed(2)});
+  float expansion = t2.z;
+  float sd;
+  if (kind == ${MASK_KIND_CODE.path}) {
+    vec4 bounds = texel(base + 3);
+    float pad = feather + 1.0 + max(expansion, 0.0);
+    bool outside = p.x < bounds.x - pad || p.y < bounds.y - pad || p.x > bounds.z + pad || p.y > bounds.w + pad;
+    int count = int(t1.y + 0.5);
+    sd = outside || count < 2 ? 1e30 : outlineSD(int(t1.x + 0.5), count, p);
+  } else if (kind == ${MASK_KIND_CODE.ellipse}) {
+    sd = ellipseSD(p - t1.xy, t1.z, t1.w);
+  } else {
+    sd = boxSD(p - t1.xy, t1.zw, t2.x);
+  }
+  float a = 1.0 - smoothstep(-feather, feather, sd - expansion);
+  if (t0.z > 0.5) { a = 1.0 - a; }
+  return a;
+}
+
+void main() {
+  vec2 p = gl_FragCoord.xy * texel(-1).xy;
+  int count = int(texel(0).x + 0.5);
+  if (count <= 0) { outColor = vec4(1.0); return; }
+  int firstMode = int(texel(${MASK_HEADER_TEXELS}).y + 0.5);
+  float acc = firstMode == ${MASK_MODE_CODE.add} ? 0.0 : 1.0;
+  for (int i = 0; i < count; i++) {
+    vec4 t0 = texel(${MASK_HEADER_TEXELS} + i * ${MASK_TEXELS});
+    float c = maskAt(i, p);
+    float op = t0.w;
+    int mode = int(t0.y + 0.5);
+    if (mode == ${MASK_MODE_CODE.add}) { acc = min(1.0, acc + op * c); }
+    else if (mode == ${MASK_MODE_CODE.subtract}) { acc = max(0.0, acc - op * c); }
+    else { acc = acc * (1.0 - op * (1.0 - c)); }
+  }
+  outColor = vec4(acc, 0.0, 0.0, 1.0);
+}
+`;

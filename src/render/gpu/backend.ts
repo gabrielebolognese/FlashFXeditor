@@ -32,6 +32,8 @@ export interface BackendRenderer extends Renderer {
   readonly textureCounts: { live: number; bytes: number };
   /** Copies of the target made for a non-hardware blend mode so far (spec §21.17; the Batch 72 acceptance counter). */
   readonly backdropCopies: number;
+  /** Mask coverage passes drawn so far (spec §21.18; static masks draw none after their first frame, the Batch 73 cache counter). */
+  readonly maskCoveragePasses: number;
   /** Frees what the renderer keeps for reuse (spare frame textures, blur textures): a closed project leaves nothing on the GPU (P13). */
   releaseCaches(): void;
 }
