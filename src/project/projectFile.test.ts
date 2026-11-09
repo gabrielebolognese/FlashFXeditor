@@ -80,7 +80,7 @@ describe("migration hook", () => {
   it("leaves a current file alone", () => {
     const raw = v1();
     expect(migrateProject(raw)).toEqual(raw);
-    expect(SCHEMA_VERSION).toBe(18);
+    expect(SCHEMA_VERSION).toBe(19);
   });
 
   it("opens a schema 1 project (Batch 41): no bins yet, media without sizes", () => {
@@ -115,7 +115,7 @@ describe("migration hook", () => {
     const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
     raw.schemaVersion = 3;
     const parsed = parseProjectFile(JSON.stringify(raw));
-    expect(parsed.schemaVersion).toBe(18);
+    expect(parsed.schemaVersion).toBe(19);
     expect(parsed.meta).not.toHaveProperty("generator");
     expect(parsed.clips).toEqual(project.clips);
     expect(parsed.media).toEqual(project.media);
@@ -126,7 +126,7 @@ describe("migration hook", () => {
     const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
     raw.schemaVersion = 13;
     const parsed = parseProjectFile(JSON.stringify(raw));
-    expect(parsed.schemaVersion).toBe(18);
+    expect(parsed.schemaVersion).toBe(19);
     expect(parsed.settings).not.toHaveProperty("perspective");
     expect(parsed.clips).toEqual(project.clips);
     const clip = Object.values(project.clips).find((c) => "transform" in c) as Project["clips"][string] & { transform: Record<string, unknown> };
@@ -144,7 +144,7 @@ describe("migration hook", () => {
     const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
     raw.schemaVersion = 15;
     const parsed = parseProjectFile(JSON.stringify(raw));
-    expect(parsed.schemaVersion).toBe(18);
+    expect(parsed.schemaVersion).toBe(19);
     expect(parsed.clips).toEqual(project.clips);
     const visual = Object.values(project.clips).filter((c) => c.kind === "video" || c.kind === "text" || c.kind === "solid" || c.kind === "image");
     const [a, b] = visual as [Project["clips"][string], Project["clips"][string]];
@@ -163,7 +163,7 @@ describe("migration hook", () => {
     const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
     raw.schemaVersion = 16;
     const parsed = parseProjectFile(JSON.stringify(raw));
-    expect(parsed.schemaVersion).toBe(18);
+    expect(parsed.schemaVersion).toBe(19);
     expect(parsed.clips).toEqual(project.clips);
     const solid = Object.values(project.clips).find((c) => c.kind === "solid") as Project["clips"][string];
     expect(solid).toBeDefined();
@@ -185,7 +185,7 @@ describe("migration hook", () => {
     const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
     raw.schemaVersion = 17;
     const parsed = parseProjectFile(JSON.stringify(raw));
-    expect(parsed.schemaVersion).toBe(18);
+    expect(parsed.schemaVersion).toBe(19);
     expect(parsed.clips).toEqual(project.clips);
     const solid = Object.values(project.clips).find((c) => c.kind === "solid") as Project["clips"][string];
     expect(solid).toBeDefined();
@@ -203,6 +203,33 @@ describe("migration hook", () => {
     const unkeyable = JSON.parse(serializeProject(withEffects, STAMP)) as { clips: Record<string, { keyframes: Record<string, unknown> }> };
     (unkeyable.clips[solid.id] as { keyframes: Record<string, unknown> }).keyframes["effects.fx1.mode"] = [{ frame: 0, value: 1, ease: "linear" }];
     expect(() => parseProjectFile(JSON.stringify(unkeyable))).toThrow(/mode/);
+  });
+
+  it("opens a schema 18 project (before Batch 75) unchanged; keeps the Effects II types and a LUT file through save and open", () => {
+    const project = richProject();
+    const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
+    raw.schemaVersion = 18;
+    const parsed = parseProjectFile(JSON.stringify(raw));
+    expect(parsed.schemaVersion).toBe(19);
+    expect(parsed.clips).toEqual(project.clips);
+    const solid = Object.values(project.clips).find((c) => c.kind === "solid") as Project["clips"][string];
+    const effects = [
+      { id: "fx1", type: "colorAdjust", enabled: true, params: { exposure: 0.5, hue: -30 } },
+      { id: "fx2", type: "chromaKey", enabled: true, params: { color: [0, 1, 0, 1], tolerance: 0.2 } },
+      { id: "fx3", type: "lut", enabled: true, params: { file: "luts/warm.cube", intensity: 0.5 } },
+    ];
+    const keyframes = { "effects.fx3.intensity": [{ frame: 0, value: 0, ease: "linear" }, { frame: 5, value: 1, ease: "linear" }] };
+    const withEffects = { ...project, clips: { ...project.clips, [solid.id]: { ...solid, effects, keyframes } } } as Project;
+    expect(parseProjectFile(serializeProject(withEffects, STAMP)).clips[solid.id]).toMatchObject({ effects, keyframes });
+    // A LUT path outside luts/, or not a .cube, is refused; so is a keyed file.
+    for (const file of ["media/warm.cube", "luts/warm.png", "luts/../x.cube", 3]) {
+      const bad = JSON.parse(serializeProject(withEffects, STAMP)) as { clips: Record<string, { effects: { params: Record<string, unknown> }[] }> };
+      (bad.clips[solid.id]?.effects[2] as { params: Record<string, unknown> }).params.file = file;
+      expect(() => parseProjectFile(JSON.stringify(bad))).toThrow(/file/);
+    }
+    const keyed = JSON.parse(serializeProject(withEffects, STAMP)) as { clips: Record<string, { keyframes: Record<string, unknown> }> };
+    (keyed.clips[solid.id] as { keyframes: Record<string, unknown> }).keyframes["effects.fx3.file"] = [{ frame: 0, value: 1, ease: "linear" }];
+    expect(() => parseProjectFile(JSON.stringify(keyed))).toThrow(/file/);
   });
 
   it("keeps meta.generator and a clip's fallbackOf through save and open, and refuses malformed ones", () => {

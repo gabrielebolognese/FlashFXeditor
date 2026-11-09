@@ -1,20 +1,23 @@
-import { ArrowDown, ArrowUp, Diamond, GripVertical, Timer, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, type DragEvent, type MouseEvent } from "react";
+import { ArrowDown, ArrowUp, BookmarkPlus, Diamond, FileUp, GripVertical, Timer, Trash2, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
 import { rememberColor } from "../../app/propertiesController.js";
-import { effectBinding, effectStopwatch, effectToggleKey, enableEffect, moveOneEffect, previewEffectColor, removeOneEffect, setEffectChoice, setEffectColor, setEffectToggle, shownParam } from "../../app/effectController.js";
-import { appSettings, documentStore, sessionStore } from "../../app/services.js";
-import { EFFECT_TYPES, type Clip, type ClipId, type Effect, type EffectType, type Keyframes, type Project, type RGBA } from "../../core/document/types.js";
+import { applyLookToSelection, effectBinding, effectStopwatch, effectToggleKey, enableEffect, loadLut, moveOneEffect, previewEffectColor, removeLook, removeOneEffect, saveLook, setEffectChoice, setEffectColor, setEffectToggle, shownParam } from "../../app/effectController.js";
+import { appSettings, documentStore, lookStore, sessionStore } from "../../app/services.js";
+import { type Clip, type ClipId, type Effect, type EffectType, type Keyframes, type Project, type RGBA } from "../../core/document/types.js";
 import { effectKeys } from "../../core/effects/effectEval.js";
 import { EFFECT_DEFS, type EffectParamDef } from "../../core/effects/effectParams.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
+import { MAX_LOOK_NAME, type Look } from "../../project/looks.js";
 import { takesEffects } from "../../timeline/edit/effects.js";
+import { Button } from "../../ui/Button.js";
 import { ColorField } from "../../ui/ColorField.js";
 import { IconButton } from "../../ui/IconButton.js";
 import iconStyles from "../../ui/IconButton.module.css";
 import { NumberField } from "../../ui/NumberField.js";
 import { Select, type SelectOption } from "../../ui/Select.js";
+import { TextField } from "../../ui/TextField.js";
 import { Toggle } from "../../ui/Toggle.js";
-import { effectAddCommand } from "./effectIcons.js";
+import { EFFECT_ADD_ROWS, effectAddCommand } from "./effectIcons.js";
 import styles from "./EffectsSection.module.css";
 import keyStyles from "./KeyframeControls.module.css";
 import { Row } from "./Section.js";
@@ -25,7 +28,9 @@ import { Row } from "./Section.js";
 // for the keyboard) and remove, then its parameters: numbers (bound outside React, effectController; a scrub
 // draws live, one command on release), colors, choices and switches, each keyframeable one with a key diamond
 // and a stopwatch. The section renders on the stack's structure only (narrow selector, P1); the diamonds
-// follow the playhead through DOM writes.
+// follow the playhead through DOM writes. Batch 75: the Color row of effect types, a LUT effect's File row
+// (its file name, Load .cube copies a file into the project's luts/), and the Looks row: Save keeps the one
+// selected clip's stack by name, a look's chip applies it to the selected clips in one click (one undo step).
 
 type EffectClip = Clip & { effects?: Effect[]; keyframes?: Keyframes };
 type EffectRow = [id: string, type: EffectType, enabled: 0 | 1, keyed: string[]];
@@ -108,7 +113,21 @@ function EffectParam({ clipId, effectId, index, def, keyed, recent }: { clipId: 
   const keys = def.keyframeable ? <EffectKeys clipId={clipId} effectId={effectId} param={def.name} name={name} keyed={keyed} /> : null;
   let control;
   if (def.kind === "number" && binding) {
-    control = <NumberField label={def.label.charAt(0)} unit={def.unit} binding={binding} precision={def.max !== undefined && def.max <= 5 ? 2 : 0} step={def.max !== undefined && def.max <= 5 ? 0.01 : 1} min={def.min} max={def.max} ariaLabel={aria} />;
+    // Precision from the declared step (0.1 = one decimal), else two decimals for small ranges.
+    const step = def.step ?? (def.max !== undefined && def.max <= 5 ? 0.01 : 1);
+    const precision = step >= 1 ? 0 : Math.min(3, Math.ceil(-Math.log10(step) - 1e-9));
+    control = <NumberField label={def.label.charAt(0)} unit={def.unit} binding={binding} precision={precision} step={step} min={def.min} max={def.max} ariaLabel={aria} />;
+  } else if (def.kind === "file") {
+    const path = typeof parsed === "string" ? parsed : "";
+    const shown = path === "" ? "No LUT" : path.slice(path.lastIndexOf("/") + 1);
+    control = (
+      <>
+        <span className={path === "" ? `${styles.file} ${styles.off}` : styles.file} data-tooltip={path === "" ? undefined : path}>
+          {shown}
+        </span>
+        <IconButton control icon={FileUp} label={`Load ${def.extension ?? ""} file for effect ${index + 1}`} onClick={() => void loadLut(clipId, effectId)} />
+      </>
+    );
   } else if (def.kind === "color") {
     control = (
       <ColorField
@@ -202,6 +221,41 @@ function EffectBlock({ clipId, row, index, count, recent }: { clipId: ClipId; ro
   );
 }
 
+const selectLooks = (looks: readonly Look[]) => looks;
+
+/** Save (the one selected clip's stack, by the typed name) and a chip per saved look (apply / remove). */
+function LooksRows({ canSave }: { canSave: boolean }) {
+  const looks = useStoreSelector(lookStore.list, selectLooks);
+  const [name, setName] = useState("");
+  const save = () => {
+    if (saveLook(name)) setName("");
+  };
+  return (
+    <>
+      <Row label="Save look">
+        <span className={keyStyles.controls}>
+          <TextField value={name} onChange={setName} onCommit={setName} ariaLabel="Look name" placeholder="Look name" maxLength={MAX_LOOK_NAME} compact />
+          <IconButton control icon={BookmarkPlus} label={canSave ? "Save these effects as a look" : "Select one clip with effects to save a look"} disabled={!canSave} onClick={save} />
+        </span>
+      </Row>
+      {looks.length > 0 && (
+        <Row label="Looks">
+          <span className={styles.looks}>
+            {looks.map((look) => (
+              <span key={look.id} className={styles.look}>
+                <Button control size="compact" tooltip={`Apply look "${look.name}" to the selected clips`} onClick={() => void applyLookToSelection(look.id)}>
+                  {look.name}
+                </Button>
+                <IconButton control icon={X} label={`Delete look "${look.name}"`} onClick={() => void removeLook(look.id)} />
+              </span>
+            ))}
+          </span>
+        </Row>
+      )}
+    </>
+  );
+}
+
 export function EffectsSection({ ids }: { ids: readonly ClipId[] }) {
   const one = ids.length === 1 ? ids[0] : undefined;
   const signature = useStoreSelector(
@@ -212,14 +266,17 @@ export function EffectsSection({ ids }: { ids: readonly ClipId[] }) {
   const rows = useMemo(() => (signature === "" ? [] : (JSON.parse(signature) as EffectRow[])), [signature]);
   return (
     <>
-      <Row label="Add">
-        <span className={keyStyles.controls}>
-          {EFFECT_TYPES.map((type) => (
-            <IconButton key={type} commandId={effectAddCommand(type)} />
-          ))}
-          <IconButton commandId="clip.effect.removeAll" />
-        </span>
-      </Row>
+      {EFFECT_ADD_ROWS.map((group, at) => (
+        <Row key={group.label} label={group.label}>
+          <span className={keyStyles.controls}>
+            {group.types.map((type) => (
+              <IconButton key={type} commandId={effectAddCommand(type)} />
+            ))}
+            {at === 0 && <IconButton commandId="clip.effect.removeAll" />}
+          </span>
+        </Row>
+      ))}
+      <LooksRows canSave={one !== undefined && rows.length > 0} />
       {one !== undefined && rows.map((row, index) => <EffectBlock key={row[0]} clipId={one} row={row} index={index} count={rows.length} recent={recent} />)}
     </>
   );

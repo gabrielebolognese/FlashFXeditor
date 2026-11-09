@@ -25,6 +25,7 @@ import { IDENTITY, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "
 import type { BackendRenderer } from "./backend.js";
 import { blurRegionInto, DrawRecords, newRecordUniform, pathRegionInto, premultipliedInto, retargetStages, ROLE, setRect, showBlurred, showPath, writePathUniform, type BlurRegion, type DrawRecord, type QuadKind, type Rect } from "./drawRecords.js";
 import { FX_BUFFER, FX_PASS_STRIDE, FX_UNIFORM_BYTES, StageJobs, type StageJob } from "../effects/stageJobs.js";
+import { lutLibrary } from "../effects/lutLibrary.js";
 import { fitWithin, hasAlphaFormat } from "./fitWithin.js";
 import type { GpuDevice } from "./GpuDevice.js";
 import { isHdrColorSpace, toneMapToCanvas } from "./hdr.js";
@@ -151,6 +152,8 @@ interface EffectResources {
   jobs: StageJobs<GpuTexture>;
   /** Bind groups of mask coverages (read by the mask pass), by view. */
   coverageGroups: WeakMap<GPUTextureView, GPUBindGroup>;
+  /** LUT atlases (Batch 75) by handle (render/effects/lutLibrary.ts), uploaded once each. */
+  luts: Map<number, { texture: GPUTexture; group: GPUBindGroup }>;
 }
 
 /** Everything that belongs to one GPUDevice. */
@@ -460,6 +463,9 @@ export class WebGpuRenderer implements BackendRenderer {
     const pool = this.resources?.blur.pool;
     if (pool) for (const entry of pool.splice(0)) entry.texture.destroy();
     this.resources?.effects?.jobs.clear((texture) => texture.destroy());
+    const luts = this.resources?.effects?.luts;
+    if (luts) for (const entry of luts.values()) entry.texture.destroy();
+    luts?.clear();
     this.fxBuffers.fill(null);
     const composite = this.resources?.composite;
     if (composite) {
@@ -623,6 +629,12 @@ export class WebGpuRenderer implements BackendRenderer {
       return this.newTexture(res, step(w), step(h), { label: "effect result" });
     });
     jobs.evict(this.draws, BLUR_KEEP_DRAWS, (texture) => texture.destroy());
+    // LUTs the library no longer has (the project closed, or the file loaded again under a new handle).
+    for (const [handle, entry] of fx.luts) {
+      if (lutLibrary.get(handle)) continue;
+      entry.texture.destroy();
+      fx.luts.delete(handle);
+    }
     // The uniform buffer grows before any pass is encoded (see blurRecords).
     if (jobs.passCount > fx.capacity) {
       let capacity = fx.capacity;
@@ -675,7 +687,7 @@ export class WebGpuRenderer implements BackendRenderer {
         const dst = buffer(jobs.dst[i] as number);
         const src = buffer(jobs.src[i] as number);
         const origIndex = jobs.orig[i] as number;
-        const orig = origIndex === FX_BUFFER.coverage ? coverage : buffer(origIndex).bindGroup;
+        const orig = origIndex === FX_BUFFER.coverage ? coverage : origIndex === FX_BUFFER.lut ? this.lutGroup(res, fx, jobs.lut[i] as number) : buffer(origIndex).bindGroup;
         const fxPass = encoder.beginRenderPass({ label: "effect", colorAttachments: [{ view: dst.view, loadOp: "clear", storeOp: "store", clearValue: [0, 0, 0, 0] }] });
         fxPass.setPipeline(fx.pipeline);
         fxPass.setViewport(0, 0, width, height, 0, 1);
@@ -690,6 +702,20 @@ export class WebGpuRenderer implements BackendRenderer {
       }
     }
     this.fxBuffers.fill(null);
+  }
+
+  /** The bind group of LUT `handle`'s atlas (uploaded on first use), or null when the library does not have it. */
+  private lutGroup(res: DeviceResources, fx: EffectResources, handle: number): GPUBindGroup | null {
+    const kept = fx.luts.get(handle);
+    if (kept) return kept.group;
+    const atlas = lutLibrary.get(handle)?.atlas;
+    if (!atlas) return null;
+    const { device } = res;
+    const texture = device.createTexture({ label: "lut", size: [atlas.width, atlas.height], format: "rgba8unorm", usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST });
+    device.queue.writeTexture({ texture }, atlas.rgba as Uint8Array<ArrayBuffer>, { bytesPerRow: atlas.width * 4 }, [atlas.width, atlas.height]);
+    const group = device.createBindGroup({ label: "lut", layout: res.textureLayout, entries: [{ binding: 0, resource: res.sampler }, { binding: 1, resource: texture.createView() }] });
+    fx.luts.set(handle, { texture, group });
+    return group;
   }
 
   private buildEffects(res: DeviceResources): EffectResources {
@@ -718,6 +744,7 @@ export class WebGpuRenderer implements BackendRenderer {
       }),
       jobs: new StageJobs<GpuTexture>(),
       coverageGroups: new WeakMap(),
+      luts: new Map(),
     };
   }
 

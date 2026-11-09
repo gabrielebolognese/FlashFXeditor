@@ -904,6 +904,8 @@ fn fs(@builtin(position) position: vec4f) -> @location(0) vec4f {
  * Ported from FlashFX-v2 src/engine/renderer.ts (BLUR_EFFECT_SHADER fs_gauss_h / fs_gauss_v / fs_directional,
  * GLOW_SHADER, SHADOW_SHADER) @ a91c675, adapted: one module for every program, the glow extracted from the
  * picture's unpremultiplied luminance and screened over it, the shadow's offset applied while extracting.
+ * Programs 10..16 (Batch 75) are the per-pixel effects: color adjustment, vignette, sharpen, grain, chroma and
+ * luma keys, and the LUT (orig is then the LUT atlas, read texel by texel).
  */
 export const EFFECT_WGSL = /* wgsl */ `
 struct Fx {
@@ -1044,6 +1046,165 @@ fn coverage(p: vec2f) -> f32 {
   return mix(mix(a, b, w.x), mix(c, d, w.x), w.y);
 }
 
+// Batch 75: the per-pixel effects (the CPU twin is core/effects/colorMath.ts and core/effects/lut.ts). Colors
+// are unpremultiplied for the math and premultiplied again. Smoothstep with a hard step for an empty window.
+fn sstep(e0: f32, e1: f32, x: f32) -> f32 {
+  if (e1 <= e0) { return select(1.0, 0.0, x < e0); }
+  let t = clamp((x - e0) / (e1 - e0), 0.0, 1.0);
+  return t * t * (3.0 - 2.0 * t);
+}
+
+fn luma709(c: vec3f) -> f32 { return dot(c, vec3f(0.2126, 0.7152, 0.0722)); }
+
+fn hueChannel(p: f32, q: f32, t: f32) -> f32 {
+  let tt = fract(t);
+  if (tt < 1.0 / 6.0) { return p + (q - p) * 6.0 * tt; }
+  if (tt < 0.5) { return q; }
+  if (tt < 2.0 / 3.0) { return p + (q - p) * (2.0 / 3.0 - tt) * 6.0; }
+  return p;
+}
+
+// HSL hue rotation by turns (FlashFX-v2 hsl.ts rgbToHsl / hslToRgb).
+fn hueRotate(c: vec3f, turns: f32) -> vec3f {
+  let mx = max(c.r, max(c.g, c.b));
+  let mn = min(c.r, min(c.g, c.b));
+  if (mx == mn) { return c; }
+  let l = (mx + mn) * 0.5;
+  let d = mx - mn;
+  let s = select(d / (mx + mn), d / (2.0 - mx - mn), l > 0.5);
+  var h: f32;
+  if (mx == c.r) { h = (c.g - c.b) / d + select(0.0, 6.0, c.g < c.b); }
+  else if (mx == c.g) { h = (c.b - c.r) / d + 2.0; }
+  else { h = (c.r - c.g) / d + 4.0; }
+  h = fract(h / 6.0 + turns);
+  let q = select(l + s - l * s, l * (1.0 + s), l < 0.5);
+  let p = 2.0 * l - q;
+  return vec3f(hueChannel(p, q, h + 1.0 / 3.0), hueChannel(p, q, h), hueChannel(p, q, h - 1.0 / 3.0));
+}
+
+// a = brightness, contrast, saturation (%), exposure (stops); b = temperature, tint (%), hue (degrees), vibrance (%).
+fn colorAdjust(cIn: vec3f) -> vec3f {
+  var c = cIn * exp2(fx.a.w);
+  let t = fx.b.x / 100.0;
+  c = c + vec3f(t * 0.2, 0.0, -t * 0.2);
+  let k = fx.b.y / 100.0;
+  c = c + vec3f(k * 0.1, -k * 0.2, k * 0.1);
+  c = (c + vec3f(fx.a.x / 100.0 * 0.5 - 0.5)) * (1.0 + fx.a.y / 100.0) + vec3f(0.5);
+  var y = luma709(c);
+  c = vec3f(y) + (c - vec3f(y)) * (1.0 + fx.a.z / 100.0);
+  let chroma = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
+  let vib = 1.0 + fx.b.w / 100.0 * (1.0 - clamp(chroma, 0.0, 1.0));
+  y = luma709(c);
+  c = clamp(vec3f(y) + (c - vec3f(y)) * vib, vec3f(0.0), vec3f(1.0));
+  if (fx.b.z != 0.0) { c = hueRotate(c, fx.b.z / 360.0); }
+  return clamp(c, vec3f(0.0), vec3f(1.0));
+}
+
+fn grainHash(x: u32, y: u32, f: u32) -> f32 {
+  var h = (x * 0x8da6b343u) ^ (y * 0xd8163841u) ^ (f * 0xcb1ab31fu);
+  h = (h ^ (h >> 16u)) * 0x7feb352du;
+  h = (h ^ (h >> 15u)) * 0x846ca68bu;
+  h = h ^ (h >> 16u);
+  return f32(h >> 8u) / 16777215.0;
+}
+
+// Value noise over cells fx.a.y stage px wide (the content box's corner at a cell corner), -0.5..0.5.
+fn grainNoise(p: vec2f) -> f32 {
+  let q = (p - fx.rect.xy) / max(fx.a.y, 0.0001);
+  let fl = floor(q);
+  let fr = q - fl;
+  let w = fr * fr * (3.0 - 2.0 * fr);
+  let i = vec2u(vec2i(fl) + vec2i(65536));
+  let f = u32(max(fx.a.z, 0.0) + 0.5);
+  let a = grainHash(i.x, i.y, f);
+  let b = grainHash(i.x + 1u, i.y, f);
+  let c = grainHash(i.x, i.y + 1u, f);
+  let d = grainHash(i.x + 1u, i.y + 1u, f);
+  return a + (b - a) * w.x + (c - a) * w.y + (a - b - c + d) * w.x * w.y - 0.5;
+}
+
+fn cbcr(c: vec3f) -> vec2f {
+  return vec2f(dot(c, vec3f(-0.168736, -0.331264, 0.5)), dot(c, vec3f(0.5, -0.418688, -0.081312)));
+}
+
+// color = the key; a = tolerance, softness, spill, the key's dominant channel (0 r, 1 g, 2 b).
+fn chromaKey(s: vec4f) -> vec4f {
+  if (s.a <= 0.0) { return vec4f(0.0); }
+  var c = s.rgb / s.a;
+  let keep = sstep(fx.a.x, fx.a.x + max(fx.a.y, 0.0), length(cbcr(c) - cbcr(fx.color.rgb)));
+  let ch = i32(fx.a.w + 0.5);
+  if (ch == 0) {
+    let lim = max(c.g, c.b);
+    if (c.r > lim) { c.r = c.r - fx.a.z * (c.r - lim); }
+  } else if (ch == 2) {
+    let lim = max(c.r, c.g);
+    if (c.b > lim) { c.b = c.b - fx.a.z * (c.b - lim); }
+  } else {
+    let lim = max(c.r, c.b);
+    if (c.g > lim) { c.g = c.g - fx.a.z * (c.g - lim); }
+  }
+  let a = s.a * keep;
+  return vec4f(c * a, a);
+}
+
+fn lutTexel(r: i32, g: i32, b: i32, n: i32) -> vec3f { return textureLoad(orig, vec2i(r + b * n, g), 0).rgb; }
+
+// The LUT atlas (orig): a = intensity, grid size; b.xyz = domain min; color.xyz = domain max. Trilinear over exact texels.
+fn applyLut(c: vec3f) -> vec3f {
+  let n = i32(fx.a.y + 0.5);
+  let f = clamp((c - fx.b.xyz) / max(fx.color.xyz - fx.b.xyz, vec3f(0.000001)), vec3f(0.0), vec3f(1.0)) * f32(n - 1);
+  let i0 = vec3i(floor(f));
+  let i1 = min(i0 + vec3i(1), vec3i(n - 1));
+  let t = f - floor(f);
+  let x00 = mix(lutTexel(i0.x, i0.y, i0.z, n), lutTexel(i1.x, i0.y, i0.z, n), t.x);
+  let x10 = mix(lutTexel(i0.x, i1.y, i0.z, n), lutTexel(i1.x, i1.y, i0.z, n), t.x);
+  let x01 = mix(lutTexel(i0.x, i0.y, i1.z, n), lutTexel(i1.x, i0.y, i1.z, n), t.x);
+  let x11 = mix(lutTexel(i0.x, i1.y, i1.z, n), lutTexel(i1.x, i1.y, i1.z, n), t.x);
+  return mix(mix(x00, x10, t.y), mix(x01, x11, t.y), t.z);
+}
+
+fn pixelEffect(program: i32, p: vec2f) -> vec4f {
+  let s = tapSrc(p);
+  switch program {
+    case 10: {
+      if (s.a <= 0.0) { return vec4f(0.0); }
+      return vec4f(colorAdjust(s.rgb / s.a) * s.a, s.a);
+    }
+    case 11: {
+      let uv = (p - fx.rect.xy) / max(fx.rect.zw - fx.rect.xy, vec2f(0.0001));
+      let r = clamp(fx.a.y, 0.0, 1.5);
+      let f = 1.0 - sstep(r - clamp(fx.a.z, 0.0, 1.0), r, length((uv - vec2f(0.5)) * 2.0));
+      return vec4f(s.rgb * (1.0 - clamp(fx.a.x, 0.0, 1.0) * (1.0 - f)), s.a);
+    }
+    case 12: {
+      // Unsharp mask over a 3 x 3 tent fx.a.y px wide; the alpha is kept.
+      let r = fx.a.y;
+      let e = tapSrc(p + vec2f(r, 0.0)) + tapSrc(p - vec2f(r, 0.0)) + tapSrc(p + vec2f(0.0, r)) + tapSrc(p - vec2f(0.0, r));
+      let d = tapSrc(p + vec2f(r, r)) + tapSrc(p + vec2f(-r, r)) + tapSrc(p + vec2f(r, -r)) + tapSrc(p - vec2f(r, r));
+      let blur = (4.0 * s + 2.0 * e + d) / 16.0;
+      return vec4f(clamp(s.rgb + (s.rgb - blur.rgb) * fx.a.x, vec3f(0.0), vec3f(s.a)), s.a);
+    }
+    case 13: {
+      if (s.a <= 0.0) { return vec4f(0.0); }
+      let rgb = clamp(s.rgb / s.a + vec3f(grainNoise(p) * fx.a.x), vec3f(0.0), vec3f(1.0));
+      return vec4f(rgb * s.a, s.a);
+    }
+    case 14: { return chromaKey(s); }
+    case 15: {
+      if (s.a <= 0.0) { return vec4f(0.0); }
+      var k = sstep(fx.a.x, fx.a.x + max(fx.a.y, 0.0), luma709(s.rgb / s.a));
+      if (fx.a.z > 0.5) { k = 1.0 - k; }
+      return s * k;
+    }
+    case 16: {
+      if (s.a <= 0.0) { return vec4f(0.0); }
+      let c = s.rgb / s.a;
+      return vec4f(mix(c, applyLut(c), clamp(fx.a.x, 0.0, 1.0)) * s.a, s.a);
+    }
+    default: { return s; }
+  }
+}
+
 @fragment
 fn fs(@builtin(position) position: vec4f) -> @location(0) vec4f {
   let p = position.xy;
@@ -1067,6 +1228,7 @@ fn fs(@builtin(position) position: vec4f) -> @location(0) vec4f {
     case 7: { return outline(p); }
     case 8: { return tapSrc(p) * coverage(p); }
     case 9: { return vec4f(dilate(p)); }
+    case 10, 11, 12, 13, 14, 15, 16: { return pixelEffect(program, p); }
     default: { return tapSrc(p); }
   }
 }

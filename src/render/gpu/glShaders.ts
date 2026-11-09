@@ -897,6 +897,156 @@ float coverage(vec2 p) {
   return mix(mix(a, b, w.x), mix(c, d, w.x), w.y);
 }
 
+// See EFFECT_WGSL: the Batch 75 per-pixel effects, line for line.
+float sstep(float e0, float e1, float x) {
+  if (e1 <= e0) { return x < e0 ? 0.0 : 1.0; }
+  float t = clamp((x - e0) / (e1 - e0), 0.0, 1.0);
+  return t * t * (3.0 - 2.0 * t);
+}
+
+float luma709(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+
+float hueChannel(float p, float q, float t) {
+  float tt = fract(t);
+  if (tt < 1.0 / 6.0) { return p + (q - p) * 6.0 * tt; }
+  if (tt < 0.5) { return q; }
+  if (tt < 2.0 / 3.0) { return p + (q - p) * (2.0 / 3.0 - tt) * 6.0; }
+  return p;
+}
+
+vec3 hueRotate(vec3 c, float turns) {
+  float mx = max(c.r, max(c.g, c.b));
+  float mn = min(c.r, min(c.g, c.b));
+  if (mx == mn) { return c; }
+  float l = (mx + mn) * 0.5;
+  float d = mx - mn;
+  float s = l > 0.5 ? d / (2.0 - mx - mn) : d / (mx + mn);
+  float h;
+  if (mx == c.r) { h = (c.g - c.b) / d + (c.g < c.b ? 6.0 : 0.0); }
+  else if (mx == c.g) { h = (c.b - c.r) / d + 2.0; }
+  else { h = (c.r - c.g) / d + 4.0; }
+  h = fract(h / 6.0 + turns);
+  float q = l < 0.5 ? l * (1.0 + s) : l + s - l * s;
+  float p = 2.0 * l - q;
+  return vec3(hueChannel(p, q, h + 1.0 / 3.0), hueChannel(p, q, h), hueChannel(p, q, h - 1.0 / 3.0));
+}
+
+vec3 colorAdjust(vec3 cIn) {
+  vec3 c = cIn * exp2(u_fx[1].w);
+  float t = u_fx[2].x / 100.0;
+  c = c + vec3(t * 0.2, 0.0, -t * 0.2);
+  float k = u_fx[2].y / 100.0;
+  c = c + vec3(k * 0.1, -k * 0.2, k * 0.1);
+  c = (c + vec3(u_fx[1].x / 100.0 * 0.5 - 0.5)) * (1.0 + u_fx[1].y / 100.0) + vec3(0.5);
+  float y = luma709(c);
+  c = vec3(y) + (c - vec3(y)) * (1.0 + u_fx[1].z / 100.0);
+  float chroma = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
+  float vib = 1.0 + u_fx[2].w / 100.0 * (1.0 - clamp(chroma, 0.0, 1.0));
+  y = luma709(c);
+  c = clamp(vec3(y) + (c - vec3(y)) * vib, vec3(0.0), vec3(1.0));
+  if (u_fx[2].z != 0.0) { c = hueRotate(c, u_fx[2].z / 360.0); }
+  return clamp(c, vec3(0.0), vec3(1.0));
+}
+
+float grainHash(uint x, uint y, uint f) {
+  uint h = (x * 0x8da6b343u) ^ (y * 0xd8163841u) ^ (f * 0xcb1ab31fu);
+  h = (h ^ (h >> 16u)) * 0x7feb352du;
+  h = (h ^ (h >> 15u)) * 0x846ca68bu;
+  h = h ^ (h >> 16u);
+  return float(h >> 8u) / 16777215.0;
+}
+
+float grainNoise(vec2 p) {
+  vec2 q = (p - u_fx[4].xy) / max(u_fx[1].y, 0.0001);
+  vec2 fl = floor(q);
+  vec2 fr = q - fl;
+  vec2 w = fr * fr * (3.0 - 2.0 * fr);
+  uvec2 i = uvec2(ivec2(fl) + ivec2(65536));
+  uint f = uint(max(u_fx[1].z, 0.0) + 0.5);
+  float a = grainHash(i.x, i.y, f);
+  float b = grainHash(i.x + 1u, i.y, f);
+  float c = grainHash(i.x, i.y + 1u, f);
+  float d = grainHash(i.x + 1u, i.y + 1u, f);
+  return a + (b - a) * w.x + (c - a) * w.y + (a - b - c + d) * w.x * w.y - 0.5;
+}
+
+vec2 cbcr(vec3 c) {
+  return vec2(dot(c, vec3(-0.168736, -0.331264, 0.5)), dot(c, vec3(0.5, -0.418688, -0.081312)));
+}
+
+vec4 chromaKey(vec4 s) {
+  if (s.a <= 0.0) { return vec4(0.0); }
+  vec3 c = s.rgb / s.a;
+  float keep = sstep(u_fx[1].x, u_fx[1].x + max(u_fx[1].y, 0.0), length(cbcr(c) - cbcr(u_fx[3].rgb)));
+  int ch = int(u_fx[1].w + 0.5);
+  if (ch == 0) {
+    float lim = max(c.g, c.b);
+    if (c.r > lim) { c.r = c.r - u_fx[1].z * (c.r - lim); }
+  } else if (ch == 2) {
+    float lim = max(c.r, c.g);
+    if (c.b > lim) { c.b = c.b - u_fx[1].z * (c.b - lim); }
+  } else {
+    float lim = max(c.r, c.b);
+    if (c.g > lim) { c.g = c.g - u_fx[1].z * (c.g - lim); }
+  }
+  float a = s.a * keep;
+  return vec4(c * a, a);
+}
+
+vec3 lutTexel(int r, int g, int b, int n) { return texelFetch(u_orig, ivec2(r + b * n, g), 0).rgb; }
+
+vec3 applyLut(vec3 c) {
+  int n = int(u_fx[1].y + 0.5);
+  vec3 f = clamp((c - u_fx[2].xyz) / max(u_fx[3].xyz - u_fx[2].xyz, vec3(0.000001)), vec3(0.0), vec3(1.0)) * float(n - 1);
+  ivec3 i0 = ivec3(floor(f));
+  ivec3 i1 = min(i0 + ivec3(1), ivec3(n - 1));
+  vec3 t = f - floor(f);
+  vec3 x00 = mix(lutTexel(i0.x, i0.y, i0.z, n), lutTexel(i1.x, i0.y, i0.z, n), t.x);
+  vec3 x10 = mix(lutTexel(i0.x, i1.y, i0.z, n), lutTexel(i1.x, i1.y, i0.z, n), t.x);
+  vec3 x01 = mix(lutTexel(i0.x, i0.y, i1.z, n), lutTexel(i1.x, i0.y, i1.z, n), t.x);
+  vec3 x11 = mix(lutTexel(i0.x, i1.y, i1.z, n), lutTexel(i1.x, i1.y, i1.z, n), t.x);
+  return mix(mix(x00, x10, t.y), mix(x01, x11, t.y), t.z);
+}
+
+vec4 pixelEffect(int program, vec2 p) {
+  vec4 s = tapSrc(p);
+  if (program == 10) {
+    if (s.a <= 0.0) { return vec4(0.0); }
+    return vec4(colorAdjust(s.rgb / s.a) * s.a, s.a);
+  }
+  if (program == 11) {
+    vec2 uv = (p - u_fx[4].xy) / max(u_fx[4].zw - u_fx[4].xy, vec2(0.0001));
+    float r = clamp(u_fx[1].y, 0.0, 1.5);
+    float f = 1.0 - sstep(r - clamp(u_fx[1].z, 0.0, 1.0), r, length((uv - vec2(0.5)) * 2.0));
+    return vec4(s.rgb * (1.0 - clamp(u_fx[1].x, 0.0, 1.0) * (1.0 - f)), s.a);
+  }
+  if (program == 12) {
+    float r = u_fx[1].y;
+    vec4 e = tapSrc(p + vec2(r, 0.0)) + tapSrc(p - vec2(r, 0.0)) + tapSrc(p + vec2(0.0, r)) + tapSrc(p - vec2(0.0, r));
+    vec4 d = tapSrc(p + vec2(r, r)) + tapSrc(p + vec2(-r, r)) + tapSrc(p + vec2(r, -r)) + tapSrc(p - vec2(r, r));
+    vec4 blur = (4.0 * s + 2.0 * e + d) / 16.0;
+    return vec4(clamp(s.rgb + (s.rgb - blur.rgb) * u_fx[1].x, vec3(0.0), vec3(s.a)), s.a);
+  }
+  if (program == 13) {
+    if (s.a <= 0.0) { return vec4(0.0); }
+    vec3 rgb = clamp(s.rgb / s.a + vec3(grainNoise(p) * u_fx[1].x), vec3(0.0), vec3(1.0));
+    return vec4(rgb * s.a, s.a);
+  }
+  if (program == 14) { return chromaKey(s); }
+  if (program == 15) {
+    if (s.a <= 0.0) { return vec4(0.0); }
+    float k = sstep(u_fx[1].x, u_fx[1].x + max(u_fx[1].y, 0.0), luma709(s.rgb / s.a));
+    if (u_fx[1].z > 0.5) { k = 1.0 - k; }
+    return s * k;
+  }
+  if (program == 16) {
+    if (s.a <= 0.0) { return vec4(0.0); }
+    vec3 c = s.rgb / s.a;
+    return vec4(mix(c, applyLut(c), clamp(u_fx[1].x, 0.0, 1.0)) * s.a, s.a);
+  }
+  return s;
+}
+
 void main() {
   vec2 p = gl_FragCoord.xy;
   int program = int(u_fx[0].z + 0.5);
@@ -920,6 +1070,7 @@ void main() {
   if (program == 7) { outColor = outlined(p); return; }
   if (program == 8) { outColor = tapSrc(p) * coverage(p); return; }
   if (program == 9) { outColor = vec4(dilate(p)); return; }
+  if (program >= 10 && program <= 16) { outColor = pixelEffect(program, p); return; }
   outColor = tapSrc(p);
 }
 `;

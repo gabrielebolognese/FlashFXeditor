@@ -24,6 +24,29 @@
   cursor: grabbing;
 }
 
+/* A LUT effect's file name (Batch 75): one line, ellipsized, in the control's text size. */
+.file {
+  min-width: 0;
+  max-width: calc(var(--space-6) * 4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--type-body-size);
+}
+
+/* The saved looks (Batch 75; gap: the DS has no chip list): compact buttons with a delete button, wrapping. */
+.looks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.look {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-0);
+}
+
 /* A disabled effect's name in muted text. */
 .off {
   color: var(--text-tertiary);

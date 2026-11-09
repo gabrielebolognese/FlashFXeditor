@@ -9,6 +9,7 @@ import type { Pane, TextureHandle } from "../gpu/renderer.js";
 import { EffectPlan, FX_BUFFER } from "./effectPlan.js";
 import { blurTaps, EFFECT_REGISTRY, FX_PROGRAM, FX_SLOT, outlineSteps, stackReach } from "./registry.js";
 import { StageJobs } from "./stageJobs.js";
+import { lutLibrary } from "./lutLibrary.js";
 
 class FakeTexture implements TextureHandle {
   valid = true;
@@ -116,6 +117,38 @@ describe("effect registry and plan (spec §21.19)", () => {
     expect(plan.orig[3]).toBe(plan.dst[1]);
     expect(plan.src[3]).toBe(plan.dst[2]);
     expect(new Set([plan.src[3], plan.orig[3], plan.dst[3]]).size).toBe(3);
+  });
+
+  it("gives a LUT pass the LUT as its second texture, and skips a LUT that is not loaded (Batch 75)", () => {
+    const effects: Effect[] = [newEffect("colorAdjust", "a"), { ...newEffect("lut", "b"), params: { file: "luts/x.cube", intensity: 0.5 } }];
+    const data = new Float32Array(EFFECT_BLOCK * 2);
+    const length = packEffects({ effects }, 0, data, () => 9);
+    const plan = new EffectPlan();
+    const atlas = { size: 2, width: 4, height: 2, rgba: new Uint8Array(32), domainMin: [0, 0, 0] as const, domainMax: [1, 1, 1] as const };
+    lutLibrary.clear();
+    expect(plan.build({ width: 64, height: 64, rect: [0, 0, 64, 64], scale: 1, data, length, masked: false })).toBe(1);
+    const handle = lutLibrary.set("luts/x.cube", atlas);
+    packEffects({ effects }, 0, data, lutLibrary.handleOf);
+    expect(plan.build({ width: 64, height: 64, rect: [0, 0, 64, 64], scale: 1, data, length, masked: false })).toBe(2);
+    expect(plan.uniform(0)[FX_SLOT.size + 2]).toBe(FX_PROGRAM.colorAdjust);
+    expect(plan.lut[0]).toBe(0);
+    expect(plan.uniform(1)[FX_SLOT.size + 2]).toBe(FX_PROGRAM.lut);
+    expect(plan.orig[1]).toBe(FX_BUFFER.lut);
+    expect(plan.lut[1]).toBe(handle);
+    expect(plan.uniform(1)[FX_SLOT.a]).toBe(0.5);
+    expect(plan.uniform(1)[FX_SLOT.a + 1]).toBe(2);
+    expect(plan.dst[1]).toBe(FX_BUFFER.out);
+    lutLibrary.clear();
+  });
+
+  it("scales the sharpen radius and grain size with the stage, and passes the grain frame (Batch 75)", () => {
+    const effects: Effect[] = [{ ...newEffect("sharpen", "a"), params: { amount: 2, radius: 4 } }, { ...newEffect("grain", "b"), params: { amount: 0.2, size: 3, animated: 1 } }];
+    const data = new Float32Array(EFFECT_BLOCK * 2);
+    const length = packEffects({ effects }, 12, data);
+    const plan = new EffectPlan();
+    expect(plan.build({ width: 64, height: 64, rect: [0, 0, 64, 64], scale: 0.5, data, length, masked: false })).toBe(2);
+    expect(Array.from(plan.uniform(0).slice(FX_SLOT.a, FX_SLOT.a + 2))).toEqual([2, 2]);
+    expect(Array.from(plan.uniform(1).slice(FX_SLOT.a, FX_SLOT.a + 3))).toEqual([0.20000000298023224, 1.5, 12]);
   });
 
   it("has a render definition for every type", () => {

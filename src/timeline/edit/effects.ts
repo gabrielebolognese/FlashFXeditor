@@ -6,7 +6,7 @@ import type { Command } from "../../core/commands/command.js";
 import { setKey, withKeys, type Key } from "../../core/document/keyframes.js";
 import type { Clip, ClipId, Effect, EffectType, Frame, Keyframes, Project } from "../../core/document/types.js";
 import { effectKeys, effectValueAt } from "../../core/effects/effectEval.js";
-import { clampParam, EFFECT_DEFS, EFFECT_KINDS, effectParam, effectParamDef, effectProp, newEffect, type EffectParamDef } from "../../core/effects/effectParams.js";
+import { clampParam, EFFECT_DEFS, EFFECT_KINDS, effectParam, effectParamDef, effectProp, isProjectFile, newEffect, type EffectParamDef } from "../../core/effects/effectParams.js";
 import { isClipLocked } from "../model/queries.js";
 
 type EffectClip = Clip & { effects?: Effect[]; keyframes?: Keyframes };
@@ -36,11 +36,18 @@ export function nextEffectId(effects: readonly Effect[] | undefined): string {
   return `fx${n}`;
 }
 
-/** Adds an effect of `type` (every parameter at its default) at the end of each clip's stack (one undo step). */
-export function addEffect(project: Project, ids: readonly ClipId[], type: EffectType): Command | null {
+/**
+ * Adds an effect of `type` (every parameter at its default, or as `params` sets it) at the end of each clip's
+ * stack (one undo step).
+ */
+export function addEffect(project: Project, ids: readonly ClipId[], type: EffectType, params: Effect["params"] = {}): Command | null {
   const targets = effectClips(project, ids);
   if (targets.length === 0) return null;
-  const adds = targets.map((clip) => ({ id: clip.id, effect: newEffect(type, nextEffectId(clip.effects)) }));
+  const adds = targets.map((clip) => {
+    const effect = newEffect(type, nextEffectId(clip.effects));
+    effect.params = { ...effect.params, ...structuredClone(params) };
+    return { id: clip.id, effect };
+  });
   return {
     id: "clip.effect.add",
     label: `Add ${EFFECT_DEFS[type].label.toLowerCase()}`,
@@ -90,6 +97,29 @@ export function removeAllEffects(project: Project, ids: readonly ClipId[]): Comm
         const clip = draft.clips[id] as Draft<EffectClip>;
         delete clip.effects;
         for (const effectId of effectIds) dropEffectKeys(clip, effectId);
+      }
+    },
+  };
+}
+
+/**
+ * Applies a look (Batch 75: an effect stack saved by name) to the clips `ids`: each clip's stack becomes a copy
+ * of `effects` (new ids `fx1`, `fx2`, ...), its effect keys dropped. One undo step.
+ */
+export function applyLook(project: Project, ids: readonly ClipId[], effects: readonly Effect[], name: string): Command | null {
+  const targets = effectClips(project, ids);
+  if (targets.length === 0 || effects.length === 0) return null;
+  const stack: Effect[] = effects.map((effect, i) => ({ id: `fx${i + 1}`, type: effect.type, enabled: effect.enabled, params: structuredClone(effect.params) }));
+  const work = targets.map((clip) => ({ id: clip.id, old: (clip.effects ?? []).map((e) => e.id) }));
+  return {
+    id: "clip.effect.applyLook",
+    label: `Apply look ${name}`,
+    affects: ["clips", "composite"],
+    run(draft) {
+      for (const { id, old } of work) {
+        const clip = draft.clips[id] as Draft<EffectClip>;
+        for (const effectId of old) dropEffectKeys(clip, effectId);
+        clip.effects = structuredClone(stack) as Draft<Effect>[];
       }
     },
   };
@@ -192,6 +222,7 @@ export function setEffectParam(project: Project, clipId: ClipId, effectId: strin
 
 function fits(def: EffectParamDef, value: unknown): boolean {
   if (def.kind === "choice") return typeof value === "string" && (def.options ?? []).includes(value);
+  if (def.kind === "file") return typeof value === "string" && (value === "" || isProjectFile(def, value));
   if (def.kind === "color") return Array.isArray(value) && value.length === 4 && value.every((v) => typeof v === "number" && Number.isFinite(v));
   return typeof value === "number" && Number.isFinite(value);
 }

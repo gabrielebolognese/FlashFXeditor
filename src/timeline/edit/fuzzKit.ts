@@ -126,7 +126,7 @@ import type { Mask } from "../../core/document/types.js";
 import { maskPathPoints, maskPathData } from "../../core/masks/maskPath.js";
 import { BLEND_MODES, EFFECT_TYPES, MATTE_MODES, type Effect } from "../../core/document/types.js";
 import { EFFECT_DEFS, type EffectParamDef } from "../../core/effects/effectParams.js";
-import { addEffect, moveEffect, removeAllEffects, removeEffect, setEffectEnabled, setEffectParam, setEffectStopwatch, takesEffects, toggleEffectKey } from "./effects.js";
+import { addEffect, applyLook, moveEffect, removeAllEffects, removeEffect, setEffectEnabled, setEffectParam, setEffectStopwatch, takesEffects, toggleEffectKey } from "./effects.js";
 import { isVisualClip } from "../../core/effects/trackMatte.js";
 import { setPerspective } from "../../core/commands/projectCommands.js";
 import { addSolid, newSolidClip, setSolids, type SolidEdit, type SolidLook } from "./solid.js";
@@ -2098,6 +2098,8 @@ function effectValue(rng: Rng, def: EffectParamDef): number | number[] | string 
   if (def.kind === "choice") return rng.pick(def.options ?? [""]);
   if (def.kind === "toggle") return rng.int(0, 1);
   if (def.kind === "color") return [rng.next(), rng.next(), rng.next(), fl(rng, -0.2, 1.2)];
+  // Files (Batch 75): none, a LUT in luts/, or a path the command refuses.
+  if (def.kind === "file") return rng.pick(["", "luts/a.cube", "luts/b.cube", "media/a.cube", "luts/../a.cube"]);
   const min = def.min ?? 0;
   const max = def.max ?? 100;
   return fl(rng, min - (max - min) * 0.1, max + (max - min) * 0.1);
@@ -2150,6 +2152,14 @@ const EFFECT_OPS: FuzzOp[] = [
     if (!clip) return false;
     return exec(store, rng.chance(0.8) ? removeEffect(p, clip.id, rng.pick(clip.effects).id) : removeAllEffects(p, [clip.id]));
   }, { weight: 0.3 }),
+  // Looks (Batch 75): one clip's stack applied to a selection (its stacks replaced, their effect keys dropped).
+  op("effects.look", "effects", (store, rng) => {
+    const p = store.getState();
+    const source = effectedClip(p, rng);
+    const target = pickClip(p, rng, takesEffects);
+    if (!source || !target) return false;
+    return exec(store, applyLook(p, selection(p, rng, target, false), source.effects, "Fuzz"));
+  }, { weight: 0.25 }),
 ];
 
 /** Every edit operation of the catalogue, with random but sensible arguments. */

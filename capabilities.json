@@ -2,8 +2,8 @@
   "manifestVersion": 1,
   "app": "shorts-editor",
   "appVersion": "1.1.0",
-  "lastBatch": 74,
-  "schemaVersion": 18,
+  "lastBatch": 75,
+  "schemaVersion": 19,
   "project": {
     "file": "project.json",
     "fontsManifest": "fonts/fonts.json",
@@ -357,7 +357,14 @@
     "directionalBlur",
     "glow",
     "dropShadow",
-    "outline"
+    "outline",
+    "colorAdjust",
+    "vignette",
+    "sharpen",
+    "grain",
+    "chromaKey",
+    "lumaKey",
+    "lut"
   ],
   "audio": {
     "clipGainDb": [

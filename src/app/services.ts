@@ -25,6 +25,7 @@ import { fromHandle, isDirectoryHandle } from "../project/fs.js";
 import { ProjectsFolder } from "../project/projectsFolder.js";
 import { RecentProjects } from "../project/recentProjects.js";
 import { TemplateStore } from "../project/templates.js";
+import { LookStore } from "../project/looks.js";
 import { showToast } from "../ui/toasts.js";
 import { shortcutLabel } from "../ui/shortcutLabel.js";
 import { installTooltips } from "../ui/tooltipController.js";
@@ -61,6 +62,8 @@ export const recentProjects = new RecentProjects(keyValueStore);
 export const projectsFolder = new ProjectsFolder(keyValueStore, (handle) => (isDirectoryHandle(handle) ? fromHandle(handle) : null));
 /** Project templates (spec §15): settings, track layout and text presets, in IndexedDB. */
 export const templateStore = new TemplateStore(keyValueStore);
+/** Looks (spec §21.19, Batch 75): effect stacks saved by name, in IndexedDB. */
+export const lookStore = new LookStore(keyValueStore);
 export const appSettings = createAppSettings(keyValueStore);
 /**
  * Media workers (spec §3.5), each created on its first request (transcribe: Batch 33, the Transcribe

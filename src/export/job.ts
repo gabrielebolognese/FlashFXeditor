@@ -4,6 +4,7 @@ import type { Frame, MediaId, Project } from "../core/document/types.js";
 import type { SlateLook } from "../render/compositor/Compositor.js";
 import type { RendererBackend } from "../render/gpu/backend.js";
 import type { FontDescriptor } from "../render/text/FontLibrary.js";
+import type { LutAtlas } from "../core/effects/lut.js";
 import type { PipelineProgress } from "./pipeline.js";
 import type { AudioFileFormat } from "./audioExport.js";
 import type { ExportFormat } from "./presets.js";
@@ -32,6 +33,8 @@ export interface ExportJobParams {
    */
   fonts: FontDescriptor[];
   fontBaseUrl: string;
+  /** The LUT atlases the project's LUT effects name (Batch 75), by project path (`luts/<name>.cube`); their bytes are transferred. */
+  luts: Record<string, LutAtlas>;
   /** Media drawn as offline slates: their slate's second line (spec §6.19). */
   offline: Record<MediaId, string>;
   slate: SlateLook;

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { setKey } from "../document/keyframes.js";
 import { EFFECT_TYPES, type Effect } from "../document/types.js";
 import { EFFECT_BLOCK, effectCode, effectTypeOf, effectValueAt, hasActiveEffects, packEffects, paramOffset } from "./effectEval.js";
-import { clampParam, EFFECT_DEFS, effectIssues, effectParamDef, effectPropIssue, isEffectProp, newEffect } from "./effectParams.js";
+import { clampParam, EFFECT_DEFS, effectFilePaths, effectIssues, effectParamDef, effectPropIssue, isEffectProp, isProjectFile, newEffect, projectEffectFiles } from "./effectParams.js";
 
 describe("effect parameters (spec §21.19, Batch 74)", () => {
   it("gives every type its defaults, each valid", () => {
@@ -51,5 +51,56 @@ describe("effect parameters (spec §21.19, Batch 74)", () => {
     expect(packEffects(clip, 10, out)).toBe(EFFECT_BLOCK);
     expect(out[0]).toBe(effectCode("glow"));
     expect(out[paramOffset("glow", "intensity")]).toBe(1);
+  });
+});
+
+describe("Effects II parameters (spec §21.19, Batch 75)", () => {
+  it("defines the color, stylize, key and LUT types", () => {
+    for (const type of ["colorAdjust", "vignette", "sharpen", "grain", "chromaKey", "lumaKey", "lut"] as const) expect(EFFECT_TYPES).toContain(type);
+    expect(newEffect("chromaKey", "k").params).toEqual({ color: [0, 0.694, 0.251, 1], tolerance: 0.18, softness: 0.12, spill: 0.6 });
+    expect(newEffect("lut", "l").params).toEqual({ file: "", intensity: 1 });
+    expect(effectParamDef("colorAdjust", "exposure")?.step).toBe(0.01);
+  });
+
+  it("takes a LUT file inside luts/ ending in .cube, or none; never keyed", () => {
+    const def = effectParamDef("lut", "file");
+    expect(def?.kind).toBe("file");
+    expect(def?.keyframeable).toBe(false);
+    const lut = (file: unknown): Effect => ({ id: "l", type: "lut", enabled: true, params: { file: file as string } });
+    for (const ok of ["", "luts/warm.cube", "luts/My Look 2.CUBE"]) expect(effectIssues([lut(ok)], "clip")).toEqual([]);
+    for (const bad of ["warm.cube", "media/warm.cube", "luts/warm.png", "luts/a/b.cube", "luts/../b.cube", "luts/.cube", "luts/.hidden.cube", "luts/a:b.cube", 3, [1]]) {
+      expect(effectIssues([lut(bad)], "clip").length).toBeGreaterThan(0);
+    }
+    expect(isProjectFile({ folder: "luts", extension: ".cube" }, "luts/x.cube")).toBe(true);
+    expect(isEffectProp("effects.l.intensity")).toBe(true);
+    expect(effectPropIssue("effects.l.file", [lut("luts/x.cube")])).not.toBeNull();
+  });
+
+  it("lists the files a stack and a project name, once each", () => {
+    const effects: Effect[] = [
+      { id: "a", type: "lut", enabled: true, params: { file: "luts/a.cube" } },
+      { id: "b", type: "lut", enabled: false, params: { file: "luts/b.cube" } },
+      { id: "c", type: "lut", enabled: true, params: { file: "" } },
+      { id: "d", type: "lut", enabled: true, params: { file: "luts/a.cube" } },
+    ];
+    expect(effectFilePaths(effects)).toEqual(["luts/a.cube", "luts/b.cube"]);
+    expect(projectEffectFiles({ x: { effects }, y: { effects: [{ id: "e", type: "lut", enabled: true, params: { file: "luts/c.cube" } }] }, z: {} })).toEqual(["luts/a.cube", "luts/b.cube", "luts/c.cube"]);
+  });
+
+  it("packs a LUT's handle through the resolver and the grain's frame when animated", () => {
+    const data = new Float32Array(EFFECT_BLOCK * 3);
+    const effects: Effect[] = [
+      { id: "l", type: "lut", enabled: true, params: { file: "luts/a.cube", intensity: 0.5 } },
+      { id: "g", type: "grain", enabled: true, params: { animated: 1 } },
+      { id: "h", type: "grain", enabled: true, params: { animated: 0 } },
+    ];
+    expect(packEffects({ effects }, 7, data, (path) => (path === "luts/a.cube" ? 4 : 0))).toBe(EFFECT_BLOCK * 3);
+    expect(data[paramOffset("lut", "file")]).toBe(4);
+    expect(data[paramOffset("lut", "intensity")]).toBe(0.5);
+    expect(data[EFFECT_BLOCK + 15]).toBe(7);
+    expect(data[EFFECT_BLOCK * 2 + 15]).toBe(0);
+    // Without a resolver (or an unknown file) the handle is 0: the pass is skipped.
+    packEffects({ effects }, 7, data);
+    expect(data[paramOffset("lut", "file")]).toBe(0);
   });
 });

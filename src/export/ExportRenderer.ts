@@ -35,6 +35,7 @@ import { LayerTextures } from "../render/preview/LayerTextures.js";
 import { FontLibrary } from "../render/text/FontLibrary.js";
 import { TextRasterCache } from "../render/text/TextRasterCache.js";
 import { exportNeeds } from "./inputs.js";
+import { lutLibrary } from "../render/effects/lutLibrary.js";
 import type { ExportJobParams } from "./job.js";
 
 /** The slate line of a video the export cannot open or decode (the preview's "failed" label). */
@@ -125,6 +126,9 @@ export class ExportRenderer {
       text: this.text,
       onFail: (mediaId) => this.offline.set(mediaId, FAILED_LABEL),
     });
+    // The LUTs (Batch 75): this worker's library holds the job's (the compositor packs their handles).
+    lutLibrary.clear();
+    for (const [path, atlas] of Object.entries(params.luts ?? {})) lutLibrary.set(path, atlas);
     const slates: OfflineSlates = { label: (mediaId) => this.offline.get(mediaId) ?? null, look: () => params.slate };
     this.compositor = new Compositor(slates);
   }

@@ -4,7 +4,7 @@ import { makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTextClip, mak
 import type { Clip, Effect, Keyframes, Project } from "../../core/document/types.js";
 import { validateProject } from "../../core/document/validate.js";
 import { packEffects, EFFECT_BLOCK, paramOffset } from "../../core/effects/effectEval.js";
-import { addEffect, effectParamAt, effectParamKeyed, moveEffect, nextEffectId, removeAllEffects, removeEffect, setEffectEnabled, setEffectParam, setEffectStopwatch, takesEffects, toggleEffectKey } from "./effects.js";
+import { addEffect, applyLook, effectParamAt, effectParamKeyed, moveEffect, nextEffectId, removeAllEffects, removeEffect, setEffectEnabled, setEffectParam, setEffectStopwatch, takesEffects, toggleEffectKey } from "./effects.js";
 
 function doc(): Project {
   const p = makeProject();
@@ -129,5 +129,42 @@ describe("effect edits (spec §21.19, Batch 74)", () => {
     expect(fx(cleared, "s")).toEqual([]);
     expect(fx(cleared, "v")).toEqual([]);
     expect(removeAllEffects(cleared, ["s"])).toBeNull();
+  });
+});
+
+describe("looks and LUT files (spec §21.19, Batch 75)", () => {
+  const look: Effect[] = [
+    { id: "grade", type: "colorAdjust", enabled: true, params: { exposure: 0.5, saturation: -20 } },
+    { id: "film", type: "grain", enabled: false, params: { amount: 0.3 } },
+    { id: "lut", type: "lut", enabled: true, params: { file: "luts/warm.cube", intensity: 0.5 } },
+  ];
+
+  it("applies a look to each visual clip as one command, replacing its stack and dropping the old keys", () => {
+    const p = doc();
+    let next = run(p, addEffect(p, ["v"], "glow"));
+    next = run(next, setEffectStopwatch(next, "v", "fx1", "intensity", true, 0));
+    expect(Object.keys(kf(next, "v") ?? {})).toContain("effects.fx1.intensity");
+    const command = applyLook(next, ["v", "s", "a"], look, "Warm");
+    expect(command?.id).toBe("clip.effect.applyLook");
+    expect(command?.label).toBe("Apply look Warm");
+    const after = run(next, command);
+    for (const id of ["v", "s"]) expect(fx(after, id)).toEqual(look.map((e, i) => ({ ...e, id: `fx${i + 1}` })));
+    expect(fx(after, "a")).toEqual([]);
+    expect(Object.keys(kf(after, "v") ?? {}).filter((prop) => prop.startsWith("effects."))).toEqual([]);
+    // The look's own objects are not shared with the document.
+    (fx(after, "v")[0] as Effect).params.exposure = 3;
+    expect(look[0]?.params.exposure).toBe(0.5);
+    expect(applyLook(p, ["a"], look, "Warm")).toBeNull();
+    expect(applyLook(p, ["v"], [], "Empty")).toBeNull();
+  });
+
+  it("sets a LUT effect's file by command and refuses a path outside luts/", () => {
+    const p = doc();
+    let next = run(p, addEffect(p, ["s"], "lut", { file: "luts/a.cube" }));
+    expect(fx(next, "s")[0]?.params).toEqual({ file: "luts/a.cube", intensity: 1 });
+    next = run(next, setEffectParam(next, "s", "fx1", "file", "luts/b.cube", 0));
+    expect(fx(next, "s")[0]?.params.file).toBe("luts/b.cube");
+    expect(setEffectParam(next, "s", "fx1", "file", "media/b.cube", 0)).toBeNull();
+    expect(setEffectStopwatch(next, "s", "fx1", "file", true, 0)).toBeNull();
   });
 });

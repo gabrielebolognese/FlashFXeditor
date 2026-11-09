@@ -377,6 +377,10 @@ export const COMMANDS: readonly CommandInfo[] = [
   // Effects (spec §21.19, Batch 74)
   ...EFFECT_TYPES.map((type) => clip(effectAddCommand(type), EFFECT_ADD_TITLES[type], { icon: EFFECT_ICONS[type], keywords: EFFECT_KEYWORDS[type] })),
   clip("clip.effect.removeAll", "Remove effects", { icon: Eraser, keywords: "effect blur glow shadow outline delete clear" }),
+  // LUTs and looks (spec §21.19, Batch 75)
+  clip("clip.effect.lut.load", "Load LUT (.cube)…", { icon: FileUp, keywords: "lut cube color grade look import file" }),
+  clip("clip.effect.saveLook", "Save effects as look", { icon: BookmarkPlus, keywords: "look preset effect stack save grade" }),
+  clip("clip.effect.applyLastLook", "Apply last saved look", { icon: Bookmark, keywords: "look preset effect stack apply grade" }),
 
   // Speed (spec §11, Batch 27)
   speed("clip.speedPanel", "Speed…", { icon: Gauge, keywords: "rate duration" }),

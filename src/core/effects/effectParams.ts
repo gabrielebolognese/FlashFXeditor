@@ -4,11 +4,16 @@
 // Ranges and defaults follow FlashFX-v2 src/core/effectDefaults.ts (DEFAULT_BLUR, DEFAULT_GLOW,
 // DEFAULT_SHADOW) @ a91c675 where it has the parameter: blurs reach `radius` px with sigma radius / 2, the
 // directional blur smears `length` px each way along `angle`, a shadow falls `distance` px towards `angle`
-// (0 = right, 90 = down). Pure.
+// (0 = right, 90 = down). Batch 75 adds the color, stylize, key and LUT types (FlashFX-v2 src/core/effects/
+// hsl.ts, vignette.ts, lut.ts and src/core/keying/keying.ts @ a91c675 where it has the parameter) and the
+// `file` kind (a LUT's project path). Pure.
 import { EFFECT_TYPES, type Effect, type EffectType } from "../document/types.js";
 
-/** A number (with a unit and a range), an on / off switch stored as 0 or 1, a color [r, g, b, a] or a choice. */
-export type EffectParamKind = "number" | "toggle" | "color" | "choice";
+/**
+ * A number (with a unit and a range), an on / off switch stored as 0 or 1, a color [r, g, b, a], a choice or a
+ * file of the project (a path inside `folder` ending in `extension`, or "" for none).
+ */
+export type EffectParamKind = "number" | "toggle" | "color" | "choice" | "file";
 
 export interface EffectParamDef {
   name: string;
@@ -20,8 +25,13 @@ export interface EffectParamDef {
   max?: number;
   /** Numbers: shown after the value ("px", "°"). */
   unit?: string;
+  /** Numbers: the field's step (its decimals); 1 when absent. */
+  step?: number;
   /** Choices: the allowed values. */
   options?: readonly string[];
+  /** Files: the project folder they live in and their extension (lower case, with the dot). */
+  folder?: string;
+  extension?: string;
   keyframeable: boolean;
 }
 
@@ -35,6 +45,13 @@ const px = (name: string, label: string, value: number, max: number): EffectPara
 const angle = (value: number): EffectParamDef => ({ name: "angle", label: "Angle", kind: "number", default: value, min: -360, max: 360, unit: "°", keyframeable: true });
 const color = (value: number[]): EffectParamDef => ({ name: "color", label: "Color", kind: "color", default: value, keyframeable: true });
 const repeatEdges: EffectParamDef = { name: "repeatEdges", label: "Repeat edges", kind: "toggle", default: 0, keyframeable: false };
+/** A keyframeable number in min..max with a unit and a step. */
+const num = (name: string, label: string, value: number, min: number, max: number, unit?: string, step = 1): EffectParamDef => ({ name, label, kind: "number", default: value, min, max, ...(unit && { unit }), step, keyframeable: true });
+const percent = (name: string, label: string) => num(name, label, 0, -100, 100, "%");
+const unit = (name: string, label: string, value: number) => num(name, label, value, 0, 1, undefined, 0.01);
+/** The LUT folder of a project (spec §21.19: a `.cube` file copied to `luts/`). */
+export const LUT_FOLDER = "luts";
+export const LUT_EXTENSION = ".cube";
 
 /** The Batch 74 types, in the Add menu's order. */
 export const EFFECT_DEFS: Readonly<Record<EffectType, EffectTypeDef>> = {
@@ -53,6 +70,41 @@ export const EFFECT_DEFS: Readonly<Record<EffectType, EffectTypeDef>> = {
   },
   dropShadow: { type: "dropShadow", label: "Drop shadow", params: [color([0, 0, 0, 0.55]), angle(90), px("distance", "Distance", 12, 1000), px("blur", "Blur", 16, 500)] },
   outline: { type: "outline", label: "Outline", params: [px("width", "Width", 6, 200), color([1, 1, 1, 1])] },
+  // Batch 75. Color adjustment: exposure in stops, the others -100..100 % (0 = unchanged), hue in degrees.
+  colorAdjust: {
+    type: "colorAdjust",
+    label: "Color adjust",
+    params: [
+      percent("brightness", "Brightness"),
+      percent("contrast", "Contrast"),
+      percent("saturation", "Saturation"),
+      num("exposure", "Exposure", 0, -5, 5, "EV", 0.01),
+      percent("temperature", "Temperature"),
+      percent("tint", "Tint"),
+      num("hue", "Hue", 0, -180, 180, "°"),
+      percent("vibrance", "Vibrance"),
+    ],
+  },
+  // FlashFX-v2 vignette.ts: darkening reaches full at `radius` (edge units: 1 = an edge's middle, 1.41 a corner), easing in over `softness`.
+  vignette: { type: "vignette", label: "Vignette", params: [unit("amount", "Amount", 0.5), num("radius", "Radius", 0.9, 0, 1.5, undefined, 0.01), unit("softness", "Softness", 0.6)] },
+  // Unsharp mask: the picture pushed away from its blur over `radius` px by `amount`.
+  sharpen: { type: "sharpen", label: "Sharpen", params: [num("amount", "Amount", 1, 0, 5, undefined, 0.01), num("radius", "Radius", 1.5, 0.5, 20, "px", 0.1)] },
+  // Film grain in content px: a new pattern every frame when animated.
+  grain: {
+    type: "grain",
+    label: "Grain",
+    params: [unit("amount", "Amount", 0.2), num("size", "Size", 1.5, 0.5, 20, "px", 0.1), { name: "animated", label: "Animated", kind: "toggle", default: 1, keyframeable: false }],
+  },
+  // FlashFX-v2 keying.ts: distance in the Cb/Cr plane (brightness ignored), soft edge, despill of the key's dominant channel.
+  chromaKey: { type: "chromaKey", label: "Chroma key", params: [color([0, 0.694, 0.251, 1]), unit("tolerance", "Tolerance", 0.18), unit("softness", "Softness", 0.12), unit("spill", "Spill", 0.6)] },
+  // FlashFX-v2 keying.ts lumaKeyAlpha: keeps the bright end (dark keyed), `invert` keys the bright end instead.
+  lumaKey: { type: "lumaKey", label: "Luma key", params: [unit("threshold", "Threshold", 0.1), unit("softness", "Softness", 0.1), { name: "invert", label: "Invert", kind: "toggle", default: 0, keyframeable: false }] },
+  // A 3D LUT (`.cube`) in the project's luts/ folder, mixed with the picture by `intensity`.
+  lut: {
+    type: "lut",
+    label: "LUT",
+    params: [{ name: "file", label: "File", kind: "file", default: "", folder: LUT_FOLDER, extension: LUT_EXTENSION, keyframeable: false }, unit("intensity", "Intensity", 1)],
+  },
 };
 
 const TYPE_SET: ReadonlySet<string> = new Set(EFFECT_TYPES);
@@ -120,7 +172,16 @@ function paramFits(def: EffectParamDef, value: unknown): boolean {
       return Array.isArray(value) && value.length === 4 && value.every((channel) => typeof channel === "number" && Number.isFinite(channel));
     case "choice":
       return typeof value === "string" && (def.options ?? []).includes(value);
+    case "file":
+      return typeof value === "string" && (value === "" || isProjectFile(def, value));
   }
+}
+
+/** Whether `path` names a file directly inside `def`'s folder with its extension (`luts/warm.cube`). */
+export function isProjectFile(def: Pick<EffectParamDef, "folder" | "extension">, path: string): boolean {
+  if (!def.folder || !path.startsWith(`${def.folder}/`)) return false;
+  const name = path.slice(def.folder.length + 1);
+  return name.length > (def.extension ?? "").length && !/[\\/:*?"<>|]/.test(name) && !name.startsWith(".") && name.toLowerCase().endsWith(def.extension ?? "");
 }
 
 /** `value` clamped into `def`'s range (numbers), 0 / 1 (toggles), 0..1 per channel (colors); choices unchanged. */
@@ -190,6 +251,7 @@ export function paramIssue(def: EffectParamDef, value: unknown): string | null {
     if (def.kind === "number") return "must be a finite number";
     if (def.kind === "toggle") return "must be 0 or 1";
     if (def.kind === "color") return "must be a color [r, g, b, a]";
+    if (def.kind === "file") return `must be "" or a file name inside ${def.folder}/ ending in ${def.extension}`;
     return `must be one of ${(def.options ?? []).join(", ")}`;
   }
   if (def.kind === "number" && ((def.min !== undefined && (value as number) < def.min) || (def.max !== undefined && (value as number) > def.max))) return `must be in ${def.min}..${def.max}`;
@@ -212,6 +274,25 @@ export function effectPropIssue(prop: string, effects: unknown): string | null {
   if (!def) return `${effect.type} has no parameter "${match[2]}"`;
   if (!def.keyframeable) return `${effect.type} ${def.name} cannot be keyed`;
   return null;
+}
+
+/** The project paths the file parameters of `effects` name (a LUT's `luts/<name>.cube`), in order, once each. */
+export function effectFilePaths(effects: readonly Effect[] | undefined, out: string[] = []): string[] {
+  for (const effect of effects ?? []) {
+    if (!isEffectType(effect.type)) continue;
+    for (const def of EFFECT_DEFS[effect.type].params) {
+      const value = effect.params[def.name];
+      if (def.kind === "file" && typeof value === "string" && value !== "" && !out.includes(value)) out.push(value);
+    }
+  }
+  return out;
+}
+
+/** The project paths every clip's effects name (the LUTs a project needs). */
+export function projectEffectFiles(clips: Readonly<Record<string, unknown>>): string[] {
+  const out: string[] = [];
+  for (const clip of Object.values(clips)) effectFilePaths((clip as { effects?: Effect[] }).effects, out);
+  return out;
 }
 
 /** Whether the effect property `prop` of a clip with `effects` is a color (its keys are [r, g, b, a]). */

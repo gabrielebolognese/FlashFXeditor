@@ -1,14 +1,19 @@
 // Effects at a frame (spec §21.19, Batch 74): a clip's enabled effects with their `effects.<id>.<param>` keys
 // applied, packed into one float block per effect for the renderer (render/effects/registry.ts reads it).
 // Block layout: EFFECT_BLOCK floats, [type code, then each parameter in EFFECT_DEFS order: a number or a
-// toggle one float, a color four (straight alpha), a choice its option index]. Packing allocates nothing.
-// Pure.
+// toggle one float, a color four (straight alpha), a choice its option index, a file the handle the caller's
+// resolver gives it (0: none or not loaded; a LUT, Batch 75)]; the last float holds the clip-relative frame for
+// a type whose picture changes every frame (an animated grain). Packing allocates nothing. Pure.
 import { sampleKeys, sampleVector, type Key } from "../document/keyframes.js";
 import { EFFECT_TYPES, type Effect, type EffectType, type Frame, type Keyframes } from "../document/types.js";
 import { clampParam, EFFECT_DEFS, effectParam, effectProp, isEffectType, type EffectParamDef } from "./effectParams.js";
 
-/** Floats per packed effect (the type code and at most 15 parameter floats). */
+/** Floats per packed effect (the type code, at most 14 parameter floats and the frame slot). */
 export const EFFECT_BLOCK = 16;
+/** Where a block holds the clip-relative frame of a type that changes every frame (an animated grain), else 0. */
+export const EFFECT_FRAME_SLOT = EFFECT_BLOCK - 1;
+/** Turns a file parameter (a project path) into the handle the renderer knows it by; 0 when it is not loaded. */
+export type EffectFileResolver = (path: string) => number;
 
 /** The code of a type in a packed block (1-based: 0 is no effect). */
 export function effectCode(type: EffectType): number {
@@ -30,7 +35,7 @@ const OFFSETS: Readonly<Record<EffectType, Readonly<Record<string, number>>>> = 
       offsets[def.name] = at;
       at += def.kind === "color" ? 4 : 1;
     }
-    if (at > EFFECT_BLOCK) throw new Error(`${type} packs ${at} floats, more than ${EFFECT_BLOCK}`);
+    if (at > EFFECT_FRAME_SLOT) throw new Error(`${type} packs ${at} floats, more than ${EFFECT_FRAME_SLOT}`);
     out[type] = offsets;
   }
   return out;
@@ -83,9 +88,10 @@ export function effectBlockFloats(clip: { effects?: Effect[] | undefined }): num
 
 /**
  * Packs the clip's enabled effects at `rel` frames into it into `out` (EFFECT_BLOCK floats each, in stack
- * order) and returns the floats written. `out` must hold `effectBlockFloats(clip)`.
+ * order) and returns the floats written. `out` must hold `effectBlockFloats(clip)`. `files` turns file
+ * parameters into handles (0 for every file without it).
  */
-export function packEffects(clip: { effects?: Effect[] | undefined; keyframes?: Keyframes | undefined }, rel: Frame, out: Float32Array): number {
+export function packEffects(clip: { effects?: Effect[] | undefined; keyframes?: Keyframes | undefined }, rel: Frame, out: Float32Array, files?: EffectFileResolver): number {
   let at = 0;
   const keyed = hasEffectKeys(clip.keyframes);
   for (const effect of clip.effects ?? []) {
@@ -98,12 +104,15 @@ export function packEffects(clip: { effects?: Effect[] | undefined; keyframes?: 
       // Static values are read as they are (no copy) and clamped while written.
       const value = keyed ? effectValueAt(effect, clip.keyframes, def, rel) : effectParam(effect, def.name);
       if (def.kind === "choice") out[o] = Math.max(0, (def.options ?? []).indexOf(value as string));
+      else if (def.kind === "file") out[o] = typeof value === "string" && value !== "" && files ? files(value) : 0;
       else if (def.kind === "color") {
         const c = Array.isArray(value) ? value : colorScratch;
         for (let i = 0; i < 4; i++) out[o + i] = Math.min(1, Math.max(0, (c[i] as number | undefined) ?? 0));
       } else if (def.kind === "toggle") out[o] = value === 1 ? 1 : 0;
       else out[o] = typeof value === "number" ? Math.min(def.max ?? Infinity, Math.max(def.min ?? -Infinity, value)) : 0;
     }
+    // An animated grain draws a new pattern each frame: the frame makes its block (and its stage) change.
+    if (effect.type === "grain" && out[at + (offsets.animated as number)] === 1) out[at + EFFECT_FRAME_SLOT] = rel;
     at += EFFECT_BLOCK;
   }
   return at;

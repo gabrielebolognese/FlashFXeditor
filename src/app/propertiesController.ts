@@ -22,7 +22,7 @@ import { MAX_CLIP_NAME } from "./cutController.js";
 import { patchLiveEdit } from "./liveEdit.js";
 import { canvasInput, cropMode } from "./previewController.js";
 import { addMasks, presetMasks, removeSelectedMasks } from "./maskController.js";
-import { addEffects, removeSelectedEffects } from "./effectController.js";
+import { addEffects, applyLastLook, loadLutForSelection, removeSelectedEffects, saveLook } from "./effectController.js";
 import { effectAddCommand } from "../panels/properties/effectIcons.js";
 import { actions, appSettings, documentStore, sessionStore } from "./services.js";
 import { reportTrimLimit } from "./timelineController.js";
@@ -243,6 +243,10 @@ export function installPropertiesController(): () => void {
     // Effects (Batch 74).
     ...EFFECT_TYPES.map((type) => actions.register(effectAddCommand(type), () => addEffects(type))),
     actions.register("clip.effect.removeAll", removeSelectedEffects),
+    // LUTs and looks (Batch 75).
+    actions.register("clip.effect.lut.load", () => void loadLutForSelection()),
+    actions.register("clip.effect.saveLook", () => void saveLook()),
+    actions.register("clip.effect.applyLastLook", () => void applyLastLook()),
   ];
   return () => {
     for (const stop of stops) stop();

@@ -22,6 +22,7 @@ import type { DrawList } from "../compositor/drawList.js";
 import { IDENTITY, mutableIdentity, setMat, type MutableMat3 } from "../mat3.js";
 import type { BackendRenderer } from "./backend.js";
 import { FX_BUFFER, StageJobs, type StageJob } from "../effects/stageJobs.js";
+import { lutLibrary } from "../effects/lutLibrary.js";
 import { FX_FLOATS } from "../effects/registry.js";
 import { blurRegionInto, DrawRecords, newRecordUniform, pathRegionInto, premultipliedInto, retargetStages, ROLE, showBlurred, showPath, writePathUniform, type BlurRegion, type DrawRecord, type QuadKind, type Rect } from "./drawRecords.js";
 import { fitWithin, hasAlphaFormat } from "./fitWithin.js";
@@ -197,6 +198,8 @@ interface GlEffects {
   program: WebGLProgram;
   fx: WebGLUniformLocation | null;
   jobs: StageJobs<GlTexture>;
+  /** LUT atlases (Batch 75) by handle (render/effects/lutLibrary.ts), uploaded once each. */
+  luts: Map<number, WebGLTexture>;
 }
 
 /** Everything that belongs to one context generation. */
@@ -380,6 +383,9 @@ export class WebGl2Renderer implements BackendRenderer {
     if (res) {
       for (const entry of res.blurPool.splice(0)) entry.texture.destroy();
       res.effects?.jobs.clear((texture) => texture.destroy());
+      const luts = res.effects?.luts;
+      if (luts) for (const texture of luts.values()) res.gl.deleteTexture(texture);
+      luts?.clear();
       this.fxBuffers.fill(null);
       const composite = res.composite;
       if (composite) {
@@ -619,6 +625,11 @@ export class WebGl2Renderer implements BackendRenderer {
       return this.newTexture(res, step(w), step(h), { label: "effect result" });
     });
     fx.jobs.evict(this.draws, BLUR_KEEP_DRAWS, (texture) => texture.destroy());
+    for (const [handle, texture] of fx.luts) {
+      if (lutLibrary.get(handle)) continue;
+      res.gl.deleteTexture(texture);
+      fx.luts.delete(handle);
+    }
     retargetStages(this.records, count, width, height);
     return fx;
   }
@@ -673,7 +684,9 @@ export class WebGl2Renderer implements BackendRenderer {
         gl.scissor(0, 0, width, height);
         gl.uniform4fv(fx.fx, jobs.data, jobs.offset(i), FX_FLOATS);
         gl.activeTexture(gl.TEXTURE1);
-        gl.bindTexture(gl.TEXTURE_2D, origIndex === FX_BUFFER.coverage ? coverage : buffer(origIndex).surface.texture);
+        const orig = origIndex === FX_BUFFER.coverage ? coverage : origIndex === FX_BUFFER.lut ? (this.lutTexture(res, fx, jobs.lut[i] as number) ?? src.surface.texture) : buffer(origIndex).surface.texture;
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, orig);
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, src.surface.texture);
         gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -690,6 +703,23 @@ export class WebGl2Renderer implements BackendRenderer {
     this.lastScissor.width = -1;
   }
 
+  /** LUT `handle`'s atlas texture (uploaded on first use; read with texelFetch), or null when the library does not have it. */
+  private lutTexture(res: Resources, fx: GlEffects, handle: number): WebGLTexture | null {
+    const kept = fx.luts.get(handle);
+    if (kept) return kept;
+    const atlas = lutLibrary.get(handle)?.atlas;
+    if (!atlas) return null;
+    const { gl } = res;
+    const texture = nearestTexture(gl);
+    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, atlas.width, atlas.height);
+    // Data, not a picture: no premultiplication on the way in.
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, atlas.width, atlas.height, gl.RGBA, gl.UNSIGNED_BYTE, atlas.rgba);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+    fx.luts.set(handle, texture);
+    return texture;
+  }
+
   private buildEffects(res: Resources): GlEffects {
     const { gl } = res;
     const program = linkProgram(gl, "effects", FULLSCREEN_VERTEX, EFFECT_FRAGMENT);
@@ -698,7 +728,7 @@ export class WebGl2Renderer implements BackendRenderer {
     gl.uniform1i(gl.getUniformLocation(program, "u_orig"), 1);
     gl.useProgram(null);
     this.current = null;
-    return { program, fx: gl.getUniformLocation(program, "u_fx"), jobs: new StageJobs<GlTexture>() };
+    return { program, fx: gl.getUniformLocation(program, "u_fx"), jobs: new StageJobs<GlTexture>(), luts: new Map() };
   }
 
   /**

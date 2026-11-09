@@ -79,6 +79,8 @@ import { offlineReason, OFFLINE_LABEL, sourceFile } from "./mediaOffline.js";
 import { renderer, renderFramePng, setTextureShare, textureBudget } from "./previewController.js";
 import { currentSession, refuseReadOnly } from "./projectController.js";
 import { actions, appSettings, documentStore, sessionStore, themeBridge, workerPool } from "./services.js";
+import { exportLuts } from "./lutController.js";
+import { projectEffectFiles } from "../core/effects/effectParams.js";
 
 /** The main texture pool's share of the budget while exporting; the worker gets the rest (spec §16). */
 export const MAIN_TEXTURE_SHARE = 0.7;
@@ -205,7 +207,7 @@ function syncProgressToast(): void {
 }
 
 /** What the worker needs besides the document, gathered on the main thread. */
-export async function gatherInputs(dir: FsDir, project: Project, range: FrameRange, signal: AbortSignal): Promise<Pick<ExportJobParams, "media" | "svg" | "fonts" | "fontBaseUrl" | "offline" | "audio">> {
+export async function gatherInputs(dir: FsDir, project: Project, range: FrameRange, signal: AbortSignal): Promise<Pick<ExportJobParams, "media" | "svg" | "fonts" | "fontBaseUrl" | "luts" | "offline" | "audio">> {
   const media: Record<MediaId, ExportMediaFile> = {};
   const svg: Record<MediaId, ImageBitmap> = {};
   const offline: Record<MediaId, string> = {};
@@ -226,7 +228,9 @@ export async function gatherInputs(dir: FsDir, project: Project, range: FrameRan
     }
     signal.throwIfAborted();
     const fonts = await exportFontFaces(exportNeeds(project, range).texts.map((text) => text.style));
-    return { media, svg, offline, fonts, fontBaseUrl: appBaseUrl(), audio: await mixdown(project, range, signal) };
+    // The LUTs (Batch 75): the export worker has its own library, filled from these copies.
+    const luts = exportLuts(projectEffectFiles(project.clips));
+    return { media, svg, offline, fonts, fontBaseUrl: appBaseUrl(), luts, audio: await mixdown(project, range, signal) };
   } catch (error) {
     for (const bitmap of Object.values(svg)) bitmap.close();
     throw error;
@@ -248,7 +252,7 @@ export function requestVideoExport(
   deterministic = false,
 ): Promise<ExportJobResult> {
   const params: ExportJobParams = { project, range, format, slate: slateLook(themeBridge.theme), textureBudget: Math.round(textureBudget() * (1 - MAIN_TEXTURE_SHARE)), renderer: renderer.backend ?? "webgpu", ...inputs, paused, ...(deterministic && { fixedCreationTime: true }) };
-  const transfer: Transferable[] = [...Object.values(inputs.svg), ...(inputs.audio?.channels ?? []), ...inputs.fonts.flatMap((face) => (face.data ? [face.data] : []))];
+  const transfer: Transferable[] = [...Object.values(inputs.svg), ...(inputs.audio?.channels ?? []), ...inputs.fonts.flatMap((face) => (face.data ? [face.data] : [])), ...Object.values(inputs.luts).map((atlas) => atlas.rgba.buffer as ArrayBuffer)];
   return workerPool.request("exportVideo", params, { priority: "user", signal, transfer, onProgress });
 }
 

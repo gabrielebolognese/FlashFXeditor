@@ -3,12 +3,33 @@
 // reads neighboring pixels. Shared by both backends so they draw the same passes. Pure.
 // Ported from FlashFX-v2 src/core/effects/effectRegistry.ts @ a91c675, adapted: string types instead of numeric
 // ids, and only the Batch 74 types (FlashFX-v2 wires its blur and glow to real render-to-texture passes, as here).
+// Batch 75 adds the per-pixel color, stylize, key and LUT passes (FlashFX-v2 applyColorEffect in
+// src/engine/renderer.ts @ a91c675; their math is core/effects/colorMath.ts and core/effects/lut.ts).
 import { EFFECT_DEFS, type EffectParamDef } from "../../core/effects/effectParams.js";
-import { EFFECT_BLOCK, effectTypeOf, paramOffset } from "../../core/effects/effectEval.js";
+import { EFFECT_BLOCK, EFFECT_FRAME_SLOT, effectTypeOf, paramOffset } from "../../core/effects/effectEval.js";
 import type { EffectType } from "../../core/document/types.js";
+import { dominantChannel } from "../../core/effects/colorMath.js";
+import { lutLibrary } from "./lutLibrary.js";
 
 /** The programs of the effect shader (`code` in its uniform). */
-export const FX_PROGRAM = { blur: 1, directional: 2, glowExtract: 3, glowComposite: 4, shadowExtract: 5, shadowComposite: 6, outline: 7, mask: 8, dilate: 9 } as const;
+export const FX_PROGRAM = {
+  blur: 1,
+  directional: 2,
+  glowExtract: 3,
+  glowComposite: 4,
+  shadowExtract: 5,
+  shadowComposite: 6,
+  outline: 7,
+  mask: 8,
+  dilate: 9,
+  colorAdjust: 10,
+  vignette: 11,
+  sharpen: 12,
+  grain: 13,
+  chromaKey: 14,
+  lumaKey: 15,
+  lut: 16,
+} as const;
 export type FxProgram = (typeof FX_PROGRAM)[keyof typeof FX_PROGRAM];
 
 /** Taps on each side of a blur pass at most: wider blurs space their taps out (FlashFX-v2 uses 15 to 20). */
@@ -34,12 +55,14 @@ export function outlineSteps(width: number): { steps: number; radius: number; ri
 export interface PassWriter {
   /** Adds a pass of `program` reading the current picture; `withInput`: the pass also reads the effect's input. Returns its uniform floats to fill. */
   pass(program: FxProgram, withInput: boolean): Float32Array;
+  /** Adds a LUT pass reading the current picture and the LUT texture of `handle`. Returns its uniform floats. */
+  lutPass(handle: number): Float32Array;
 }
 
 export interface EffectRenderDef {
   type: EffectType;
   params: readonly EffectParamDef[];
-  /** Whether a pass reads pixels around the one it writes (every Batch 74 type does). */
+  /** Whether a pass reads pixels around the one it writes (every Batch 74 type, and the sharpen). */
   neighbors: boolean;
   /** Content px the picture grows by on each side, from the packed block at `o` of `data`. */
   reach(data: Float32Array, o: number): number;
@@ -175,7 +198,94 @@ export const EFFECT_REGISTRY: Readonly<Record<EffectType, EffectRenderDef>> = {
       writeColor(u, data, o + paramOffset("outline", "color"));
     },
   },
+  // Batch 75. Color adjustment: a = brightness, contrast, saturation, exposure; b = temperature, tint, hue, vibrance.
+  colorAdjust: pixelPass("colorAdjust", FX_PROGRAM.colorAdjust, ["brightness", "contrast", "saturation", "exposure"], ["temperature", "tint", "hue", "vibrance"]),
+  // a = amount, radius, softness (over the content box).
+  vignette: pixelPass("vignette", FX_PROGRAM.vignette, ["amount", "radius", "softness"]),
+  // Unsharp mask: a = amount, radius (stage px).
+  sharpen: {
+    type: "sharpen",
+    params: EFFECT_DEFS.sharpen.params,
+    neighbors: true,
+    reach: () => 0,
+    passes(writer, data, o, scale) {
+      const u = writer.pass(FX_PROGRAM.sharpen, false);
+      u[FX_SLOT.a] = p(data, o, "sharpen", "amount");
+      u[FX_SLOT.a + 1] = Math.max(0.5, p(data, o, "sharpen", "radius") * scale);
+    },
+  },
+  // a = amount, cell size (stage px), frame (0 when static).
+  grain: {
+    type: "grain",
+    params: EFFECT_DEFS.grain.params,
+    neighbors: false,
+    reach: () => 0,
+    passes(writer, data, o, scale) {
+      const u = writer.pass(FX_PROGRAM.grain, false);
+      u[FX_SLOT.a] = p(data, o, "grain", "amount");
+      u[FX_SLOT.a + 1] = Math.max(0.5, p(data, o, "grain", "size")) * scale;
+      u[FX_SLOT.a + 2] = data[o + EFFECT_FRAME_SLOT] as number;
+    },
+  },
+  // color = the key; a = tolerance, softness, spill, the key's dominant channel.
+  chromaKey: {
+    type: "chromaKey",
+    params: EFFECT_DEFS.chromaKey.params,
+    neighbors: false,
+    reach: () => 0,
+    passes(writer, data, o) {
+      const u = writer.pass(FX_PROGRAM.chromaKey, false);
+      const at = o + paramOffset("chromaKey", "color");
+      writeColor(u, data, at);
+      copyParams(u, FX_SLOT.a, data, o, "chromaKey", ["tolerance", "softness", "spill"]);
+      u[FX_SLOT.a + 3] = dominantChannel(data[at] as number, data[at + 1] as number, data[at + 2] as number);
+    },
+  },
+  // a = threshold, softness, invert.
+  lumaKey: pixelPass("lumaKey", FX_PROGRAM.lumaKey, ["threshold", "softness", "invert"]),
+  // a = intensity, grid size; b.xyz = domain min; color.xyz = domain max. Nothing when the LUT is not loaded.
+  lut: {
+    type: "lut",
+    params: EFFECT_DEFS.lut.params,
+    neighbors: false,
+    reach: () => 0,
+    passes(writer, data, o) {
+      const handle = p(data, o, "lut", "file");
+      const intensity = p(data, o, "lut", "intensity");
+      const entry = handle > 0 ? lutLibrary.get(handle) : undefined;
+      if (!entry || !(intensity > 0)) return;
+      const u = writer.lutPass(handle);
+      u[FX_SLOT.a] = intensity;
+      u[FX_SLOT.a + 1] = entry.atlas.size;
+      for (let i = 0; i < 3; i++) {
+        u[FX_SLOT.b + i] = entry.atlas.domainMin[i] as number;
+        u[FX_SLOT.color + i] = entry.atlas.domainMax[i] as number;
+      }
+    },
+  },
 };
+
+/** Copies `count` floats of the block at `o` (from parameter `name`) into `u` from `slot`. */
+function copyParams(u: Float32Array, slot: number, data: Float32Array, o: number, type: EffectType, names: readonly string[]): void {
+  names.forEach((name, i) => {
+    u[slot + i] = p(data, o, type, name);
+  });
+}
+
+/** A pass of a per-pixel effect: no reach, no neighbors, one pass whose `a` (and `b`) hold the parameters. */
+function pixelPass(type: EffectType, program: FxProgram, a: readonly string[], b: readonly string[] = []): EffectRenderDef {
+  return {
+    type,
+    params: EFFECT_DEFS[type].params,
+    neighbors: false,
+    reach: () => 0,
+    passes(writer, data, o) {
+      const u = writer.pass(program, false);
+      copyParams(u, FX_SLOT.a, data, o, type, a);
+      copyParams(u, FX_SLOT.b, data, o, type, b);
+    },
+  };
+}
 
 /** The content px a packed stack (`length` floats of `data`) grows the picture by on each side: the sum of its reaches. */
 export function stackReach(data: Float32Array, length: number): number {

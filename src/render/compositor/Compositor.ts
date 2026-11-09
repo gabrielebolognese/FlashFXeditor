@@ -70,6 +70,7 @@ import { isVisualClip } from "../../core/effects/trackMatte.js";
 import { masksAt } from "../../core/masks/maskEval.js";
 import { maskBlockFloats, packMasks } from "../../core/masks/maskCoverage.js";
 import { effectBlockFloats, hasActiveEffects, packEffects } from "../../core/effects/effectEval.js";
+import { lutLibrary } from "../effects/lutLibrary.js";
 import { sequenceView } from "../../core/document/sequences.js";
 import { isRgba } from "../../core/document/color.js";
 import { animatedOpacity, animatedTransform, maxKeyedScale } from "../../core/document/keyframes.js";
@@ -703,7 +704,7 @@ export class Compositor {
     const need = effectBlockFloats(source);
     if (this.effectScratch.length < need) this.effectScratch = new Float32Array(Math.max(need, this.effectScratch.length * 2));
     const scratch = this.effectScratch;
-    const length = packEffects(source, frame - clip.start, scratch);
+    const length = packEffects(source, frame - clip.start, scratch, lutLibrary.handleOf);
     let out = this.effectStates.get(clip.id);
     if (!out) {
       out = { clipId: clip.id, data: new Float32Array(0), length: 0, version: 0, width: 0, height: 0, model: mutableIdentity(), persp: null, opacity: 1 };

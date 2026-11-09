@@ -260,13 +260,13 @@ const SCHEMAS: ObjectSchema[] = [
   },
   {
     name: "Effect",
-    doc: "An effect (Batch 74): one step of a visual clip's effect stack, applied in order to its picture in content space (after its masks, before its transform, opacity, blend and matte). The parameters of each type, their ranges and defaults are listed in INTEROP.md §5.13; a missing parameter takes its default.",
+    doc: "An effect (Batch 74; color, stylize, keys and LUTs since Batch 75): one step of a visual clip's effect stack, applied in order to its picture in content space (after its masks, before its transform, opacity, blend and matte). The parameters of each type, their ranges and defaults are listed in INTEROP.md §5.13 and §5.14; a missing parameter takes its default.",
     types: ["Effect"],
     fields: {
       id: req(text, "Unique among the clip's effects: letters, digits, `_` or `-` (keyframe ids are `effects.<id>.<param>`)."),
       type: req(oneOf(EFFECT_TYPES), "The effect type."),
       enabled: req(bool, "Off: the effect is kept but not drawn.", true),
-      params: req({ t: "record", item: { t: "numberOrVector", max: 4, strings: true } }, "Parameters by name: numbers (toggles are 0 or 1), colors [r, g, b, a] (straight alpha, 0..1) and choices (strings). Only the type's parameters, each in its range.", {}),
+      params: req({ t: "record", item: { t: "numberOrVector", max: 4, strings: true } }, "Parameters by name: numbers (toggles are 0 or 1), colors [r, g, b, a] (straight alpha, 0..1), choices (strings) and files (a project path such as `luts/warm.cube`, or \"\" for none). Only the type's parameters, each in its range.", {}),
     },
   },
   {

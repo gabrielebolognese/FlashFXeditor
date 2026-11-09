@@ -1,0 +1,1007 @@
+{
+  "schemaVersion": 19,
+  "id": "5b2e8c41-9d7a-4f36-b0e2-7a1c4d9f3e85",
+  "name": "Interop effects-2",
+  "settings": {
+    "width": 360,
+    "height": 640,
+    "fps": {
+      "num": 30,
+      "den": 1
+    },
+    "background": {
+      "r": 0.16,
+      "g": 0.18,
+      "b": 0.24,
+      "a": 1
+    },
+    "sampleRate": 48000
+  },
+  "media": {
+    "video": {
+      "id": "video",
+      "kind": "video",
+      "name": "clip.mp4",
+      "file": {
+        "relPath": "media/clip.mp4"
+      },
+      "durationUs": 2000000,
+      "hasAudio": true,
+      "analysis": {
+        "thumbs": "none",
+        "peaks": "none"
+      },
+      "addedAt": "2026-11-09T12:00:00.000Z",
+      "width": 270,
+      "height": 480,
+      "fps": {
+        "num": 30,
+        "den": 1
+      },
+      "codec": "h264",
+      "audioCodec": "aac",
+      "size": 18761
+    },
+    "chart": {
+      "id": "chart",
+      "kind": "image",
+      "name": "chart.png",
+      "file": {
+        "relPath": "media/chart.png"
+      },
+      "durationUs": 0,
+      "hasAudio": false,
+      "analysis": {
+        "thumbs": "none",
+        "peaks": "none"
+      },
+      "addedAt": "2026-11-09T12:00:00.000Z",
+      "codec": "png",
+      "width": 240,
+      "height": 240,
+      "size": 35741
+    },
+    "screen": {
+      "id": "screen",
+      "kind": "image",
+      "name": "greenscreen.png",
+      "file": {
+        "relPath": "media/greenscreen.png"
+      },
+      "durationUs": 0,
+      "hasAudio": false,
+      "analysis": {
+        "thumbs": "none",
+        "peaks": "none"
+      },
+      "addedAt": "2026-11-09T12:00:00.000Z",
+      "codec": "png",
+      "width": 240,
+      "height": 320,
+      "size": 18599
+    }
+  },
+  "bins": [],
+  "tracks": [
+    {
+      "id": "v1",
+      "kind": "video",
+      "name": "V1",
+      "clipIds": [
+        "backdrop"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v2",
+      "kind": "video",
+      "name": "V2",
+      "clipIds": [
+        "color-a",
+        "color-b",
+        "vignette-default",
+        "vignette-extreme",
+        "sharpen-default",
+        "sharpen-extreme",
+        "grain-default",
+        "grain-extreme",
+        "chroma-default",
+        "chroma-no-spill",
+        "luma-default",
+        "luma-inverted",
+        "lut-half",
+        "lut-full",
+        "look"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    }
+  ],
+  "clips": {
+    "backdrop": {
+      "kind": "solid",
+      "name": "backdrop",
+      "enabled": true,
+      "fill": {
+        "r": 0.42,
+        "g": 0.2,
+        "b": 0.55,
+        "a": 1
+      },
+      "shape": "rect",
+      "size": {
+        "w": 360,
+        "h": 640
+      },
+      "cornerRadius": 0,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "id": "backdrop",
+      "trackId": "v1",
+      "start": 0,
+      "duration": 150
+    },
+    "color-a": {
+      "kind": "image",
+      "name": "color-a",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "color-a",
+      "trackId": "v2",
+      "start": 0,
+      "duration": 10,
+      "mediaId": "chart",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "colorAdjust",
+          "enabled": true,
+          "params": {
+            "brightness": 0,
+            "contrast": 30,
+            "saturation": 40,
+            "exposure": 0.5,
+            "temperature": 0,
+            "tint": 0,
+            "hue": 0,
+            "vibrance": 0
+          }
+        }
+      ]
+    },
+    "color-b": {
+      "kind": "image",
+      "name": "color-b",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "color-b",
+      "trackId": "v2",
+      "start": 10,
+      "duration": 10,
+      "mediaId": "chart",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "colorAdjust",
+          "enabled": true,
+          "params": {
+            "brightness": -20,
+            "contrast": 0,
+            "saturation": 0,
+            "exposure": 0,
+            "temperature": 60,
+            "tint": -30,
+            "hue": 90,
+            "vibrance": 50
+          }
+        }
+      ]
+    },
+    "vignette-default": {
+      "kind": "image",
+      "name": "vignette-default",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1.5,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "vignette-default",
+      "trackId": "v2",
+      "start": 20,
+      "duration": 10,
+      "mediaId": "chart",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "vignette",
+          "enabled": true,
+          "params": {
+            "amount": 0.5,
+            "radius": 0.9,
+            "softness": 0.6
+          }
+        }
+      ]
+    },
+    "vignette-extreme": {
+      "kind": "image",
+      "name": "vignette-extreme",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1.5,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "vignette-extreme",
+      "trackId": "v2",
+      "start": 30,
+      "duration": 10,
+      "mediaId": "chart",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "vignette",
+          "enabled": true,
+          "params": {
+            "amount": 1,
+            "radius": 0.4,
+            "softness": 0.3
+          }
+        }
+      ]
+    },
+    "sharpen-default": {
+      "kind": "video",
+      "name": "sharpen-default",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "sharpen-default",
+      "trackId": "v2",
+      "start": 40,
+      "duration": 10,
+      "mediaId": "video",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "sharpen",
+          "enabled": true,
+          "params": {
+            "amount": 1,
+            "radius": 1.5
+          }
+        }
+      ]
+    },
+    "sharpen-extreme": {
+      "kind": "video",
+      "name": "sharpen-extreme",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "sharpen-extreme",
+      "trackId": "v2",
+      "start": 50,
+      "duration": 10,
+      "mediaId": "video",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "sharpen",
+          "enabled": true,
+          "params": {
+            "amount": 5,
+            "radius": 6
+          }
+        }
+      ]
+    },
+    "grain-default": {
+      "kind": "image",
+      "name": "grain-default",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "grain-default",
+      "trackId": "v2",
+      "start": 60,
+      "duration": 10,
+      "mediaId": "chart",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "grain",
+          "enabled": true,
+          "params": {
+            "amount": 0.2,
+            "size": 1.5,
+            "animated": 1
+          }
+        }
+      ]
+    },
+    "grain-extreme": {
+      "kind": "image",
+      "name": "grain-extreme",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "grain-extreme",
+      "trackId": "v2",
+      "start": 70,
+      "duration": 10,
+      "mediaId": "chart",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "grain",
+          "enabled": true,
+          "params": {
+            "amount": 0.6,
+            "size": 6,
+            "animated": 0
+          }
+        }
+      ]
+    },
+    "chroma-default": {
+      "kind": "image",
+      "name": "chroma-default",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "chroma-default",
+      "trackId": "v2",
+      "start": 80,
+      "duration": 10,
+      "mediaId": "screen",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "chromaKey",
+          "enabled": true,
+          "params": {
+            "color": [
+              0,
+              0.694,
+              0.251,
+              1
+            ],
+            "tolerance": 0.18,
+            "softness": 0.12,
+            "spill": 0.6
+          }
+        }
+      ]
+    },
+    "chroma-no-spill": {
+      "kind": "image",
+      "name": "chroma-no-spill",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "chroma-no-spill",
+      "trackId": "v2",
+      "start": 90,
+      "duration": 10,
+      "mediaId": "screen",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "chromaKey",
+          "enabled": true,
+          "params": {
+            "color": [
+              0,
+              0.694,
+              0.251,
+              1
+            ],
+            "tolerance": 0.18,
+            "softness": 0.12,
+            "spill": 0
+          }
+        }
+      ]
+    },
+    "luma-default": {
+      "kind": "image",
+      "name": "luma-default",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "luma-default",
+      "trackId": "v2",
+      "start": 100,
+      "duration": 10,
+      "mediaId": "chart",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "lumaKey",
+          "enabled": true,
+          "params": {
+            "threshold": 0.1,
+            "softness": 0.1,
+            "invert": 0
+          }
+        }
+      ]
+    },
+    "luma-inverted": {
+      "kind": "image",
+      "name": "luma-inverted",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "luma-inverted",
+      "trackId": "v2",
+      "start": 110,
+      "duration": 10,
+      "mediaId": "chart",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "lumaKey",
+          "enabled": true,
+          "params": {
+            "threshold": 0.5,
+            "softness": 0.1,
+            "invert": 1
+          }
+        }
+      ]
+    },
+    "lut-half": {
+      "kind": "image",
+      "name": "lut-half",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "lut-half",
+      "trackId": "v2",
+      "start": 120,
+      "duration": 10,
+      "mediaId": "chart",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "lut",
+          "enabled": true,
+          "params": {
+            "file": "luts/warm.cube",
+            "intensity": 0.5
+          }
+        }
+      ]
+    },
+    "lut-full": {
+      "kind": "image",
+      "name": "lut-full",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "lut-full",
+      "trackId": "v2",
+      "start": 130,
+      "duration": 10,
+      "mediaId": "chart",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "lut",
+          "enabled": true,
+          "params": {
+            "file": "luts/warm.cube",
+            "intensity": 1
+          }
+        }
+      ]
+    },
+    "look": {
+      "kind": "image",
+      "name": "look",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "look",
+      "trackId": "v2",
+      "start": 140,
+      "duration": 10,
+      "mediaId": "screen",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "chromaKey",
+          "enabled": true,
+          "params": {
+            "color": [
+              0,
+              0.694,
+              0.251,
+              1
+            ],
+            "tolerance": 0.18,
+            "softness": 0.12,
+            "spill": 0.6
+          }
+        },
+        {
+          "id": "fx2",
+          "type": "colorAdjust",
+          "enabled": true,
+          "params": {
+            "brightness": 0,
+            "contrast": 0,
+            "saturation": 0,
+            "exposure": 0.3,
+            "temperature": 20,
+            "tint": 0,
+            "hue": 0,
+            "vibrance": 0
+          }
+        },
+        {
+          "id": "fx3",
+          "type": "lut",
+          "enabled": true,
+          "params": {
+            "file": "luts/warm.cube",
+            "intensity": 0.5
+          }
+        }
+      ]
+    }
+  },
+  "markers": [],
+  "captionTracks": {},
+  "textPresetsLocal": [],
+  "sequences": {},
+  "meta": {
+    "createdAt": "2026-11-09T12:00:00.000Z",
+    "modifiedAt": "2026-11-09T12:00:00.000Z",
+    "appVersion": "1.1.0",
+    "generator": {
+      "name": "interop-fixture",
+      "version": "1",
+      "source": "fixtures/interop/effects-2 (Batch 75)"
+    }
+  }
+}

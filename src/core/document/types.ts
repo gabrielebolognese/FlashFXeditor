@@ -1,7 +1,7 @@
 // The persistent document (spec §5.2). Plain JSON only: no classes, Maps, Sets or undefined-valued
 // keys, so a Project can be serialized as-is and diffed by Immer patches.
 
-export const SCHEMA_VERSION = 18;
+export const SCHEMA_VERSION = 19;
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: JsonValue };
@@ -594,15 +594,19 @@ export interface Mask {
   inverted: boolean;
 }
 
-/** The effect types (spec §21.19): Batch 74's blurs, glow, shadow and outline. Later batches add theirs. */
-export const EFFECT_TYPES = ["gaussianBlur", "directionalBlur", "glow", "dropShadow", "outline"] as const;
+/**
+ * The effect types (spec §21.19): Batch 74's blurs, glow, shadow and outline; Batch 75's color adjustment,
+ * vignette, sharpen, grain, chroma and luma keys and LUT. Later batches add theirs.
+ */
+export const EFFECT_TYPES = ["gaussianBlur", "directionalBlur", "glow", "dropShadow", "outline", "colorAdjust", "vignette", "sharpen", "grain", "chromaKey", "lumaKey", "lut"] as const;
 export type EffectType = (typeof EFFECT_TYPES)[number];
 
 /**
  * An effect (spec §21.19, Batch 74): one step of a visual clip's effect stack, applied in order to the clip's
  * picture in its content space (after its masks, before its transform). `params` holds the type's parameters
- * by name (core/effects/effectParams.ts): numbers, colors as [r, g, b, a] (straight alpha, 0..1) and choices
- * as strings; a missing parameter takes its default.
+ * by name (core/effects/effectParams.ts): numbers, colors as [r, g, b, a] (straight alpha, 0..1), choices
+ * as strings and files as project paths (a LUT's `luts/<name>.cube`, Batch 75); a missing parameter takes
+ * its default.
  */
 export interface Effect {
   id: string;

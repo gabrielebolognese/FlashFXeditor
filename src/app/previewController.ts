@@ -12,6 +12,7 @@
 // the canvas show its draft over the other live values (`liveTexts`, `liveTransforms`; a cue's draft
 // through `liveCaptions`, spec §20.3).
 import { animatedTransform } from "../core/document/keyframes.js";
+import { lutLibrary } from "../render/effects/lutLibrary.js";
 import { RigResolver } from "../core/document/rig.js";
 import type { CaptionClip, CaptionStyle, ClipId, Frame, MediaId, Project, TextClip, TextContent, TextStyle, Transform } from "../core/document/types.js";
 import { detectPlatform } from "../core/keyboard/keys.js";
@@ -532,6 +533,8 @@ export function attachPreview(dir: FsDir, isWritable: () => boolean): void {
     // The Transition section's alignment hover (Batch 46) splits the preview while it lasts.
     alignmentHover.subscribe(() => scheduler.invalidate("preview")),
     transitionLive.subscribe(() => scheduler.invalidate("preview")),
+    // A LUT loaded or left (Batch 75): the LUT effects that use it draw again.
+    lutLibrary.subscribe(() => scheduler.invalidate("preview")),
   ];
   previewView.resetFrames();
   attachAudio(dir, isWritable);

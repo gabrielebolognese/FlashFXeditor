@@ -2,12 +2,13 @@
 // in its content box (buffer 0), kept where its masks cover it, then each effect's passes in order. Passes
 // ping-pong between three scratch buffers (0..2, pooled textures of the stage's size); the last pass writes
 // FX_BUFFER.out (the stage's own texture, kept for the cache). A pass reads `src`, and `orig` (the effect's
-// input, or the mask coverage) when it composites. No allocation once warm. Pure.
+// input, or the mask coverage, or a LUT texture: FX_BUFFER.lut with the pass's `lut` handle) when it composites.
+// No allocation once warm. Pure.
 import { EFFECT_BLOCK, effectTypeOf } from "../../core/effects/effectEval.js";
 import { EFFECT_REGISTRY, FX_FLOATS, FX_PROGRAM, FX_SLOT, type FxProgram, type PassWriter } from "./registry.js";
 
-/** Buffers besides the scratch ones (0..2): the stage's output texture and the clip's mask coverage. */
-export const FX_BUFFER = { out: 3, coverage: 4 } as const;
+/** Buffers besides the scratch ones (0..2): the stage's output texture, the clip's mask coverage and a LUT (Batch 75). */
+export const FX_BUFFER = { out: 3, coverage: 4, lut: 5 } as const;
 
 /** What a stage's plan needs: its size (stage px), the content box in it, stage px per content px, the packed stack. */
 export interface StagePlanInput {
@@ -29,6 +30,8 @@ export class EffectPlan implements PassWriter {
   readonly src: number[] = [];
   readonly orig: number[] = [];
   readonly dst: number[] = [];
+  /** Each pass's LUT handle (0 for every pass but a LUT pass). */
+  readonly lut: number[] = [];
   private views: Float32Array[] = [];
   /** The effect's input buffer and the buffer the last pass wrote. */
   private input = 0;
@@ -61,6 +64,12 @@ export class EffectPlan implements PassWriter {
     return this.views[index] as Float32Array;
   }
 
+  lutPass(handle: number): Float32Array {
+    const u = this.pass(FX_PROGRAM.lut, false, FX_BUFFER.lut);
+    this.lut[this.count - 1] = handle;
+    return u;
+  }
+
   pass(program: FxProgram, withInput: boolean, origBuffer?: number): Float32Array {
     const index = this.count;
     this.count += 1;
@@ -78,6 +87,7 @@ export class EffectPlan implements PassWriter {
     this.src[index] = src;
     this.orig[index] = orig;
     this.dst[index] = dst;
+    this.lut[index] = 0;
     this.last = dst;
     const u = this.views[index] as Float32Array;
     u.fill(0);

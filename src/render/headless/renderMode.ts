@@ -9,6 +9,7 @@
 //   ?mode=compare     no project: only `compare` is used
 import { installCatalogController } from "../../app/catalogController.js";
 import { attachFonts } from "../../app/fontController.js";
+import { attachLuts } from "../../app/lutController.js";
 import { installTextController } from "../../app/textController.js";
 import { projectTextStyles } from "../../text/fonts.js";
 import { gatherInputs, requestVideoExport } from "../../app/exportController.js";
@@ -107,6 +108,8 @@ async function loadProject(dir: HttpDir): Promise<Project> {
   // The text layouts and rasters follow the fonts that load (as in the app), and the project's faces are in before the first frame.
   installTextController();
   await attachFonts(dir, () => false);
+  // The LUTs its LUT effects name (Batch 75), loaded before the first frame.
+  await attachLuts(dir, () => false);
   await Promise.all(projectTextStyles(opened.project).map((style) => fontLibrary.load(style, "Aa")));
   installCatalogController();
   return opened.project;

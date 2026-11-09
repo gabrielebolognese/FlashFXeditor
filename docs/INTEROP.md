@@ -821,7 +821,7 @@ The drop shadow and the outline follow the picture's **alpha**: on a transparent
 
 **Animation.** Every number and color parameter can be keyed: the keyframe prop is `effects.<id>.<param>` (numbers take numbers, colors take `[r, g, b, a]` vectors). Choices (`mode`) and toggles (`repeatEdges`) cannot. The manifest key `keyframes.effectProps` lists the pattern.
 
-**Order.** A clip draws: its content (with crop), its masks, its effects, its transform, opacity and fades, then its track matte and blend mode (§5.11). In a transition the effects of the clip that dominates the frame apply to the transition's picture. A clip used as a track matte keys through its picture without its effects. Effects of later types (color, stylize, keys, LUTs) are not in this schema.
+**Order.** A clip draws: its content (with crop), its masks, its effects, its transform, opacity and fades, then its track matte and blend mode (§5.11). In a transition the effects of the clip that dominates the frame apply to the transition's picture. A clip used as a track matte keys through its picture without its effects. The color, stylize, key and LUT types are in §5.14 (schema 19).
 
 ```json Clip.solid
 {
@@ -861,6 +861,74 @@ The drop shadow and the outline follow the picture's **alpha**: on a transparent
 ```
 
 The second effect takes every default (radius 10, no repeated edges). Schema 17 projects open unchanged (migration 17 to 18 changes nothing). `fixtures/interop/effects-1` is a complete project: each effect at its defaults and at extreme settings, a glow whose intensity is keyed, a stack and the same stack swapped, a disabled effect and a turned, scaled clip with a shadow, with an expected frame of each. `npm run test:render` renders them on both backends.
+
+### 5.14 Effects II: color, stylize, keys and LUTs (manifest key `effects`; schema 19)
+
+Seven more effect types go in the same `effects` list (§5.13), with the same rules: in order, in content px, a missing parameter takes its default, every number can be keyed (`effects.<id>.<param>`). They work on each pixel's color in straight alpha (the vignette on its place in the clip's box, the sharpen and grain on its neighborhood); the keys change only alpha.
+
+| Type | Parameter | Range | Default | What it does |
+| --- | --- | --- | --- | --- |
+| `colorAdjust` | `exposure` | -5 to 5 EV | 0 | Multiplies the color by 2 to the power of this (applied first). |
+| | `temperature` | -100 to 100 % | 0 | Positive warms (red up, blue down by up to 0.2). |
+| | `tint` | -100 to 100 % | 0 | Positive toward magenta, negative toward green. |
+| | `brightness` | -100 to 100 % | 0 | Adds up to 0.5 to each channel. |
+| | `contrast` | -100 to 100 % | 0 | Scales each channel around 0.5 (by 1 + contrast). |
+| | `saturation` | -100 to 100 % | 0 | -100 is gray (Rec. 709 luma), 100 doubles the distance to it. |
+| | `vibrance` | -100 to 100 % | 0 | Like saturation, stronger on duller colors. |
+| | `hue` | -180 to 180° | 0 | Turns the hue (applied last, after clamping to 0..1). |
+| `vignette` | `amount` | 0 to 1 | 0.5 | How dark the corners get. |
+| | `radius` | 0 to 1.5 | 0.9 | Where the darkening is full, in box units: 1 at the middle of an edge of the clip's box, about 1.41 at a corner (an ellipse following its shape). |
+| | `softness` | 0 to 1 | 0.6 | Width of the fade before it (the darkening starts at radius - softness). |
+| `sharpen` | `amount` | 0 to 5 | 1 | Unsharp mask strength. |
+| | `radius` | 0.5 to 20 px | 1.5 | Size of the detail sharpened. Alpha is kept. |
+| `grain` | `amount` | 0 to 1 | 0.2 | Strength of the film grain (added to each channel). |
+| | `size` | 0.5 to 20 px | 1.5 | Grain size. |
+| | `animated` | toggle | 1 | 1: a new pattern each frame; 0: the same pattern on every frame. |
+| `chromaKey` | `color` | RGBA | `[0, 0.694, 0.251, 1]` | The screen color (alpha ignored). |
+| | `tolerance` | 0 to 1 | 0.18 | Chroma distance (CbCr) keyed out fully. |
+| | `softness` | 0 to 1 | 0.12 | Width of the partly transparent edge beyond the tolerance. |
+| | `spill` | 0 to 1 | 0.6 | Spill suppression: the screen's channel (green or blue, whichever dominates the key color) is pulled down to the other two. |
+| `lumaKey` | `threshold` | 0 to 1 | 0.1 | Pixels darker than this (Rec. 709 luma) become clear. |
+| | `softness` | 0 to 1 | 0.1 | Width of the edge above the threshold. |
+| | `invert` | toggle | 0 | 1: keys out the bright parts instead. |
+| `lut` | `file` | file | `""` | The `.cube` file, a path in the project's `luts/` folder (`""`: none, the effect draws nothing). Not keyable. |
+| | `intensity` | 0 to 1 | 1 | Mix between the original color (0) and the LUT's (1). |
+
+**LUT files.** A LUT is an Adobe/Resolve `.cube` 3D LUT (`LUT_3D_SIZE` 2 to 65, optional `DOMAIN_MIN` and `DOMAIN_MAX`, rows red-fastest) stored in the project's `luts/` folder; the editor copies an imported file there, so the project never depends on its original place. The path is relative to the project folder, with forward slashes, no `..`, no leading dot and no characters that a file name cannot hold. 1D LUTs are not read. The LUT is applied with trilinear interpolation at 8 bits per channel. A missing or unreadable file draws the clip without the effect.
+
+**Keys and alpha.** The chroma key computes alpha from the CbCr distance to the key color and multiplies it into the clip's alpha; the luma key does the same from luma. Effects after a key see the keyed picture (a drop shadow after a chroma key follows the subject).
+
+```json Clip.video
+{
+  "id": "talent",
+  "trackId": "v1",
+  "kind": "video",
+  "name": "Green screen",
+  "start": 0,
+  "duration": 90,
+  "enabled": true,
+  "mediaId": "m1",
+  "in": 0,
+  "out": 3000000,
+  "speed": 1,
+  "transform": { "x": 0, "y": 0, "scale": 1, "rotation": 0, "anchor": { "x": 0.5, "y": 0.5 }, "flipH": false, "flipV": false },
+  "opacity": 1,
+  "crop": { "left": 0, "top": 0, "right": 0, "bottom": 0 },
+  "volume": { "gainDb": 0, "muted": false },
+  "fades": { "in": 0, "out": 0 },
+  "effects": [
+    { "id": "key", "type": "chromaKey", "enabled": true, "params": { "color": [0, 0.694, 0.251, 1], "tolerance": 0.18, "softness": 0.12, "spill": 0.6 } },
+    { "id": "grade", "type": "colorAdjust", "enabled": true, "params": { "exposure": 0.3, "temperature": 15, "saturation": -10 } },
+    { "id": "look", "type": "lut", "enabled": true, "params": { "file": "luts/warm.cube", "intensity": 0.5 } }
+  ]
+}
+```
+
+```json Effect
+{ "id": "film", "type": "grain", "enabled": true, "params": { "amount": 0.15, "size": 2, "animated": 1 } }
+```
+
+Schema 18 projects open unchanged (migration 18 to 19 changes nothing). **Looks** (an effect stack saved by name) live in the editor's own storage, not in the project: applying one writes its effects into the clip, and its LUT files into `luts/`. `fixtures/interop/effects-2` is a complete project: each Effects II type, a green screen keyed with spill suppression and a LUT at intensity 0.5, with an expected frame of each.
 
 ## 6. Captions and word timings
 
@@ -1205,14 +1273,14 @@ A mask (Batch 73): the clip shows only where its masks, combined in order, cover
 
 #### Effect
 
-An effect (Batch 74): one step of a visual clip's effect stack, applied in order to its picture in content space (after its masks, before its transform, opacity, blend and matte). The parameters of each type, their ranges and defaults are listed in INTEROP.md §5.13; a missing parameter takes its default.
+An effect (Batch 74; color, stylize, keys and LUTs since Batch 75): one step of a visual clip's effect stack, applied in order to its picture in content space (after its masks, before its transform, opacity, blend and matte). The parameters of each type, their ranges and defaults are listed in INTEROP.md §5.13 and §5.14; a missing parameter takes its default.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
 | `id` | string (not empty) | yes |  | Unique among the clip's effects: letters, digits, `_` or `-` (keyframe ids are `effects.<id>.<param>`). |
-| `type` | `"gaussianBlur"` | `"directionalBlur"` | `"glow"` | `"dropShadow"` | `"outline"` | yes |  | The effect type. |
+| `type` | `"gaussianBlur"` | `"directionalBlur"` | `"glow"` | `"dropShadow"` | `"outline"` | `"colorAdjust"` | `"vignette"` | `"sharpen"` | `"grain"` | `"chromaKey"` | `"lumaKey"` | `"lut"` | yes |  | The effect type. |
 | `enabled` | boolean | yes | `true` | Off: the effect is kept but not drawn. |
-| `params` | object of number, string, or number[] (1 to 4 items) by id | yes | `{}` | Parameters by name: numbers (toggles are 0 or 1), colors [r, g, b, a] (straight alpha, 0..1) and choices (strings). Only the type's parameters, each in its range. |
+| `params` | object of number, string, or number[] (1 to 4 items) by id | yes | `{}` | Parameters by name: numbers (toggles are 0 or 1), colors [r, g, b, a] (straight alpha, 0..1), choices (strings) and files (a project path such as `luts/warm.cube`, or "" for none). Only the type's parameters, each in its range. |
 
 #### MaskBox
 
@@ -1663,7 +1731,7 @@ project.json.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `schemaVersion` | integer (>= 1) | yes | `18` | The schema version; this build writes and reads up to the current one. |
+| `schemaVersion` | integer (>= 1) | yes | `19` | The schema version; this build writes and reads up to the current one. |
 | `id` | string (not empty) | yes |  | Unique id, never changes (uuid v4 recommended). |
 | `name` | string | yes |  | Project name. |
 | `settings` | [Settings](#settings) | yes |  | Frame and time base. |

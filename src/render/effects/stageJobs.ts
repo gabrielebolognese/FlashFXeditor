@@ -42,6 +42,8 @@ export class StageJobs<T extends TextureHandle> {
   readonly src: number[] = [];
   readonly orig: number[] = [];
   readonly dst: number[] = [];
+  /** Each pass's LUT handle (read when its `orig` is FX_BUFFER.lut). */
+  readonly lut: number[] = [];
   private readonly plan = new EffectPlan();
 
   /**
@@ -116,6 +118,7 @@ export class StageJobs<T extends TextureHandle> {
       this.src[first + i] = this.plan.src[i] as number;
       this.orig[first + i] = this.plan.orig[i] as number;
       this.dst[first + i] = this.plan.dst[i] as number;
+      this.lut[first + i] = this.plan.lut[i] as number;
     }
     this.passCount = first + count;
     const job = (this.jobs[this.jobCount] ??= { stage: 0, info, entry, first: 0, count: 0 });

@@ -25,11 +25,12 @@ import { cancelExport, clearExportLeftovers } from "./exportController.js";
 import { attachExternal, detachExternal } from "./externalController.js";
 import { clearGeneratorNotes, loadGeneratorNotes } from "./generatorNotes.js";
 import { attachFonts, detachFonts } from "./fontController.js";
+import { attachLuts, detachLuts } from "./lutController.js";
 import { attachMedia, detachMedia } from "./mediaController.js";
 import { attachPresets, detachPresets } from "./presetController.js";
 import { attachPreview, captureThumbnail, detachPreview, frameService } from "./previewController.js";
 import { reportRepair, repairOpened } from "./repairController.js";
-import { actions, appSettings, appVersion, documentStore, focusScopes, layoutStore, projectsFolder, recentProjects, saveStatus, sessionStore, templateStore, workerPool } from "./services.js";
+import { actions, appSettings, appVersion, documentStore, focusScopes, layoutStore, projectsFolder, recentProjects, saveStatus, sessionStore, templateStore, lookStore, workerPool } from "./services.js";
 
 /** Workers that serve one project (sessions, indexes, analysis and proxy jobs): stopped when it closes (P13). */
 const PROJECT_WORKERS = ["decode", "analysis", "proxy"] as const;
@@ -180,6 +181,7 @@ async function closeCurrent(): Promise<void> {
   detachPreview();
   detachMedia();
   detachFonts();
+  detachLuts();
   detachPresets();
   await session.close();
   // Their memory goes with the project (decoders, sample indexes, parsed audio tracks, heaps); the
@@ -205,6 +207,7 @@ async function switchTo(opened: OpenedProject, repair: RepairReport | null = nul
   attachMedia(session.dir, () => !session.readOnly, frameService);
   attachPreview(session.dir, () => !session.readOnly);
   attachFonts(session.dir, () => !session.readOnly);
+  void attachLuts(session.dir, () => !session.readOnly);
   attachPresets(session.dir, () => !session.readOnly);
   // Temp files of exports an earlier tab did not finish.
   if (!session.readOnly) clearExportLeftovers(session.dir).catch((error: unknown) => console.warn("[export] cannot clear cache/export-temp/", error));
@@ -465,6 +468,7 @@ export function installProjectController(): () => void {
   if (link) void startOpenLink(link);
   void appSettings.load();
   void templateStore.load();
+  void lookStore.load();
   const onVisibility = () => {
     if (document.visibilityState === "hidden" && current) captureIfChanged(current);
   };
