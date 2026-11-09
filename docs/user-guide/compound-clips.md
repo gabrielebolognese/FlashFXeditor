@@ -58,7 +58,7 @@ Every compound of the project is listed in the **Compounds** bin of the **Media*
 
 Compound clips on the timeline also show a small picture of their content.
 
-> **Note:** You cannot rename a compound yet.
+> **Note:** You cannot rename a compound yet. To make a compound's text, colors or media changeable per copy, see [Templates](templates.md).
 
 ## Make a copy unique
 Right-click a copy and choose **Make unique** (also **Make compound clip unique** in the command palette). The copy gets content of its own, so changes to one no longer affect the other.
@@ -85,9 +85,10 @@ Audio clips inside a compound play at the compound's place and with the compound
 - Compound clips nest at most 8 levels deep. A compound cannot contain itself.
 
 ## Related pages
+- [Templates](templates.md)
 - [Timeline](timeline.md)
 - [Organizing media](organizing-media.md)
 - [Copying, pasting and duplicating clips](copy-and-paste.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 63, 2026-11-07</sub>
+<sub>Last updated: Batch 80, 2026-11-09</sub>

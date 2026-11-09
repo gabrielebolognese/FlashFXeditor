@@ -2,6 +2,14 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+## Batch 80: Templates
+Turn a compound clip into a template. In **Properties** > **Parameters**, **As parameter** makes a field (text, color, media, size, position) changeable; each copy then has its own values in **Properties**, with **Reset** and **Reset all**. **Save as template** stores the card, and the **Templates** section of the **Presets** tab inserts it in any project with a double-click. See [Templates](templates.md).
+
+> **Video placeholder: What's new in Batch 80**
+> - File: `videos/whats-new/batch-80.mp4` (not recorded yet)
+> - Length: about 40 seconds
+> - Shows: open a card compound; select the title and click **As parameter**; leave the compound; duplicate it and change the text on the copy; click **Save as template**; double-click the card in the **Templates** section of the **Presets** tab.
+
 ## Batch 79: Lottie clips
 Import Lottie animations (`.json` or `.lottie`) and use them as clips that stay sharp at any size. **Properties** gets a Lottie section with **Loop** and color replacements (**Add color**, **Clear**). See [Use Lottie animations](shapes-and-images.md#use-lottie-animations).
 
