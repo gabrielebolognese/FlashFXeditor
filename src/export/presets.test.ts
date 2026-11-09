@@ -108,6 +108,7 @@ describe("exportFormat", () => {
       videoBitrate: 12_000_000,
       maxBitrate: 12_000_000,
       keyframeSeconds: 2,
+      loudness: { targetLufs: -14, truePeakDb: -1 },
       audioBitrate: 192_000,
       hardware: "no-preference",
       sampleRate: 48000,

@@ -102,6 +102,7 @@ import {
 import { setEnabled, setOpacities, retimeClips, type ClipTimeField } from "./clipProps.js";
 import { copyClips, pasteClips, payloadAtFrameRate, type ClipsPayload } from "./clipboard.js";
 import { quickCrops, setCrops } from "./crop.js";
+import { setFadeCurve, setLoudnessTarget, setPans, setTrackMix } from "./mixer.js";
 import { deleteClips, rippleDelete } from "./delete.js";
 import { applyMediaDrop, commitPlan, planAtPlayhead, planCanvasDrop } from "./dropMedia.js";
 import { duplicateClips, duplicateLayers } from "./duplicate.js";
@@ -125,7 +126,7 @@ import { addMask, applyMaskPreset, commitMaskGesture, deleteMaskPoint, insertMas
 import { masksAt, MASK_NUMBER_FIELDS, maskHasField } from "../../core/masks/maskEval.js";
 import type { Mask } from "../../core/document/types.js";
 import { maskPathPoints, maskPathData } from "../../core/masks/maskPath.js";
-import { BLEND_MODES, EFFECT_TYPES, MATTE_MODES, type Effect } from "../../core/document/types.js";
+import { BLEND_MODES, EFFECT_TYPES, FADE_CURVES, MATTE_MODES, type Effect } from "../../core/document/types.js";
 import { EFFECT_DEFS, type EffectParamDef } from "../../core/effects/effectParams.js";
 import { addEffect, applyLook, moveEffect, removeAllEffects, removeEffect, setEffectEnabled, setEffectParam, setEffectStopwatch, takesEffects, toggleEffectKey } from "./effects.js";
 import { isVisualClip } from "../../core/effects/trackMatte.js";
@@ -1395,6 +1396,30 @@ const AUDIO_OPS: FuzzOp[] = [
     if (!clip) return false;
     const ids = audioTargets(p, selection(p, rng, clip, true));
     return exec(store, setGains(p, new Map(ids.map((id) => [id, rng.chance(0.05) ? Number.NaN : rng.int(-80, 20)])), { ...(rng.chance(0.5) && { at: frameIn(clip, rng) }) }));
+  }),
+  // Audio v2 (Batch 77): track gain and pan, the clip pan (keyed or not), the fade curve, the loudness target.
+  op("audio.trackMix", "audio", (store, rng) => {
+    const p = store.getState();
+    const tracks = p.tracks.filter((track) => track.kind === "audio");
+    if (tracks.length === 0) return false;
+    const track = rng.pick(tracks);
+    return exec(store, setTrackMix(p, [track.id], { ...(rng.chance(0.7) && { gainDb: rng.chance(0.05) ? Number.NaN : rng.int(-70, 20) }), ...(rng.chance(0.7) && { pan: rng.chance(0.05) ? Number.NaN : rng.int(-120, 120) / 100 }) }));
+  }),
+  op("audio.pan", "audio", (store, rng) => {
+    const p = store.getState();
+    const clip = pickClip(p, rng, (candidate) => candidate.kind === "audio" || candidate.kind === "video");
+    if (!clip) return false;
+    const ids = audioTargets(p, selection(p, rng, clip, true));
+    return exec(store, setPans(p, new Map(ids.map((id) => [id, rng.int(-100, 100) / 100])), { ...(rng.chance(0.5) && { at: frameIn(clip, rng) }) }));
+  }),
+  op("audio.fadeCurve", "audio", (store, rng) => {
+    const p = store.getState();
+    const clip = pickClip(p, rng, (candidate) => candidate.kind === "audio" || candidate.kind === "video");
+    return clip ? exec(store, setFadeCurve(p, audioTargets(p, selection(p, rng, clip, true)), rng.pick(FADE_CURVES))) : false;
+  }),
+  op("audio.loudness", "audio", (store, rng) => {
+    const p = store.getState();
+    return exec(store, setLoudnessTarget(p, rng.chance(0.3) ? null : { targetLufs: rng.int(-30, -8), truePeakDb: rng.int(-6, 0) }));
   }),
   op("audio.mute", "audio", (store, rng) => {
     const p = store.getState();

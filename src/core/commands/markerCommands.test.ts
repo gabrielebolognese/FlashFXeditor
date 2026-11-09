@@ -4,7 +4,7 @@ import type { Marker } from "../document/types.js";
 import { validateProject } from "../document/validate.js";
 import { DocumentStore } from "../store/DocumentStore.js";
 import { createSessionStore } from "../store/sessionStore.js";
-import { addMarker, removeMarker, updateMarker } from "./markerCommands.js";
+import { addBeatMarkers, addMarker, removeMarker, updateMarker } from "./markerCommands.js";
 
 const marker = (id: string, frame: number, fields: Partial<Marker> = {}): Marker => ({ id, frame, color: "green", label: "", ...fields });
 
@@ -66,5 +66,18 @@ describe("marker invariants", () => {
     expect(issues).toMatch(/marker a: .*belongs before/);
     expect(issues).toMatch(/marker b: .*integer/);
     expect(issues).toMatch(/marker c: color gold/);
+  });
+
+  it("adds detected beats as one undo step and skips a beat already marked (Batch 77)", () => {
+    const { store, frames } = setup();
+    store.dispatch(addMarker(marker("x", 15, { color: "teal", label: "Beat" })));
+    const beats = [0, 15, 30].map((frame) => marker(`b${frame}`, frame, { color: "teal", label: "Beat" }));
+    const command = addBeatMarkers(beats);
+    expect(command).not.toBeNull();
+    store.dispatch(command!);
+    expect(frames()).toEqual(["b0@0", "x@15", "b30@30"]);
+    expect(addBeatMarkers([])).toBeNull();
+    store.undo();
+    expect(frames()).toEqual(["x@15"]);
   });
 });

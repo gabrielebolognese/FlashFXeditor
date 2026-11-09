@@ -27,6 +27,7 @@ import { installPreviewController, startGpu } from "./app/previewController.js";
 import { installProjectController } from "./app/projectController.js";
 import { installPropertiesController } from "./app/propertiesController.js";
 import { startServices } from "./app/services.js";
+import { installBeatsController } from "./app/beatsController.js";
 import { installSilenceController } from "./app/silenceController.js";
 import { installSpeedController } from "./app/speedController.js";
 import { installTextController } from "./app/textController.js";
@@ -105,6 +106,7 @@ async function start(): Promise<void> {
   installAudioController();
   installAudioEditController();
   installSilenceController();
+  installBeatsController();
   installClipboardController();
   // Dev builds: the performance overlay, benchmarks and the React commit counter (Batch 45).
   const perf = import.meta.env.DEV ? await import("./app/perfController.js") : null;

@@ -28,8 +28,9 @@ import {
 } from "../timeline/edit/tracks.js";
 import type { HeaderToggle } from "../timeline/view/geometry.js";
 import { showToast } from "../ui/toasts.js";
+import { setTrackMix } from "../timeline/edit/mixer.js";
 import { timelineMenu } from "./cutController.js";
-import { actions, documentStore, sessionStore } from "./services.js";
+import { actions, documentStore, focusScopes, sessionStore } from "./services.js";
 
 /** Longest track name kept by a rename (as for clip and media names). */
 export const MAX_TRACK_NAME = 255;
@@ -122,6 +123,27 @@ export function moveTrackTo(trackId: TrackId, lane: number): void {
 
 /** The track whose name is being edited inline in its header (double-click, F2, menu Rename), or null. */
 export const trackRename = createStore<TrackId | null>(null);
+
+/** The audio track whose mixer popover is open (spec 21.21, Batch 77), or null. React renders the popover from it. */
+export const trackMixer = createStore<TrackId | null>(null);
+
+export function closeTrackMixer(): void {
+  if (trackMixer.getState() === null) return;
+  trackMixer.set(null);
+  focusScopes.set("timeline");
+}
+
+/** A mixer fader moved: gain (dB) or pan, live; one undo step per drag (coalesced). */
+export function setTrackMixValue(trackId: TrackId, change: { gainDb?: number; pan?: number }): void {
+  const command = setTrackMix(documentStore.getState(), [trackId], change, { coalesceKey: `track.audio:${trackId}` });
+  if (command) documentStore.dispatch(command);
+}
+
+/** The mixer Mute and Solo switches. */
+export function toggleTrackMixFlag(trackId: TrackId, flag: "muted" | "solo", value: boolean): void {
+  const command = setTrackFlag(documentStore.getState(), [trackId], flag, value);
+  if (command) documentStore.dispatch(command);
+}
 
 export function startTrackRename(trackId: TrackId): void {
   if (trackById(documentStore.getState(), trackId)) trackRename.set(trackId);
@@ -319,6 +341,14 @@ export function installTrackController(): () => void {
       // Locking every track leaves nothing selectable.
       if (command) documentStore.dispatch(command, command.id === "track.lockAll" ? { selection: toSnapshot(EMPTY_SELECTION) } : {});
     }),
+    actions.register(
+      "track.mixer",
+      () => {
+        const trackId = menuTrack();
+        if (trackId !== null && trackById(documentStore.getState(), trackId)?.kind === "audio") trackMixer.set(trackId);
+      },
+      { enabled: () => trackById(documentStore.getState(), menuTrack() ?? "")?.kind === "audio" },
+    ),
     actions.register("track.muteOthers", () => {
       const trackId = menuTrack();
       const command = trackId !== null ? muteOthers(documentStore.getState(), trackId) : null;

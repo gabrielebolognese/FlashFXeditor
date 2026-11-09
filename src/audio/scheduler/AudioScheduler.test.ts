@@ -3,7 +3,7 @@ import { makeMedia, makeMediaClip, makeProject, makeTrack, withClips } from "../
 import type { MediaClip, Project } from "../../core/document/types.js";
 import { AudioMixer, audibleTracks, RAMP_SECONDS } from "../AudioMixer.js";
 import { segmentLayout, type SegmentLayout } from "../decode/segments.js";
-import { FakeContext, fakeBuffer, type FakeGain, type FakeSource } from "../testAudio.js";
+import { FakeContext, fakeBuffer, type FakeGain, type FakePanner, type FakeSource } from "../testAudio.js";
 import { applyTrim, rateStretch } from "../../timeline/edit/trim.js";
 import { AHEAD_SECONDS, AudioScheduler, START_MARGIN_SECONDS, type AudioSchedulerDeps, type PlayMapping } from "./AudioScheduler.js";
 
@@ -457,6 +457,27 @@ describe("AudioScheduler", () => {
     expect(t.scheduler.stats.voices).toBe(1);
     t.scheduler.stop();
     expect(t.scheduler.stats.voices).toBe(0);
+  });
+});
+
+describe("pan and track mix (Batch 77)", () => {
+  // source -> envelope -> fade -> clip gain -> clip pan -> track input -> track pan -> bus
+  const clipPan = (source: FakeSource) => source.outputs[0]?.outputs[0]?.outputs[0]?.outputs[0] as unknown as FakePanner;
+
+  it("starts a voice at its clip pan and ramps a plain pan change", () => {
+    const t = setup({ clips: (p) => [audioClip(p, "c1", 0, 300, { volume: { gainDb: 0, muted: false, pan: -0.5 } })] });
+    t.at(9.95);
+    t.scheduler.sync(t.mapping({ frame: 60, clock: 10 }));
+    const [source] = voiceSources(t.ctx);
+    expect(clipPan(source as FakeSource).pan.value).toBe(-0.5);
+  });
+
+  it("puts the clip pan on a panner of its own, per voice", () => {
+    const t = setup({ clips: (p) => [audioClip(p, "c1", 0, 300, { volume: { gainDb: 0, muted: false, pan: 1 } }), audioClip(p, "c2", 0, 300, { volume: { gainDb: 0, muted: false } })] });
+    t.at(9.95);
+    t.scheduler.sync(t.mapping({ frame: 60, clock: 10 }));
+    const sources = voiceSources(t.ctx);
+    expect(sources.map((s) => clipPan(s as FakeSource).pan.value).sort()).toEqual([0, 1]);
   });
 });
 

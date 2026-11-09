@@ -9,10 +9,11 @@
 //   every exported frame is a project frame and none repeats.
 // - Built-in presets (Reels, TikTok, Shorts) are fixed; changing a setting makes them Custom (seeded
 //   with their values, `customFrom`), which can be saved as a preset of one's own (app settings).
+// - Loudness (Batch 77): the three built-in presets normalize to -14 LUFS and -1 dBTP; Custom carries the setting.
 // - YouTube Shorts: 2160x3840 when the project is 4K, else 1080x1920; 60 fps when the project is 60;
 //   its bitrate follows the output (YouTube's recommended upload rates, `autoBitrate`).
 import { fpsToNumber } from "../core/document/time.js";
-import type { Project, Rational } from "../core/document/types.js";
+import type { LoudnessTarget, Project, Rational } from "../core/document/types.js";
 import { formatFps } from "../project/projectPresets.js";
 
 export type VideoCodecId = "avc" | "hevc" | "av1";
@@ -54,6 +55,8 @@ export interface ExportSettings {
   /** AAC bitrate (spec §14). */
   audioBitrate: number;
   hardware: HardwarePreference;
+  /** The loudness the mixdown is normalized to (spec §21.21); absent or null: the project's own target, if it has one. */
+  loudness?: LoudnessTarget | null;
 }
 
 export interface ExportPreset {
@@ -65,6 +68,9 @@ export interface ExportPreset {
   settings: ExportSettings;
 }
 
+/** Reels, TikTok and Shorts upload at -14 LUFS with a true peak of -1 dBTP (spec §21.21). */
+export const PRESET_LOUDNESS: LoudnessTarget = { targetLufs: -14, truePeakDb: -1 };
+
 const SHORT_FORM: Omit<ExportSettings, "videoBitrate" | "maxBitrate"> = {
   codec: "avc",
   scale: 100,
@@ -75,6 +81,7 @@ const SHORT_FORM: Omit<ExportSettings, "videoBitrate" | "maxBitrate"> = {
   keyframeSeconds: 2,
   audioBitrate: 192_000,
   hardware: "no-preference",
+  loudness: PRESET_LOUDNESS,
 };
 
 /** Spec §16: Instagram Reels, 1080x1920, 30 fps, H.264 High, 12 Mbps, AAC 192 kbps. */
@@ -152,6 +159,8 @@ export interface ExportFormat {
   keyframeSeconds: number;
   audioBitrate: number;
   hardware: HardwarePreference;
+  /** The loudness target of the mixdown (spec §21.21): the settings', else the project's; absent: none. */
+  loudness?: LoudnessTarget;
   /** The mixdown's rate and channels (spec §14: 48 kHz stereo). */
   sampleRate: 48000;
   channels: 2;
@@ -214,6 +223,8 @@ export function autoBitrate(width: number, height: number, fps: Rational): numbe
   return (tier[high ? 1 : 0] as number) * 1_000_000;
 }
 
+const loudnessOf = (target: LoudnessTarget | null | undefined): { loudness?: LoudnessTarget } => (target ? { loudness: { targetLufs: target.targetLufs, truePeakDb: target.truePeakDb } } : {});
+
 export function exportFormat(project: Project, settings: ExportSettings): ExportFormat {
   const { width, height } = project.settings;
   const size = exportSize(width, height, settings);
@@ -230,6 +241,7 @@ export function exportFormat(project: Project, settings: ExportSettings): Export
     keyframeSeconds: settings.keyframeSeconds,
     audioBitrate: settings.audioBitrate,
     hardware: settings.hardware,
+    ...loudnessOf(settings.loudness ?? project.settings.loudness),
     sampleRate: 48000,
     channels: 2,
   };
@@ -294,7 +306,16 @@ export function sanitizeExportSettings(value: unknown, fallback: ExportSettings 
     keyframeSeconds: inRange(raw.keyframeSeconds, KEYFRAME_SECONDS_RANGE.min, KEYFRAME_SECONDS_RANGE.max) ? raw.keyframeSeconds : fallback.keyframeSeconds,
     audioBitrate: oneOf(AUDIO_BITRATES, raw.audioBitrate, fallback.audioBitrate),
     hardware: oneOf(HARDWARE_PREFERENCES, raw.hardware, fallback.hardware),
+    ...sanitizeLoudness(raw.loudness, fallback.loudness),
   };
+}
+
+/** A target (-40..0 LUFS, -20..0 dBTP), null (off), or the fallback when absent or invalid. */
+function sanitizeLoudness(value: unknown, fallback: LoudnessTarget | null | undefined): { loudness?: LoudnessTarget | null } {
+  if (value === null) return { loudness: null };
+  const raw = obj(value);
+  if (inRange(raw.targetLufs, -40, 0) && inRange(raw.truePeakDb, -20, 0)) return { loudness: { targetLufs: raw.targetLufs, truePeakDb: raw.truePeakDb } };
+  return fallback === undefined ? {} : { loudness: fallback };
 }
 
 export const MAX_USER_PRESETS = 30;

@@ -980,6 +980,35 @@ Seven more effect types go in the same `effects` list (§5.13), with the same ru
 
 A minimal adjustment clip needs only `id`, `trackId`, `kind`, `start` and `duration`: the name becomes "Adjustment", `effects` an empty list and `opacity` 1. Schema 19 projects open unchanged (migration 19 to 20 changes nothing). `fixtures/interop/effects-3` is a complete project: an adjustment clip turning everything below it black and white inside an ellipse mask (and only during its range), each Effects III type, a glitch whose pattern changes over time and an adjustment with two effects at half opacity, with expected frames.
 
+### 5.16 Audio v2: track mixer, pan, fade curves and loudness (manifest keys `audio.trackGain`, `audio.pan`, `audio.loudness`, `audio.beatMarkers`, `audio.trackGainDb`, `audio.panRange`, `audio.fadeCurves`; schema 21)
+
+Four additions, all optional; a missing field means "as before", so schema 20 projects open unchanged (migration 20 to 21 changes nothing).
+
+- **Track mixer.** An audio track may carry `gainDb` (-60 to 12 dB, default 0) and `pan` (-1 left to 1 right, default 0). They apply to the sum of the track's clips, after each clip's own gain, fades and pan. A value of 0 is not written. Muted and solo tracks stay as they were (`muted`, `solo`).
+- **Clip pan.** `volume.pan` (-1 to 1, default 0) places one clip. It can be keyed with the keyframe property `volume.pan` (same keys as `volume.gainDb`: frames from the clip's start, an ease per key). Pan uses an equal-power law: at -1 only the left channel sounds, at 0 both at about 0.707, at 1 only the right.
+- **Fade curve.** `fades.curve` is `linear`, `equalPower` (the default, a quarter sine) or `exponential` (`(e^(5t) - 1) / (e^5 - 1)`). It shapes both fades of the clip. Crossfades between neighbours are always equal power.
+- **Loudness target.** `settings.loudness` is `{ "targetLufs", "truePeakDb" }` (-40 to 0 LUFS, -20 to 0 dBTP) or null or missing (no normalization). An export applies it to the final mix: the whole mix is measured (ITU-R BS.1770-4 integrated loudness, gates at -70 LUFS and -10 LU), gain is applied to reach the target, and a 5 ms look-ahead limiter keeps the true peak (4x oversampled) under the ceiling. The short-form export presets set -14 LUFS and -1 dBTP.
+
+Beat markers are plain markers (color `teal`, label `Beat`), one per detected beat; there is no special field.
+
+```json Track
+{ "id": "a2", "name": "Click", "kind": "audio", "muted": false, "solo": false, "locked": false, "hidden": false, "targeted": false, "height": "M", "clipIds": [], "gainDb": -6, "pan": -1 }
+```
+
+```json Volume
+{ "gainDb": 0, "muted": false, "pan": -0.5 }
+```
+
+```json Fades
+{ "in": 9, "out": 0, "curve": "exponential" }
+```
+
+```json Loudness
+{ "targetLufs": -14, "truePeakDb": -1 }
+```
+
+A minimal use is `"pan": 0.3` in an existing clip's `volume`, or `"gainDb": -3` on an audio track. `fixtures/interop/audio` holds a project with all four, a stereo file at -20 LUFS and a 120 BPM click track.
+
 ## 6. Captions and word timings
 
 The caption track's `captionTracks[<track id>].style` styles every cue; a cue's `styleOverride` sets only the fields it changes. A cue is a `caption` clip with `text` (`\n` for line breaks) and optional `words`: `start` and `end` are integer frames relative to the cue's start, `end` after `start`. A word may start before the cue or end after it: an in-trim keeps the words it hides (negative frames), so a trim back shows them again. With word timings the active word is highlighted as the style's `highlight` says.
@@ -1243,6 +1272,7 @@ A clip's sound level.
 | --- | --- | --- | --- | --- |
 | `gainDb` | number (>= -60, <= 12) | yes | `0` | Gain in dB. |
 | `muted` | boolean | yes | `false` | Silenced. |
+| `pan` | number (>= -1, <= 1) | no | `0` | Audio clips (Batch 77): -1 (left) to 1 (right). Absent: 0. Keyframe prop `volume.pan`. |
 
 #### Fades
 
@@ -1252,6 +1282,16 @@ Fade lengths at the clip's edges.
 | --- | --- | --- | --- | --- |
 | `in` | integer (>= 0) | yes | `0` | Fade in. Integer frames at the project frame rate. |
 | `out` | integer (>= 0) | yes | `0` | Fade out. Integer frames at the project frame rate. |
+| `curve` | `"linear"` | `"equalPower"` | `"exponential"` | no | `"equalPower"` | Audio fades (Batch 77): the shape. Absent: equalPower. |
+
+#### Loudness
+
+The export loudness target (Batch 77): the mixdown is measured, one gain brings it to the target and a true-peak limiter holds the ceiling.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `targetLufs` | number (>= -40, <= 0) | yes | `-14` | Integrated loudness, LUFS (ITU-R BS.1770-4). |
+| `truePeakDb` | number (>= -20, <= 0) | yes | `-1` | True-peak ceiling, dBTP. |
 
 #### Keyframe
 
@@ -1280,7 +1320,7 @@ The parameters of a `spring` ease: a damped cosine over the segment that ends ex
 
 Keyframe lists by property id, each sorted by frame.
 
-Value: object of [Keyframe](#keyframe)[] (keys: `transform.x`, `transform.y`, `transform.scale`, `transform.scaleY`, `transform.rotation`, `opacity`, `volume.gainDb`, `transform.anchor.x`, `transform.anchor.y`, `crop.left`, `crop.top`, `crop.right`, `crop.bottom`, `size.w`, `size.h`, `cornerRadius`, `fill`, `stroke.width`, `stroke.color`, `stroke.dashOffset`, `shadow.x`, `shadow.y`, `shadow.blur`, `shadow.spread`, `shadow.color`, `style.fontSize`, `style.letterSpacing`, `style.fill`, `text.counter.value`, `transform.position`, `transform.rotationX`, `transform.rotationY`, `transform.z`, and keys matching `^paths\.([A-Za-z0-9_-]+)\.(trim\.(?:start|end|offset)|stroke\.(?:width|color|dashOffset)|fill|primitive\.([A-Za-z]+))$`, `^animators\.([A-Za-z0-9_-]+)\.(selector\.(?:start|end|offset)|props\.(?:x|y|scale|rotation|opacity|blur|tracking|fill))$`, `^masks\.([A-Za-z0-9_-]+)\.(x|y|w|h|radius|feather|expansion|opacity|path)$`, `^effects\.([A-Za-z0-9_-]+)\.([A-Za-z][A-Za-z0-9]*)$`).
+Value: object of [Keyframe](#keyframe)[] (keys: `transform.x`, `transform.y`, `transform.scale`, `transform.scaleY`, `transform.rotation`, `opacity`, `volume.gainDb`, `volume.pan`, `transform.anchor.x`, `transform.anchor.y`, `crop.left`, `crop.top`, `crop.right`, `crop.bottom`, `size.w`, `size.h`, `cornerRadius`, `fill`, `stroke.width`, `stroke.color`, `stroke.dashOffset`, `shadow.x`, `shadow.y`, `shadow.blur`, `shadow.spread`, `shadow.color`, `style.fontSize`, `style.letterSpacing`, `style.fill`, `text.counter.value`, `transform.position`, `transform.rotationX`, `transform.rotationY`, `transform.z`, and keys matching `^paths\.([A-Za-z0-9_-]+)\.(trim\.(?:start|end|offset)|stroke\.(?:width|color|dashOffset)|fill|primitive\.([A-Za-z]+))$`, `^animators\.([A-Za-z0-9_-]+)\.(selector\.(?:start|end|offset)|props\.(?:x|y|scale|rotation|opacity|blur|tracking|fill))$`, `^masks\.([A-Za-z0-9_-]+)\.(x|y|w|h|radius|feather|expansion|opacity|path)$`, `^effects\.([A-Za-z0-9_-]+)\.([A-Za-z][A-Za-z0-9]*)$`).
 
 #### Transition
 
@@ -1647,6 +1687,7 @@ The project's frame and time base.
 | `background` | [RGBA](#rgba) | yes | `{"r":0,"g":0,"b":0,"a":1}` | Color behind every layer. |
 | `sampleRate` | `48000` | yes | `48000` | Audio sample rate. |
 | `perspective` | number (> 0) or null | no | `1600` | Viewing distance of the 2.5D layers, px (Batch 70); null: none (a flat projection). Absent: 1600. |
+| `loudness` | [Loudness](#loudness) or null | no | `null` | Export loudness target (Batch 77); null or absent: off. |
 
 #### ProjectGenerator
 
@@ -1763,6 +1804,8 @@ A lane of clips. Video tracks come first (index 0 is the bottom one), then the c
 | `hidden` | boolean | yes | `false` | Hidden. |
 | `targeted` | boolean | yes | `true` | Takes inserts. |
 | `height` | `"S"` | `"M"` | `"L"` | yes | `"M"` | Row height. |
+| `gainDb` | number (>= -60, <= 12) | no | `0` | Audio tracks (Batch 77): level in dB. Absent: 0. |
+| `pan` | number (>= -1, <= 1) | no | `0` | Audio tracks (Batch 77): -1 (left) to 1 (right). Absent: 0. |
 
 #### Marker
 
@@ -1781,7 +1824,7 @@ project.json.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `schemaVersion` | integer (>= 1) | yes | `20` | The schema version; this build writes and reads up to the current one. |
+| `schemaVersion` | integer (>= 1) | yes | `21` | The schema version; this build writes and reads up to the current one. |
 | `id` | string (not empty) | yes |  | Unique id, never changes (uuid v4 recommended). |
 | `name` | string | yes |  | Project name. |
 | `settings` | [Settings](#settings) | yes |  | Frame and time base. |

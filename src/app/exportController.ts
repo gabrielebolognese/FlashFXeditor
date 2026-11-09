@@ -25,6 +25,7 @@
 //   (the same image on the clipboard), Export audio, Export captions (SRT / VTT of the range), written
 //   to the same destination.
 import { renderMixdown } from "../audio/mixdown.js";
+import { loudnessText } from "../export/loudness.js";
 import { createStore, type Store } from "../core/store/createStore.js";
 import type { MediaId, Project } from "../core/document/types.js";
 import { AUDIO_FILE_EXTENSIONS, type AudioFileFormat } from "../export/audioExport.js";
@@ -295,19 +296,19 @@ async function runJob(job: QueueJob<ExportJobSpec>, signal: AbortSignal, fail: (
       const name = await output.finish(spec.fileName);
       const bytes = output.bytes;
       output = null;
-      console.info(`[export] ${name}: ${result.frames} frames ${result.width}x${result.height} ${result.videoCodec} / ${result.audioCodec ?? "no audio"} in ${Math.round(result.ms)} ms, ${bytes} bytes`);
+      console.info(`[export] ${name}: ${result.frames} frames ${result.width}x${result.height} ${result.videoCodec} / ${result.audioCodec ?? "no audio"} in ${Math.round(result.ms)} ms, ${bytes} bytes${result.loudness ? `, ${loudnessText(result.loudness)}` : ""}`);
       return { name, bytes, detail: `${result.width}×${result.height} · ${plural(result.frames, "frame")}` };
     }
     const audio = await mixdown(spec.project, spec.range, signal);
     signal.throwIfAborted();
     output = spec.picked ? await ExportFile.toPicked(spec.picked.file, fail) : await ExportFile.create(dir, crypto.randomUUID(), fail, ext);
     const samples = jobTotal(spec);
-    const params: AudioJobParams = { format: spec.request.audioFormat, audio, sampleRate: MIX_RATE, channels: MIX_CHANNELS, samples, audioBitrate: spec.format.audioBitrate, paused: rt.pause.post() };
+    const params: AudioJobParams = { format: spec.request.audioFormat, audio, sampleRate: MIX_RATE, channels: MIX_CHANNELS, samples, audioBitrate: spec.format.audioBitrate, paused: rt.pause.post(), loudness: spec.format.loudness ?? spec.project.settings.loudness ?? null };
     const result: AudioJobResult = await workerPool.request("exportAudio", params, { priority: "user", signal, transfer: audio?.channels ?? [], onProgress });
     const name = await output.finish(spec.fileName);
     const bytes = output.bytes;
     output = null;
-    console.info(`[export] ${name}: ${result.samples} samples ${result.codec} in ${Math.round(result.ms)} ms, ${bytes} bytes`);
+    console.info(`[export] ${name}: ${result.samples} samples ${result.codec} in ${Math.round(result.ms)} ms, ${bytes} bytes${result.loudness ? `, ${loudnessText(result.loudness)}` : ""}`);
     return { name, bytes, detail: audioDuration(samples) };
   } catch (error) {
     await output?.discard();

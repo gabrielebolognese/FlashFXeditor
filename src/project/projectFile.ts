@@ -48,6 +48,8 @@ export type Migration = (raw: JsonObject) => JsonObject;
  *   of an existing field; a LUT's file lives in `luts/`): older projects open unchanged.
  * - 19 -> 20 (Batch 76): the `adjustment` clip kind and the effect types rgbSplit, pixelate, mirror, wave, glitch, posterize
  *   and invert (new values of existing fields): older projects open unchanged.
+ * - 20 -> 21 (Batch 77): `Track.gainDb`, `Track.pan`, `Volume.pan`, `fades.curve` and `settings.loudness` (all optional;
+ *   absent = 0 dB, centered, equal power, no target): older projects open unchanged.
  * - 7 -> 8 (Batch 62): `sequences` (empty) and the `compound` clip kind: older projects open unchanged.
  * - 6 -> 7 (Batch 60): the 30 Penner eases, `bezier` and `spring` on keys, vector (color) key values and the keyframe
  *   properties of spec §21.9 (all new values of existing fields): older projects open unchanged.
@@ -97,6 +99,8 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   18: (raw) => raw,
   // 19 -> 20 (Batch 76): adjustment clips and new effect types: none in an older project.
   19: (raw) => raw,
+  // 20 -> 21 (Batch 77): audio v2 fields, all optional: none in an older project.
+  20: (raw) => raw,
 };
 
 function isObject(value: unknown): value is JsonObject {

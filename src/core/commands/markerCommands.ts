@@ -42,6 +42,25 @@ export function addMarker(marker: Marker): Command {
   };
 }
 
+/**
+ * Beat markers (spec §21.21, Batch 77): one marker per frame in `markers`, skipping frames that already
+ * hold a marker of the same label and color, as one undo step. Null when nothing is new.
+ */
+export function addBeatMarkers(markers: readonly Marker[]): Command | null {
+  if (markers.length === 0) return null;
+  return {
+    id: "marker.addBeats",
+    label: "Detect beats",
+    affects: ["markers"],
+    run(draft) {
+      for (const marker of markers) {
+        if (draft.markers.some((m) => m.id === marker.id || (m.frame === marker.frame && m.label === marker.label && m.color === marker.color))) continue;
+        draft.markers.splice(sortedIndex(draft.markers, marker.frame), 0, { ...marker });
+      }
+    },
+  };
+}
+
 /** The undo label of an edit: what it changes. */
 function patchLabel(patch: MarkerPatch): string {
   const keys = Object.keys(patch);

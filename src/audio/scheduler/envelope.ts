@@ -13,8 +13,8 @@
 // section's stopwatch) joins these curves as a factor (`automationAt`): the gain in dB at the
 // fractional frame, as an amplitude. A clip without volume keys has its gain on its clip GainNode
 // instead (a constant, ramped when it changes), so its factor is the envelope alone.
-import { gainDbAt, hasSectionKeys } from "../../core/document/keyframes.js";
-import type { MediaClip } from "../../core/document/types.js";
+import { gainDbAt, panAt } from "../../core/document/keyframes.js";
+import type { FadeCurve, MediaClip } from "../../core/document/types.js";
 
 /** Curve points per second (Web Audio interpolates linearly between them). */
 export const CURVE_RATE = 200;
@@ -39,6 +39,17 @@ const NO_LIMITS: AudioLimits = { start: -Infinity, end: Infinity };
 
 const rise = (t: number) => Math.sin((Math.PI / 2) * Math.min(1, Math.max(0, t)));
 
+/** The steepness of the exponential fade: its factor is (e^(kt) - 1) / (e^k - 1). */
+const EXPONENTIAL_K = 5;
+
+/** The factor of a clip fade at progress `t` (0 silent .. 1 full; a fade out is the same curve reversed): spec 21.21, equal power by default. */
+export function fadeRise(t: number, curve: FadeCurve | undefined): number {
+  const x = Math.min(1, Math.max(0, t));
+  if (curve === "linear") return x;
+  if (curve === "exponential") return (Math.exp(EXPONENTIAL_K * x) - 1) / (Math.exp(EXPONENTIAL_K) - 1);
+  return Math.sin((Math.PI / 2) * x);
+}
+
 /** The ramp in of a clip's transition in, within its audio; null without one. */
 function rampIn(clip: Enveloped, fps: number, limits: AudioLimits): EnvelopeRegion | null {
   const into = clip.transitionIn;
@@ -61,8 +72,8 @@ export function envelopeAt(clip: Enveloped, fps: number, s: number, limits: Audi
   const start = clip.start / fps;
   const end = (clip.start + clip.duration) / fps;
   let factor = 1;
-  if (clip.fades.in > 0) factor *= rise((s - start) / (clip.fades.in / fps));
-  if (clip.fades.out > 0) factor *= rise((end - s) / (clip.fades.out / fps));
+  if (clip.fades.in > 0) factor *= fadeRise((s - start) / (clip.fades.in / fps), clip.fades.curve);
+  if (clip.fades.out > 0) factor *= fadeRise((end - s) / (clip.fades.out / fps), clip.fades.curve);
   const into = rampIn(clip, fps, limits);
   if (into) factor *= rise((s - into.start) / (into.end - into.start));
   const out = rampOut(clip, fps, limits);
@@ -107,7 +118,33 @@ const dbToGain = (db: number) => 10 ** (db / 20);
 
 /** Whether the clip's gain is keyed (the Volume keyframes): then it rides on the automation, not on the clip GainNode. */
 export function keyedGain(clip: Pick<MediaClip, "keyframes">): boolean {
-  return hasSectionKeys(clip.keyframes, "volume");
+  return (clip.keyframes?.["volume.gainDb"]?.length ?? 0) > 0;
+}
+
+// --- The keyed pan (Batch 77) ---------------------------------------------------------------------
+
+/** The pan (-1..1) at timeline second `s`. */
+export function panAtSecond(clip: Pick<MediaClip, "start" | "volume" | "keyframes">, fps: number, s: number): number {
+  return panAt(clip, (s - clip.start / fps) * fps);
+}
+
+/** The timeline seconds where the keyed pan moves (between its first and last key, when they differ); null when it holds. */
+export function panRegion(clip: Pick<MediaClip, "start" | "keyframes">, fps: number): EnvelopeRegion | null {
+  const keys = clip.keyframes?.["volume.pan"];
+  if (!keys || keys.length < 2) return null;
+  const first = keys[0] as { frame: number; value: number };
+  const last = keys[keys.length - 1] as { frame: number; value: number };
+  if (keys.every((key) => key.value === first.value)) return null;
+  const start = clip.start / fps;
+  return { start: start + first.frame / fps, end: start + last.frame / fps };
+}
+
+/** The pan sampled over [from, to] (timeline seconds), both ends included, at CURVE_RATE (2 points at least). */
+export function panCurve(clip: Pick<MediaClip, "start" | "volume" | "keyframes">, fps: number, from: number, to: number): Float32Array {
+  const count = Math.max(2, Math.ceil((to - from) * CURVE_RATE) + 1);
+  const curve = new Float32Array(count);
+  for (let i = 0; i < count; i++) curve[i] = panAtSecond(clip, fps, from + ((to - from) * i) / (count - 1));
+  return curve;
 }
 
 /** The keyed gain's factor at timeline second `s` (1 without volume keys): the gain in dB between the keys, as an amplitude. */

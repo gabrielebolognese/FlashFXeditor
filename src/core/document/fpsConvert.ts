@@ -149,7 +149,7 @@ function convertInside(clip: Clip, conv: FrameConverter, oldStart: number, to: R
     if (clip.transitionIn) clip.transitionIn = convertTransition(clip.transitionIn, conv);
     if (clip.transitionOut) clip.transitionOut = convertTransition(clip.transitionOut, conv);
   }
-  if ("fades" in clip && clip.fades) clip.fades = fitFades({ in: conv.length(clip.fades.in), out: conv.length(clip.fades.out) }, clip.duration);
+  if ("fades" in clip && clip.fades) clip.fades = fitFades({ ...clip.fades, in: conv.length(clip.fades.in), out: conv.length(clip.fades.out) }, clip.duration);
   if (clip.kind === "text") {
     if (clip.animIn) clip.animIn = convertAnim(clip.animIn, conv);
     if (clip.animOut) clip.animOut = convertAnim(clip.animOut, conv);

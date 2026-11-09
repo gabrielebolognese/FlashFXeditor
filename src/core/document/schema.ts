@@ -7,7 +7,7 @@ import { MAX_GAIN_DB, MAX_SPEED, MIN_GAIN_DB } from "./limits.js";
 import { ANIMATOR_PROP_PATTERN, KEYFRAME_PROPS, MASK_PROP_PATTERN, SHAPE_PROP_PATTERN } from "./keyframes.js";
 import { EFFECT_PROP_PATTERN } from "../effects/effectParams.js";
 import { PRIMITIVE_LIMITS } from "../shapes/primitives.js";
-import { BLEND_MODES, EFFECT_TYPES, MASK_MODES, MATTE_MODES, CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, LABEL_COLORS, PRESET_SET_IDS, SCHEMA_VERSION, FILL_RULES, LINE_CAPS, LINE_JOINS, SOLID_SHAPE_IDS, STROKE_ALIGNS, COUNTER_SEPARATORS, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_DIRECTIONS, TRANSITION_KINDS, type JsonValue } from "./types.js";
+import { BLEND_MODES, EFFECT_TYPES, FADE_CURVES, MASK_MODES, MATTE_MODES, CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, LABEL_COLORS, PRESET_SET_IDS, SCHEMA_VERSION, FILL_RULES, LINE_CAPS, LINE_JOINS, SOLID_SHAPE_IDS, STROKE_ALIGNS, COUNTER_SEPARATORS, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_DIRECTIONS, TRANSITION_KINDS, type JsonValue } from "./types.js";
 
 export type FieldType =
   | { t: "string"; nonEmpty?: boolean }
@@ -189,9 +189,24 @@ const SCHEMAS: ObjectSchema[] = [
     name: "Volume",
     doc: "A clip's sound level.",
     types: ["Volume"],
-    fields: { gainDb: req(range(MIN_GAIN_DB, MAX_GAIN_DB), "Gain in dB.", 0), muted: req(bool, "Silenced.", false) },
+    fields: {
+      gainDb: req(range(MIN_GAIN_DB, MAX_GAIN_DB), "Gain in dB.", 0),
+      muted: req(bool, "Silenced.", false),
+      pan: opt(range(-1, 1), "Audio clips (Batch 77): -1 (left) to 1 (right). Absent: 0. Keyframe prop `volume.pan`.", 0),
+    },
   },
-  { name: "Fades", doc: "Fade lengths at the clip's edges.", types: [], fields: { in: req(int(0), `Fade in. ${FRAMES}`, 0), out: req(int(0), `Fade out. ${FRAMES}`, 0) } },
+  { name: "Fades", doc: "Fade lengths at the clip's edges.", types: [], fields: {
+      in: req(int(0), `Fade in. ${FRAMES}`, 0),
+      out: req(int(0), `Fade out. ${FRAMES}`, 0),
+      curve: opt(oneOf(FADE_CURVES), "Audio fades (Batch 77): the shape. Absent: equalPower.", "equalPower"),
+    },
+  },
+  {
+    name: "Loudness",
+    doc: "The export loudness target (Batch 77): the mixdown is measured, one gain brings it to the target and a true-peak limiter holds the ceiling.",
+    types: ["LoudnessTarget"],
+    fields: { targetLufs: req(range(-40, 0), "Integrated loudness, LUFS (ITU-R BS.1770-4).", -14), truePeakDb: req(range(-20, 0), "True-peak ceiling, dBTP.", -1) },
+  },
   {
     name: "Keyframe",
     doc: "One keyframe: a value at a frame relative to the clip start. A key's `ease` shapes the segment from it to the next key.",
@@ -500,6 +515,7 @@ const SCHEMAS: ObjectSchema[] = [
       background: req(obj("RGBA"), "Color behind every layer.", BLACK),
       sampleRate: req(oneOf([48000]), "Audio sample rate.", 48000),
       perspective: opt({ ...pos, nullable: true }, "Viewing distance of the 2.5D layers, px (Batch 70); null: none (a flat projection). Absent: 1600.", 1600),
+      loudness: opt({ t: "object", schema: "Loudness", nullable: true }, "Export loudness target (Batch 77); null or absent: off.", null),
     },
   },
   {
@@ -600,6 +616,8 @@ const SCHEMAS: ObjectSchema[] = [
       hidden: req(bool, "Hidden.", false),
       targeted: req(bool, "Takes inserts.", true),
       height: req(oneOf(["S", "M", "L"]), "Row height.", "M"),
+      gainDb: opt(range(MIN_GAIN_DB, MAX_GAIN_DB), "Audio tracks (Batch 77): level in dB. Absent: 0.", 0),
+      pan: opt(range(-1, 1), "Audio tracks (Batch 77): -1 (left) to 1 (right). Absent: 0.", 0),
     },
   },
   {

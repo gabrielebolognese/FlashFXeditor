@@ -21,7 +21,7 @@
 import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import { emptyTrack, nextTrackName } from "../../core/document/project.js";
-import { clipRel, gainDbAt, hasSectionKeys, setKey, withKeys, writeKeys, scalar, type Key } from "../../core/document/keyframes.js";
+import { clipRel, gainDbAt, hasGainKeys, setKey, withKeys, writeKeys, scalar, type Key } from "../../core/document/keyframes.js";
 import { usPerFrame } from "../../core/document/time.js";
 import type { ClipId, Frame, Keyframes, MediaClip, MediaId, Project, Track, TrackId } from "../../core/document/types.js";
 import type { Peaks } from "../../media/cache/peaks.js";
@@ -109,7 +109,7 @@ export function setGains(project: Project, changes: ReadonlyMap<ClipId, number>,
     const clip = project.clips[id];
     if (!isAudioClip(clip) || isClipLocked(project, id) || !Number.isFinite(value)) continue;
     const gainDb = clampGain(value);
-    if (options.at === undefined || !hasSectionKeys(clip.keyframes, "volume")) {
+    if (options.at === undefined || !hasGainKeys(clip.keyframes)) {
       if (gainDb !== clip.volume.gainDb) writes.push({ id, gainDb });
       continue;
     }
@@ -168,7 +168,7 @@ export function clipPeak(peaks: Peaks, clip: MediaClip, fps: { num: number; den:
   const s0 = Math.max(0, Math.floor((clip.in * sampleRate) / 1e6));
   const s1 = Math.min(peaks.frames, Math.ceil((clip.out * sampleRate) / 1e6));
   if (s1 <= s0) return null;
-  const keyed = hasSectionKeys(clip.keyframes, "volume");
+  const keyed = hasGainKeys(clip.keyframes);
   const usPerClipFrame = usPerFrame(fps) * clip.speed;
   const gainAt = (sample: number) => (keyed ? dbToGain(gainDbAt(clip, ((sample * 1e6) / sampleRate - clip.in) / usPerClipFrame)) : 1);
   const b0 = Math.floor(s0 / PEAKS_BUCKET);

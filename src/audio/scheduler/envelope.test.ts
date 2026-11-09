@@ -1,9 +1,42 @@
 import { describe, expect, it } from "vitest";
-import { automationAt, automationCurve, automationRegions, envelopeAt, envelopeCurve, envelopeRegions, keyedGainAt, MIN_RAMP_SECONDS } from "./envelope.js";
+import { fadeRise, panAtSecond, panCurve, panRegion, automationAt, automationCurve, automationRegions, envelopeAt, envelopeCurve, envelopeRegions, keyedGainAt, MIN_RAMP_SECONDS } from "./envelope.js";
 
 const FPS = 30;
 const t = (before: number, after: number) => ({ id: "t", kind: "crossDissolve" as const, before, after });
 const NONE = { in: 0, out: 0 };
+
+describe("fade curves and keyed pan (Batch 77)", () => {
+  it("fadeRise: equal power by default, linear, exponential; each runs 0 to 1 and clamps", () => {
+    for (const curve of [undefined, "linear", "equalPower", "exponential"] as const) {
+      expect(fadeRise(0, curve)).toBe(0);
+      expect(fadeRise(1, curve)).toBeCloseTo(1, 12);
+      expect(fadeRise(-1, curve)).toBe(0);
+      expect(fadeRise(2, curve)).toBeCloseTo(1, 12);
+    }
+    expect(fadeRise(0.5, undefined)).toBeCloseTo(Math.SQRT1_2, 12);
+    expect(fadeRise(0.5, "linear")).toBe(0.5);
+    expect(fadeRise(0.5, "exponential")).toBeLessThan(0.1);
+  });
+
+  it("applies the clip's curve to its fades", () => {
+    const clip = { start: 0, duration: 90, fades: { in: 30, out: 0, curve: "linear" as const } };
+    expect(envelopeAt(clip, FPS, 0.5)).toBeCloseTo(0.5, 9);
+    expect(envelopeAt({ ...clip, fades: { in: 30, out: 0, curve: "exponential" as const } }, FPS, 0.5)).toBeLessThan(0.1);
+  });
+
+  it("pan: the clip's value, or the keyed pan interpolated, with its moving region", () => {
+    const base = { start: 30, volume: { gainDb: 0, muted: false, pan: 0.25 } };
+    expect(panAtSecond(base, FPS, 3)).toBe(0.25);
+    expect(panRegion(base, FPS)).toBeNull();
+    const keyed = { ...base, keyframes: { "volume.pan": [{ frame: 0, value: -1, ease: "linear" as const }, { frame: 30, value: 1, ease: "linear" as const }] } };
+    expect(panAtSecond(keyed, FPS, 1)).toBeCloseTo(-1, 9);
+    expect(panAtSecond(keyed, FPS, 1.5)).toBeCloseTo(0, 9);
+    expect(panRegion(keyed, FPS)).toEqual({ start: 1, end: 2 });
+    const curve = panCurve(keyed, FPS, 1, 2);
+    expect(curve[0]).toBeCloseTo(-1, 6);
+    expect(curve[curve.length - 1]).toBeCloseTo(1, 6);
+  });
+});
 
 describe("audio envelope (Batch 36)", () => {
   it("fades in and out with equal power, 1 in between", () => {

@@ -6,6 +6,7 @@
 // `pauseExport` pauses or resumes it between frames. Everything the export held is freed when it
 // ends, however it ends (P13).
 import { runAudioExport } from "../../export/audioExport.js";
+import { applyExportLoudness } from "../../export/loudness.js";
 import { createAudioEncoder, createAudioMp4Muxer, createMp4Muxer, createVideoEncoder, planarAudioData } from "../../export/browserCodecs.js";
 import { ExportRenderer } from "../../export/ExportRenderer.js";
 import { PauseGate, runExport } from "../../export/pipeline.js";
@@ -31,7 +32,8 @@ new WorkerHost(
         await renderer.start(signal);
         const { format, range, project } = params;
         const plan = exportPlan(range, project.settings.fps, format.fps, format.keyframeSeconds, format.sampleRate);
-        const audio = params.audio ? params.audio.channels.map((buffer) => new Float32Array(buffer)) : null;
+        const mix = params.audio ? applyExportLoudness(params.audio.channels.map((buffer) => new Float32Array(buffer)), params.audio.sampleRate, format.loudness ?? project.settings.loudness) : null;
+        const audio = mix?.planes ?? null;
         const result = await runExport(
           { plan, format, audio },
           {
@@ -48,7 +50,7 @@ new WorkerHost(
           emit,
           gate,
         );
-        return { frames: result.frames, videoCodec: result.videoCodec, audioCodec: result.audioCodec, width: format.width, height: format.height, ms: performance.now() - started };
+        return { frames: result.frames, videoCodec: result.videoCodec, audioCodec: result.audioCodec, width: format.width, height: format.height, ms: performance.now() - started, ...(mix?.report && { loudness: mix.report }) };
       } finally {
         if (running === renderer) running = null;
         renderer.dispose();
@@ -56,8 +58,9 @@ new WorkerHost(
     },
     exportAudio: async (params, signal, emit) => {
       gate.set(params.paused);
-      const planes = params.audio ? params.audio.channels.map((buffer) => new Float32Array(buffer)) : null;
-      return runAudioExport(
+      const mix = params.audio ? applyExportLoudness(params.audio.channels.map((buffer) => new Float32Array(buffer)), params.audio.sampleRate, params.loudness) : null;
+      const planes = mix?.planes ?? null;
+      const done = await runAudioExport(
         { format: params.format, planes, sampleRate: params.sampleRate, channels: params.channels, samples: params.samples, audioBitrate: params.audioBitrate },
         {
           createAudioEncoder,
@@ -70,6 +73,7 @@ new WorkerHost(
         emit,
         gate,
       );
+      return mix?.report ? { ...done, loudness: mix.report } : done;
     },
     pauseExport: async ({ paused }) => {
       gate.set(paused);

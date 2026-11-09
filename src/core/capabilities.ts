@@ -7,12 +7,12 @@ import { ANIMATION_BUDGET_BYTES, ANIMATION_MAX_SIZE, MAX_GAIN_DB, MAX_SPEED, MIN
 import { ANIMATOR_KEYFRAME_PROPS, KEYFRAME_PROPS, MASK_KEYFRAME_PROPS, SHAPE_KEYFRAME_PROPS } from "./document/keyframes.js";
 import { EFFECT_KEYFRAME_PROPS } from "./effects/effectParams.js";
 import { FONT_MANIFEST_VERSION } from "../text/fonts.js";
-import { BLEND_MODES, EFFECT_TYPES, MASK_MODES, CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, SCHEMA_VERSION, SOLID_SHAPE_IDS, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_KINDS, PRIMITIVE_KINDS, LINE_CAPS, LINE_JOINS, FILL_RULES } from "./document/types.js";
+import { BLEND_MODES, EFFECT_TYPES, FADE_CURVES, MASK_MODES, CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, SCHEMA_VERSION, SOLID_SHAPE_IDS, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_KINDS, PRIMITIVE_KINDS, LINE_CAPS, LINE_JOINS, FILL_RULES } from "./document/types.js";
 
 /** The `manifestVersion`: changes only when a key changes meaning (new keys do not change it). */
 export const MANIFEST_VERSION = 1;
 /** The last batch that touched the manifest (spec §21.1: each batch sets it to its own number). */
-export const LAST_BATCH = 76;
+export const LAST_BATCH = 77;
 
 /** The flags of the manifest: a batch that adds a capability flips its key here (spec §21.2 table). */
 export const FEATURES = {
@@ -25,7 +25,7 @@ export const FEATURES = {
   captions: { perCueStyle: true, wordEmphasis: true, wordsImport: true },
   compositing: { compound: true, trackMatte: true, masks: true, adjustment: true },
   vector: { shapes: true, trimPaths: true, svgImport: true },
-  audio: { fades: true, trackGain: false, pan: false, loudness: false },
+  audio: { fades: true, trackGain: true, pan: true, loudness: true, beatMarkers: true },
   time: { freeze: true, reverse: false, remap: false, frameBlend: false },
   templates: false,
   export: { alpha: false, imageSequence: false, gif: false, stems: false },
@@ -101,7 +101,7 @@ export function buildCapabilities(appVersion: string): Capabilities {
     vector: { ...f.vector, primitives: [...PRIMITIVE_KINDS], caps: [...LINE_CAPS], joins: [...LINE_JOINS], fillRules: [...FILL_RULES], keyframeProps: [...SHAPE_KEYFRAME_PROPS] },
     // Effects (spec §21.19): every effect type a clip's `effects` can hold (Batch 74: blurs, glow, shadow, outline; Batch 75: color adjust, vignette, sharpen, grain, chroma and luma keys, LUT; Batch 76: RGB split, pixelate, mirror, wave, glitch, posterize, invert).
     effects: [...EFFECT_TYPES],
-    audio: { clipGainDb: [MIN_GAIN_DB, MAX_GAIN_DB], ...f.audio },
+    audio: { clipGainDb: [MIN_GAIN_DB, MAX_GAIN_DB], trackGainDb: [MIN_GAIN_DB, MAX_GAIN_DB], panRange: [-1, 1], fadeCurves: [...FADE_CURVES], ...f.audio },
     time: { speedRange: [MIN_SPEED, MAX_SPEED], ...f.time },
     templates: f.templates,
     export: { containers: ["mp4"], videoCodecs: ["h264", "hevc", "av1"], ...f.export },

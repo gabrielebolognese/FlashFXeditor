@@ -129,6 +129,10 @@ export class FakeGain extends FakeNode {
   channelInterpretation = "speakers";
 }
 
+export class FakePanner extends FakeNode {
+  readonly pan = new FakeParam(0);
+}
+
 export class FakeSource extends FakeNode {
   buffer: AudioBuffer | null = null;
   readonly playbackRate = new FakeParam(1);
@@ -161,6 +165,9 @@ export class FakeContext {
   readonly sources: FakeSource[] = [];
   createGain() {
     return new FakeGain();
+  }
+  createStereoPanner() {
+    return new FakePanner();
   }
   createBufferSource() {
     const source = new FakeSource();

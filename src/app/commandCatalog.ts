@@ -3,6 +3,8 @@
 // handlers; buttons, menus, the command palette, the shortcut editor and the cheat sheet read their
 // names and icons here, and the dev audit (app/commandAudit.ts) checks that both agree with the keymap.
 import {
+  Music,
+  SlidersVertical,
   Activity,
   Contrast,
   ArrowUpDown,
@@ -414,11 +416,12 @@ export const COMMANDS: readonly CommandInfo[] = [
 
   // Audio (spec §14, Batches 10, 37, 38)
   audio("audio.toggleMute", "Mute monitoring", { icon: VolumeX, keywords: "sound preview speaker" }),
-  audio("audio.resetMeters", "Reset the clip indicators", { keywords: "meter peak" }),
+  audio("audio.resetMeters", "Reset the clip indicators and loudness", { keywords: "meter peak loudness lufs" }),
   audio("clip.mute", "Mute / Unmute clip audio", { icon: VolumeX }),
   audio("audio.normalize", "Normalize", { icon: AudioLines, keywords: "gain loudness peak" }),
   audio("audio.autoDuck", "Auto-duck music", { icon: ChevronsDown, keywords: "lower ducking voice" }),
   audio("audio.detach", "Detach audio", { icon: Unlink2, keywords: "separate sound" }),
+  audio("audio.detectBeats", "Detect beats", { icon: Music, keywords: "markers tempo bpm music" }),
   audio("audio.removeSilence", "Remove silence", { icon: ScissorsLineDashed, keywords: "pauses cut auto" }),
   audio("audio.removeSilence.apply", "Remove silence: apply", { keywords: "cut pauses" }),
   audio("audio.removeSilence.cancel", "Remove silence: cancel"),
@@ -453,6 +456,7 @@ export const COMMANDS: readonly CommandInfo[] = [
   tracks("track.heightL", "Track height L", { scopes: TL }),
   tracks("track.selectClips", "Select all clips on track", { scopes: TL }),
   tracks("track.lockAll", "Lock / Unlock all tracks", { icon: Lock }),
+  tracks("track.mixer", "Track mixer", { icon: SlidersVertical, keywords: "gain pan fader level volume", scopes: TL }),
   tracks("track.muteOthers", "Mute all other tracks", { icon: VolumeX, scopes: TL }),
 
   // Tools (spec §6.1)

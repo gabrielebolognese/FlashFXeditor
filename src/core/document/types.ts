@@ -1,7 +1,7 @@
 // The persistent document (spec §5.2). Plain JSON only: no classes, Maps, Sets or undefined-valued
 // keys, so a Project can be serialized as-is and diffed by Immer patches.
 
-export const SCHEMA_VERSION = 20;
+export const SCHEMA_VERSION = 21;
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: JsonValue };
@@ -402,6 +402,8 @@ export interface Project {
     sampleRate: 48000;
     /** Viewing distance in px of the 2.5D layers (spec §21.15, Batch 70; schema 14); null: none (flat projection); absent: 1600. */
     perspective?: number | null;
+    /** The export loudness target (spec §21.21, Batch 77; schema 21); null or absent: off. */
+    loudness?: LoudnessTarget | null;
   };
   media: Record<MediaId, MediaItem>;
   /**
@@ -527,6 +529,16 @@ export interface Bin {
 export const TRACK_KINDS = ["video", "audio", "caption"] as const;
 export type TrackKind = (typeof TRACK_KINDS)[number];
 
+/** What an export is normalized to (spec §21.21): integrated loudness in LUFS and the true-peak ceiling in dBTP. */
+export interface LoudnessTarget {
+  targetLufs: number;
+  truePeakDb: number;
+}
+
+/** The shapes of an audio fade (spec §21.21): the default is equal power. */
+export const FADE_CURVES = ["linear", "equalPower", "exponential"] as const;
+export type FadeCurve = (typeof FADE_CURVES)[number];
+
 export interface Track {
   id: TrackId;
   kind: TrackKind;
@@ -539,6 +551,9 @@ export interface Track {
   hidden: boolean;
   targeted: boolean;
   height: "S" | "M" | "L";
+  /** Audio tracks (spec §21.21, Batch 77; schema 21): the track's level in dB (-60..+12, absent = 0) and pan (-1..1, absent = 0). */
+  gainDb?: number;
+  pan?: number;
 }
 
 /** Blend modes (spec §21.17, Batch 72), in the UI's order (normal, darken, lighten, contrast, inversion groups). */
@@ -670,7 +685,7 @@ export interface MediaClip extends ClipBase {
   stroke?: StrokeStyle;
   shadow?: ShadowStyle;
   volume: Volume;
-  fades: { in: Frame; out: Frame };
+  fades: { in: Frame; out: Frame; curve?: FadeCurve };
   keyframes?: Keyframes;
   transitionIn?: Transition;
   transitionOut?: Transition;
@@ -951,6 +966,8 @@ export interface Crop {
 export interface Volume {
   gainDb: number;
   muted: boolean;
+  /** Audio clips (spec §21.21, Batch 77): -1 (left) to 1 (right); absent = 0 (centered). Keyframe prop `volume.pan`. */
+  pan?: number;
 }
 
 /**

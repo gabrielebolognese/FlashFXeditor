@@ -296,6 +296,7 @@ function trackEntries(project: Project, track: Track): ContextMenuEntry[] {
     { kind: "item", id: "track.selectClips", label: "Select all clips on track", disabled: track.locked || track.clipIds.length === 0 },
     { kind: "item", id: "track.lockAll", label: allLocked ? "Unlock all tracks" : "Lock all tracks" },
     ...(track.kind === "caption" ? [] : [{ kind: "item", id: "track.muteOthers", label: "Mute all others" } as const]),
+    ...(track.kind === "audio" ? [{ kind: "item", id: "track.mixer", label: "Mixer..." } as const] : []),
     ...(track.kind === "audio" ? [{ kind: "item", id: "audio.autoDuck", label: "Auto-duck music", disabled: track.locked || track.clipIds.length === 0 } as const] : []),
   ];
 }

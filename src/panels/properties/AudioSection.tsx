@@ -1,12 +1,14 @@
-import { AudioLines, ChevronsDown, TrendingDown, TrendingUp, Unlink2, Volume2 } from "lucide-react";
+import { AudioLines, ChevronsDown, MoveHorizontal, TrendingDown, TrendingUp, Unlink2, Volume2 } from "lucide-react";
 import { useMemo } from "react";
 import { actions, documentStore, sessionStore } from "../../app/services.js";
-import type { Clip, ClipId } from "../../core/document/types.js";
+import { FADE_CURVES, type Clip, type ClipId, type FadeCurve } from "../../core/document/types.js";
+import { curveOf, setFadeCurve } from "../../timeline/edit/mixer.js";
+import { Select } from "../../ui/Select.js";
 import { MAX_GAIN_DB, MIN_GAIN_DB } from "../../timeline/edit/volume.js";
 import { Button } from "../../ui/Button.js";
 import { NumberField } from "../../ui/NumberField.js";
 import { Toggle } from "../../ui/Toggle.js";
-import { fadeBinding, gainBinding, type AudioBindingDeps } from "./audioBinding.js";
+import { fadeBinding, gainBinding, panBinding, type AudioBindingDeps } from "./audioBinding.js";
 import { EaseRow } from "./KeyframeControls.js";
 import { Row } from "./Section.js";
 import styles from "./Section.module.css";
@@ -26,6 +28,9 @@ const DEPS: AudioBindingDeps = {
   playhead: { get: () => sessionStore.state.getState().playhead, subscribe: (listener) => sessionStore.state.select((state) => state.playhead, listener) },
 };
 
+const CURVE_LABELS: Record<FadeCurve, string> = { linear: "Linear", equalPower: "Equal power", exponential: "Exponential" };
+const getCurve = (clip: Clip) => (clip.kind === "audio" ? curveOf(clip) : SKIP);
+
 const getMuted = (clip: Clip) => (clip.kind === "audio" ? clip.volume.muted : SKIP);
 
 const run = (id: string) => void actions.run(id);
@@ -34,8 +39,13 @@ const run = (id: string) => void actions.run(id);
 const NO_AUDIO = "detach the video's audio first (it has no audio clip yet)";
 
 export function AudioSection({ ids, detach }: { ids: readonly ClipId[]; detach: readonly ClipId[] }) {
-  const bindings = useMemo(() => ({ gain: gainBinding(DEPS, ids), fadeIn: fadeBinding(DEPS, ids, "in"), fadeOut: fadeBinding(DEPS, ids, "out") }), [ids]);
+  const bindings = useMemo(() => ({ gain: gainBinding(DEPS, ids), pan: panBinding(DEPS, ids), fadeIn: fadeBinding(DEPS, ids, "in"), fadeOut: fadeBinding(DEPS, ids, "out") }), [ids]);
   const muted = useClipsShared(ids, getMuted);
+  const curve = useClipsShared(ids, getCurve);
+  const setCurve = (value: FadeCurve) => {
+    const command = setFadeCurve(documentStore.getState(), [...ids], value);
+    if (command) documentStore.dispatch(command);
+  };
   const audio = ids.length > 0;
   const canDetach = detach.length > 0;
   // Disabled, never hidden (spec §17): the rows keep their place whatever the selection can take.
@@ -44,6 +54,9 @@ export function AudioSection({ ids, detach }: { ids: readonly ClipId[]; detach: 
       <EaseRow ids={ids} section="volume" />
       <Row label="Volume">
         <NumberField label={<Volume2 aria-hidden="true" />} unit="dB" binding={bindings.gain} precision={1} min={MIN_GAIN_DB} max={MAX_GAIN_DB} disabled={!audio} ariaLabel="Clip volume" />
+      </Row>
+      <Row label="Pan">
+        <NumberField label={<MoveHorizontal aria-hidden="true" />} binding={bindings.pan} precision={2} step={0.05} min={-1} max={1} disabled={!audio} ariaLabel="Clip pan, -1 left to 1 right" />
       </Row>
       <Row label="Mute">
         <span className={styles.switchCell}>
@@ -63,6 +76,15 @@ export function AudioSection({ ids, detach }: { ids: readonly ClipId[]; detach: 
           <NumberField label={<TrendingUp aria-hidden="true" />} unit="f" binding={bindings.fadeIn} precision={0} step={1} min={0} disabled={!audio} ariaLabel="Audio fade in in frames" />
           <NumberField label={<TrendingDown aria-hidden="true" />} unit="f" binding={bindings.fadeOut} precision={0} step={1} min={0} disabled={!audio} ariaLabel="Audio fade out in frames" />
         </div>
+      </Row>
+      <Row label="Fade curve">
+        <Select<string>
+          label="Audio fade curve"
+          value={typeof curve === "string" ? curve : ""}
+          options={[...(typeof curve === "string" ? [] : [{ value: "", label: "--" }]), ...FADE_CURVES.map((value) => ({ value: value as string, label: CURVE_LABELS[value] }))]}
+          disabled={!audio}
+          onChange={(value) => value && setCurve(value as FadeCurve)}
+        />
       </Row>
       <Row label="Actions">
         <div className={styles.textButtons}>

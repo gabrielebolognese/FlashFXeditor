@@ -1,4 +1,4 @@
-// The stereo peak meter along the preview's right edge (spec §7.8, §14): a framework-free canvas drawn
+// The stereo peak meter (and, from Batch 77, the three loudness bars) along the preview's right edge (spec §7.8, §14): a framework-free canvas drawn
 // through the FrameScheduler's `meters` flag. While audio plays (and until the bars and holds have
 // fallen back) every frame reads the mix analysers and redraws; then it stops. Bars in the success
 // color up to 0 dBFS and danger above, a hold line, and a clip LED per channel that latches until
@@ -7,6 +7,7 @@ import { watchDevicePixelRatio } from "../core/scheduler/devicePixelRatio.js";
 import type { FrameScheduler, RenderView } from "../core/scheduler/FrameScheduler.js";
 import type { ThemeBridge } from "../core/theme/theme.js";
 import { METER_FFT_SIZE } from "./AudioMixer.js";
+import type { LoudnessReading } from "./dsp/loudness.js";
 import { FLOOR_DB, meterFraction, PeakMeter } from "./PeakMeter.js";
 
 export interface MeterViewDeps {
@@ -14,6 +15,8 @@ export interface MeterViewDeps {
   theme: Pick<ThemeBridge, "theme" | "subscribe">;
   /** The mix analysers (left, right); null before the audio graph exists. */
   meters(): readonly [AnalyserNode, AnalyserNode] | null;
+  /** The loudness readings (Batch 77: momentary, short-term, integrated LUFS and true peak); null before the audio graph exists. */
+  loudness(): LoudnessReading | null;
   /** True while audio may be playing: the meter reads every frame. */
   active(): boolean;
   /** Seconds (hold timing). */
@@ -30,6 +33,8 @@ export class MeterView implements RenderView {
   private height = 0;
   private readonly samples = new Float32Array(METER_FFT_SIZE);
   private readonly peaks: [number, number] = [0, 0];
+  /** The latest loudness reading (drawn as three bars after the two peak bars). */
+  reading: LoudnessReading = { momentary: -Infinity, shortTerm: -Infinity, integrated: -Infinity, truePeakDb: -Infinity };
 
   constructor(private readonly deps: MeterViewDeps) {}
 
@@ -75,6 +80,7 @@ export class MeterView implements RenderView {
     this.peaks[0] = meters ? this.peakOf(meters[0]) : 0;
     this.peaks[1] = meters ? this.peakOf(meters[1]) : 0;
     const moving = this.meter.update(this.peaks, this.deps.now());
+    this.reading = this.deps.loudness() ?? this.reading;
     this.draw();
     if (this.deps.active() || moving) this.deps.scheduler.invalidate("meters");
   }
@@ -110,7 +116,9 @@ export class MeterView implements RenderView {
     ctx.clearRect(0, 0, width, height);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    const total = meter.barWidth * 2 + meter.barGap;
+    const peakTotal = meter.barWidth * 2 + meter.barGap;
+    // Two peak bars, then (Batch 77) the loudness bars: momentary, short-term, integrated, one bar gap of space apart.
+    const total = peakTotal + meter.barGap * 2 + meter.barWidth * 3 + meter.barGap * 2;
     const left = snap((this.width - total) / 2);
     const ledTop = space[2];
     const top = ledTop + meter.ledHeight + space[1];
@@ -137,7 +145,24 @@ export class MeterView implements RenderView {
         ctx.fillRect(x, snap(bottom - meterFraction(channel.hold) * span), meter.barWidth, line * Math.max(1, Math.round(dpr)));
       }
     });
-    // The 0 dBFS mark across both bars.
+    // The loudness bars (LUFS on the same scale as the peaks; the integrated one in the accent, a true-peak tick in the danger color above -1 dBTP).
+    const loudX = left + peakTotal + meter.barGap * 2;
+    const values = [this.reading.momentary, this.reading.shortTerm, this.reading.integrated];
+    values.forEach((lufs, i) => {
+      const x = loudX + i * (meter.barWidth + meter.barGap);
+      ctx.fillStyle = color.surface3;
+      ctx.fillRect(x, top, meter.barWidth, span);
+      if (lufs > FLOOR_DB) {
+        const levelY = snap(bottom - meterFraction(lufs) * span);
+        ctx.fillStyle = i === 2 ? color.accent : color.info;
+        ctx.fillRect(x, levelY, meter.barWidth, bottom - levelY);
+      }
+    });
+    if (this.reading.truePeakDb > FLOOR_DB) {
+      ctx.fillStyle = this.reading.truePeakDb > -1 ? color.danger : color.textPrimary;
+      ctx.fillRect(loudX, snap(bottom - meterFraction(this.reading.truePeakDb) * span), meter.barWidth * 3 + meter.barGap * 2, line * Math.max(1, Math.round(dpr)));
+    }
+    // The 0 dBFS mark across all the bars.
     ctx.fillStyle = color.border;
     ctx.fillRect(left, snap(zero), total, line);
     this.draws += 1;

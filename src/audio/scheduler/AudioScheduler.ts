@@ -38,7 +38,7 @@ import { fpsToNumber } from "../../core/document/time.js";
 import { extendedEnd, extendedStart, sameTransition } from "../../core/document/transitions.js";
 import { isMediaClip, type Clip, type ClipId, type Frame, type MediaClip, type Project, type Rational } from "../../core/document/types.js";
 import { clipsInRange, lastClipStartingBy, trackIndex } from "../../timeline/model/queries.js";
-import { automationAt, automationCurve, automationRegions, keyedGain, type AudioLimits } from "./envelope.js";
+import { automationAt, automationCurve, automationRegions, keyedGain, panAtSecond, panCurve, panRegion, type AudioLimits } from "./envelope.js";
 import { dbToGain, ramp, rampTo, RAMP_SECONDS, type AudioMixer } from "../AudioMixer.js";
 import type { DecodedAudio } from "../decode/DecodedAudio.js";
 import { segmentAt, segmentStartSeconds } from "../decode/segments.js";
@@ -104,12 +104,16 @@ interface Voice {
   /** The automation: fades and crossfades (Batch 36) times the keyed gain (Batch 37). */
   fade: GainNode;
   gain: GainNode;
+  /** The clip pan (spec 21.21): its value, or the keyed pan automation. */
+  pan: StereoPannerNode;
   /** How the automation is written: the timeline second `spanStart` sounds at context time `nominal`; the clip's audio limits. */
   auto: { nominal: number; spanStart: number; fps: number; limits: AudioLimits; sampleRate: number };
   /** Context time the automation is written up to. */
   automated: number;
   /** Context time of the last automation event (the start's set, a curve's end): the next curve starts after it. */
   lastEvent: number;
+  /** The same for the pan automation. */
+  panEvent: number;
 }
 
 /**
@@ -120,8 +124,10 @@ export const clipGain = (clip: MediaClip) => (clip.volume.muted ? 0 : keyedGain(
 
 /** The volume keys of two clips are the same (an edit of them restarts the voice: its automation changes). */
 function sameVolumeKeys(a: MediaClip, b: MediaClip): boolean {
-  const x = a.keyframes?.["volume.gainDb"] ?? [];
-  const y = b.keyframes?.["volume.gainDb"] ?? [];
+  return sameKeys(a.keyframes?.["volume.gainDb"] ?? [], b.keyframes?.["volume.gainDb"] ?? []) && sameKeys(a.keyframes?.["volume.pan"] ?? [], b.keyframes?.["volume.pan"] ?? []);
+}
+
+function sameKeys(x: readonly { frame: number; value: unknown; ease?: unknown }[], y: readonly { frame: number; value: unknown; ease?: unknown }[]): boolean {
   if (x === y) return true;
   if (x.length !== y.length) return false;
   return x.every((key, i) => {
@@ -152,6 +158,16 @@ function automate(voice: Voice, until: number): void {
     param.setValueCurveAtTime(automationCurve(voice.clip, fps, toTimeline(from), toTimeline(to), limits), from, to - from);
     voice.lastEvent = to;
   }
+  // The keyed pan moves on the panner the same way (one curve over its keyed region per chunk).
+  const keyed = panRegion(voice.clip, fps);
+  if (keyed) {
+    const from = Math.max(toContext(keyed.start), a, voice.panEvent + 1 / sampleRate);
+    const to = Math.min(toContext(keyed.end), b);
+    if (to - from > 1e-6) {
+      voice.pan.pan.setValueCurveAtTime(panCurve(voice.clip, fps, toTimeline(from), toTimeline(to)), from, to - from);
+      voice.panEvent = to;
+    }
+  }
 }
 
 /** Same audio at the same times, faded the same way (a gain or mute change keeps the voice). */
@@ -168,6 +184,7 @@ function sameTiming(a: MediaClip, b: MediaClip): boolean {
     a.kind === b.kind &&
     a.fades.in === b.fades.in &&
     a.fades.out === b.fades.out &&
+    a.fades.curve === b.fades.curve &&
     sameTransition(a.transitionIn, b.transitionIn) &&
     sameTransition(a.transitionOut, b.transitionOut) &&
     sameVolumeKeys(a, b)
@@ -434,6 +451,7 @@ export class AudioScheduler {
     const fade = ctx.createGain();
     const gain = ctx.createGain();
     gain.gain.value = clipGain(clip);
+    const pan = ctx.createStereoPanner();
     // The nodes start at their first values (a source starting a fraction of a sample before its first
     // event would play that sample at a GainNode's default 1: a one-sample spike).
     if (fadeIn) {
@@ -455,8 +473,18 @@ export class AudioScheduler {
     source.connect(envelope);
     envelope.connect(fade);
     fade.connect(gain);
-    gain.connect(mixer.trackInput(clip.trackId));
-    const voice: Voice = { clip, segment, origin, start, end, source, envelope, fade, gain, auto, automated: start, lastEvent };
+    gain.connect(pan);
+    pan.connect(mixer.trackInput(clip.trackId));
+    // The pan starts at its value there; a keyed pan first curve starts after the start set.
+    const panStart = panAtSecond(clip, span.fps, from);
+    pan.pan.value = panStart;
+    const keyedFirst = panRegion(clip, span.fps);
+    let panEvent = -Infinity;
+    if (!keyedFirst || keyedFirst.start > from) {
+      pan.pan.setValueAtTime(panStart, start);
+      panEvent = start;
+    }
+    const voice: Voice = { clip, segment, origin, start, end, source, envelope, fade, gain, pan, auto, automated: start, lastEvent, panEvent };
     const until = clock.contextTime(span.until);
     if (until !== null) automate(voice, until);
     source.onended = () => this.forget(voice, 0);
@@ -542,6 +570,7 @@ export class AudioScheduler {
       voice.envelope.disconnect();
       voice.fade.disconnect();
       voice.gain.disconnect();
+      voice.pan.disconnect();
     };
     if (afterSeconds > 0) setTimeout(disconnect, afterSeconds * 1000 + 50);
     else disconnect();
@@ -560,6 +589,8 @@ export class AudioScheduler {
         continue;
       }
       if (clipGain(current) !== clipGain(voice.clip)) rampTo(voice.gain.gain, clipGain(current), mixer.context.currentTime);
+      // A plain pan change (no keys) ramps; keyed pans restart the voice (sameTiming).
+      if ((current.volume.pan ?? 0) !== (voice.clip.volume.pan ?? 0)) rampTo(voice.pan.pan, current.volume.pan ?? 0, mixer.context.currentTime);
       voice.clip = current;
     }
     this.lastStep = -Infinity;

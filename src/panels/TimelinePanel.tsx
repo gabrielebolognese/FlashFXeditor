@@ -7,6 +7,7 @@ import { timelineDev, timelineView } from "../app/timelineController.js";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import { ClipRenameField } from "../timeline/menus/ClipRenameField.js";
 import { MarkerPopover } from "../timeline/menus/MarkerPopover.js";
+import { TrackMixerPopover } from "../timeline/menus/TrackMixerPopover.js";
 import { CompoundBreadcrumb } from "./CompoundBreadcrumb.js";
 import { TimelineContextMenu } from "../timeline/menus/TimelineContextMenu.js";
 import { TrackRenameField } from "../timeline/menus/TrackRenameField.js";
@@ -71,6 +72,7 @@ export function TimelinePanel() {
           <ClipRenameField />
           <TrackRenameField />
           <MarkerPopover />
+          <TrackMixerPopover />
           {empty && <EmptyTimeline />}
           {stats && <StatsOverlay />}
         </CanvasHost>

@@ -6,10 +6,11 @@
 //   Volume keys (the stopwatch, the rubber band): a keyed clip shows, and is edited at, its gain at the
 //   playhead; the field re-reads when the playhead moves (DOM writes only) while a target is keyed.
 // - Fades: frames from the clip's start (in) or end (out), clamped to what the clip takes.
-import { clipRel, gainDbAt, hasSectionKeys } from "../../core/document/keyframes.js";
+import { clipRel, gainDbAt, hasGainKeys } from "../../core/document/keyframes.js";
 import type { ClipId, Frame, MediaClip, Project } from "../../core/document/types.js";
 import type { DocumentStore } from "../../core/store/DocumentStore.js";
 import { fadesOf, setFades, type FadeEdge } from "../../timeline/edit/fades.js";
+import { setPans, shownPan } from "../../timeline/edit/mixer.js";
 import { isAudioClip, setGains } from "../../timeline/edit/volume.js";
 import { roundTo, type NumberBinding } from "../../ui/NumberField.js";
 import { shared } from "./context.js";
@@ -26,7 +27,7 @@ function audioClips(project: Project, ids: readonly ClipId[]): MediaClip[] {
 
 /** The gain a clip shows: at the playhead `at` when its Volume is keyed. */
 export function shownGain(clip: MediaClip, at: Frame | null): number {
-  return at !== null && hasSectionKeys(clip.keyframes, "volume") ? gainDbAt(clip, clipRel(clip, at)) : clip.volume.gainDb;
+  return at !== null && hasGainKeys(clip.keyframes) ? gainDbAt(clip, clipRel(clip, at)) : clip.volume.gainDb;
 }
 
 /** The gain field (dB, one decimal) over the audio clips among `ids`. */
@@ -48,7 +49,7 @@ export function gainBinding(deps: AudioBindingDeps, ids: readonly ClipId[]): Num
     subscribe(listener) {
       const stops = [deps.document.subscribe(() => listener(), { affects: ["audio", "clips"] })];
       // A keyed gain changes along the timeline: re-read when the playhead moves (DOM only, P1).
-      const keyed = () => audioClips(deps.document.getState(), ids).some((clip) => hasSectionKeys(clip.keyframes, "volume"));
+      const keyed = () => audioClips(deps.document.getState(), ids).some((clip) => hasGainKeys(clip.keyframes));
       if (deps.playhead) stops.push(deps.playhead.subscribe(() => keyed() && listener()));
       return () => {
         for (const stop of stops) stop();
@@ -62,6 +63,41 @@ export function gainBinding(deps: AudioBindingDeps, ids: readonly ClipId[]): Num
       if (phase === "scrub" || phase === "cancel" || delta === 0) return;
       const playhead = at();
       apply((clip) => roundTo(shownGain(clip, playhead) + delta, 1), phase === "step" ? "properties.gain" : undefined);
+    },
+  };
+}
+
+/** The pan field (-1 left .. 1 right, two decimals) over the audio clips among `ids`; a keyed pan is shown and edited at the playhead. */
+export function panBinding(deps: AudioBindingDeps, ids: readonly ClipId[]): NumberBinding {
+  const at = () => deps.playhead?.get() ?? null;
+  const keyed = () => audioClips(deps.document.getState(), ids).some((clip) => (clip.keyframes?.["volume.pan"]?.length ?? 0) > 0);
+  const apply = (valueOf: (clip: MediaClip) => number, coalesceKey?: string) => {
+    const project = deps.document.getState();
+    const playhead = at();
+    const changes = new Map(audioClips(project, ids).map((clip) => [clip.id, valueOf(clip)] as const));
+    const command = setPans(project, changes, { ...(coalesceKey !== undefined && { coalesceKey }), ...(playhead !== null && { at: playhead }) });
+    if (command) deps.document.dispatch(command);
+  };
+  return {
+    read() {
+      const playhead = at();
+      const value = shared(audioClips(deps.document.getState(), ids), (clip) => roundTo(shownPan(clip, playhead), 2));
+      return value && !value.mixed ? value.value : null;
+    },
+    subscribe(listener) {
+      const stops = [deps.document.subscribe(() => listener(), { affects: ["audio", "clips"] })];
+      if (deps.playhead) stops.push(deps.playhead.subscribe(() => keyed() && listener()));
+      return () => {
+        for (const stop of stops) stop();
+      };
+    },
+    set(value) {
+      apply(() => value);
+    },
+    change(delta, phase) {
+      if (phase === "scrub" || phase === "cancel" || delta === 0) return;
+      const playhead = at();
+      apply((clip) => roundTo(shownPan(clip, playhead) + delta, 2), phase === "step" ? "properties.pan" : undefined);
     },
   };
 }

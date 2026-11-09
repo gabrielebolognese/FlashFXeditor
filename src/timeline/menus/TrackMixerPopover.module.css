@@ -1,0 +1,66 @@
+/* Track mixer (spec §21.21, Batch 77; gap: the DS has no popover or fader): the menu material of the marker
+   popover under the track header, a two-column grid of caption labels and controls: gain and pan faders
+   (the accent range inputs of the silence row) with a fixed-width readout, then the Mute and Solo switches. */
+.popover {
+  position: absolute;
+  visibility: hidden;
+  z-index: var(--z-overlay);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  width: var(--mixer-popover-width);
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--material-menu-bg);
+  backdrop-filter: var(--material-menu-filter);
+  box-shadow: var(--shadow-overlay);
+}
+
+.title {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  color: var(--text-tertiary);
+  font: var(--type-overline);
+  letter-spacing: var(--type-overline-track);
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.label {
+  color: var(--text-secondary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  white-space: nowrap;
+}
+
+.field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--silence-readout-width);
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.slider {
+  width: 100%;
+  min-width: 0;
+  height: var(--control-compact);
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.readout {
+  color: var(--text-primary);
+  font: var(--type-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.switch {
+  display: flex;
+  align-items: center;
+}

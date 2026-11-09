@@ -35,7 +35,7 @@ import { drawFades, drawTransitionBlock } from "./fadesAndTransitions.js";
 import { drawDiagonalHatch } from "./hatch.js";
 import { drawLane, laneFrames, shownLane, type LaneScene } from "./keyframeLane.js";
 import { bandBox, drawBand } from "./rubberBand.js";
-import { gainDbAt, hasSectionKeys } from "../../core/document/keyframes.js";
+import { gainDbAt, hasGainKeys } from "../../core/document/keyframes.js";
 import { layoutRuler } from "./ruler.js";
 import type { ScrollbarLayout } from "./scrollbars.js";
 import type { TextCache } from "./textCache.js";
@@ -463,7 +463,7 @@ function drawWaveform(scene: ClipScene, clip: MediaClip, y: number, height: numb
     if (visuals && wants) wantPeaks(wants, clip.mediaId);
     return;
   }
-  const keyed = hasSectionKeys(clip.keyframes, "volume");
+  const keyed = hasGainKeys(clip.keyframes);
   const gain = 10 ** (clip.volume.gainDb / 20);
   const c0 = Math.round(left * dpr);
   const count = Math.round(right * dpr) - c0;

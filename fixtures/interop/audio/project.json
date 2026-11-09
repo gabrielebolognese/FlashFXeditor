@@ -1,0 +1,264 @@
+{
+  "schemaVersion": 21,
+  "id": "a8d1c6e4-3f57-4b09-9c2e-6a0b7d4e1f83",
+  "name": "Interop audio",
+  "settings": {
+    "width": 360,
+    "height": 640,
+    "fps": {
+      "num": 30,
+      "den": 1
+    },
+    "background": {
+      "r": 0,
+      "g": 0,
+      "b": 0,
+      "a": 1
+    },
+    "sampleRate": 48000,
+    "loudness": {
+      "targetLufs": -14,
+      "truePeakDb": -1
+    }
+  },
+  "media": {
+    "mix": {
+      "id": "mix",
+      "kind": "audio",
+      "name": "mix.wav",
+      "file": {
+        "relPath": "media/mix.wav"
+      },
+      "durationUs": 4000000,
+      "hasAudio": true,
+      "analysis": {
+        "thumbs": "none",
+        "peaks": "none"
+      },
+      "addedAt": "2026-11-09T12:00:00.000Z",
+      "audioCodec": "pcm",
+      "size": 768044
+    },
+    "click": {
+      "id": "click",
+      "kind": "audio",
+      "name": "click.wav",
+      "file": {
+        "relPath": "media/click.wav"
+      },
+      "durationUs": 6000000,
+      "hasAudio": true,
+      "analysis": {
+        "thumbs": "none",
+        "peaks": "none"
+      },
+      "addedAt": "2026-11-09T12:00:00.000Z",
+      "audioCodec": "pcm",
+      "size": 576044
+    }
+  },
+  "bins": [],
+  "tracks": [
+    {
+      "id": "a1",
+      "kind": "audio",
+      "name": "Mix",
+      "clipIds": [
+        "mix-clip"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "a2",
+      "kind": "audio",
+      "name": "Click",
+      "clipIds": [
+        "click-clip"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M",
+      "gainDb": -6,
+      "pan": -1
+    }
+  ],
+  "clips": {
+    "mix-clip": {
+      "kind": "audio",
+      "name": "mix-clip",
+      "enabled": true,
+      "in": 0,
+      "out": 4000000,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "mix-clip",
+      "trackId": "a1",
+      "start": 0,
+      "duration": 120,
+      "mediaId": "mix"
+    },
+    "click-clip": {
+      "kind": "audio",
+      "name": "click-clip",
+      "enabled": true,
+      "in": 0,
+      "out": 6000000,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false,
+        "pan": -0.5
+      },
+      "fades": {
+        "in": 9,
+        "out": 0,
+        "curve": "exponential"
+      },
+      "id": "click-clip",
+      "trackId": "a2",
+      "start": 0,
+      "duration": 180,
+      "mediaId": "click"
+    }
+  },
+  "markers": [
+    {
+      "id": "beat-0",
+      "frame": 0,
+      "color": "teal",
+      "label": "Beat"
+    },
+    {
+      "id": "beat-1",
+      "frame": 15,
+      "color": "teal",
+      "label": "Beat"
+    },
+    {
+      "id": "beat-2",
+      "frame": 30,
+      "color": "teal",
+      "label": "Beat"
+    },
+    {
+      "id": "beat-3",
+      "frame": 45,
+      "color": "teal",
+      "label": "Beat"
+    },
+    {
+      "id": "beat-4",
+      "frame": 60,
+      "color": "teal",
+      "label": "Beat"
+    },
+    {
+      "id": "beat-5",
+      "frame": 75,
+      "color": "teal",
+      "label": "Beat"
+    },
+    {
+      "id": "beat-6",
+      "frame": 90,
+      "color": "teal",
+      "label": "Beat"
+    },
+    {
+      "id": "beat-7",
+      "frame": 105,
+      "color": "teal",
+      "label": "Beat"
+    },
+    {
+      "id": "beat-8",
+      "frame": 120,
+      "color": "teal",
+      "label": "Beat"
+    },
+    {
+      "id": "beat-9",
+      "frame": 135,
+      "color": "teal",
+      "label": "Beat"
+    },
+    {
+      "id": "beat-10",
+      "frame": 150,
+      "color": "teal",
+      "label": "Beat"
+    },
+    {
+      "id": "beat-11",
+      "frame": 165,
+      "color": "teal",
+      "label": "Beat"
+    }
+  ],
+  "captionTracks": {},
+  "textPresetsLocal": [],
+  "sequences": {},
+  "meta": {
+    "createdAt": "2026-11-09T12:00:00.000Z",
+    "modifiedAt": "2026-11-09T12:00:00.000Z",
+    "appVersion": "1.1.0",
+    "generator": {
+      "name": "interop-fixture",
+      "version": "1",
+      "source": "fixtures/interop/audio (Batch 77)"
+    }
+  }
+}

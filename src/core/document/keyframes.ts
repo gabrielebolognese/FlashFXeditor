@@ -28,7 +28,7 @@ import { EFFECT_KINDS, effectPropIssue, isEffectColorProp, isEffectProp } from "
 export type Key = KeyData;
 
 /** The properties of the Transform, Opacity and Volume sections (Batches 35 to 37). */
-const SECTION_KEYFRAME_PROPS = ["transform.x", "transform.y", "transform.scale", "transform.scaleY", "transform.rotation", "opacity", "volume.gainDb"] as const;
+const SECTION_KEYFRAME_PROPS = ["transform.x", "transform.y", "transform.scale", "transform.scaleY", "transform.rotation", "opacity", "volume.gainDb", "volume.pan"] as const;
 /** The 2.5D properties of Batch 70 (spec §21.15): keyed by the Transform section's stopwatch. */
 export const DEPTH_KEYFRAME_PROPS = ["transform.rotationX", "transform.rotationY", "transform.z"] as const;
 /** The properties added in Batch 60 (spec §21.9): their stopwatches and lanes follow in Batch 61. */
@@ -132,6 +132,7 @@ const PROP_KINDS: Readonly<Record<string, readonly string[]>> = {
   "style.letterSpacing": ["text"],
   "style.fill": ["text"],
   "text.counter.value": ["text"],
+  "volume.pan": ["audio"],
 };
 
 /** Whether keys of `prop` make sense on a clip of `kind`. */
@@ -151,7 +152,7 @@ export type KeyframeSection = (typeof KEYFRAME_SECTIONS)[number];
 export const SECTION_PROPS: Readonly<Record<KeyframeSection, readonly KeyframeProp[]>> = {
   transform: ["transform.x", "transform.y", "transform.scale", "transform.scaleY", "transform.rotation", "transform.position", ...DEPTH_KEYFRAME_PROPS],
   opacity: ["opacity"],
-  volume: ["volume.gainDb"],
+  volume: ["volume.gainDb", "volume.pan"],
   /** The stopwatch groups of Batch 61 (spec §21.9, §11): each sits in the panel's Transform, Crop, Solid, Frame or Text section. */
   anchor: ["transform.anchor.x", "transform.anchor.y"],
   size: ["size.w", "size.h"],
@@ -193,7 +194,7 @@ export function isPointProp(prop: string): boolean {
 export function sectionOf(prop: KeyframeProp): KeyframeSection {
   if ((EXTRA_KEYFRAME_PROPS as readonly string[]).includes(prop)) return "look";
   if (prop === "text.counter.value") return "text";
-  return prop === "opacity" ? "opacity" : prop === "volume.gainDb" ? "volume" : "transform";
+  return prop === "opacity" ? "opacity" : prop === "volume.gainDb" || prop === "volume.pan" ? "volume" : "transform";
 }
 
 // --- Eases ---------------------------------------------------------------------------------------
@@ -488,6 +489,16 @@ export function gainDbAt(clip: { volume: { gainDb: number }; keyframes?: Keyfram
   return propValue(clip.keyframes, "volume.gainDb", rel, clip.volume.gainDb);
 }
 
+/** Whether the clip gain is keyed (`volume.gainDb` keys; pan keys do not count). */
+export function hasGainKeys(keyframes: Keyframes | undefined): boolean {
+  return (keyframes?.["volume.gainDb"]?.length ?? 0) > 0;
+}
+
+/** The clip pan (-1..1, spec §21.21) at `rel`: the keyed value between keys, else `volume.pan` (0 when absent). */
+export function panAt(clip: { volume: { pan?: number | undefined }; keyframes?: Keyframes | undefined }, rel: number): number {
+  return Math.min(1, Math.max(-1, propValue(clip.keyframes, "volume.pan", rel, clip.volume.pan ?? 0)));
+}
+
 /** `frame` (a timeline frame) as a frame of the clip, kept inside it: where an edit at the playhead writes. */
 export function clipRel(clip: { start: Frame; duration: Frame }, frame: Frame): Frame {
   return Math.min(Math.max(0, Math.round(frame) - clip.start), clip.duration - 1);
@@ -507,14 +518,17 @@ export function clipAt<C extends Keyed & { opacity: number; start: Frame; durati
 }
 
 /** The values of `section`'s properties shown at `rel`, from `transform`, `opacity` and the gain (the base when unkeyed). */
-export function sectionValues(clip: Keyed & { opacity?: number; volume?: { gainDb: number } }, section: KeyframeSection, rel: number): Partial<Record<KeyframeProp, number>> {
+export function sectionValues(clip: Keyed & { opacity?: number; volume?: { gainDb: number; pan?: number | undefined } }, section: KeyframeSection, rel: number): Partial<Record<KeyframeProp, number>> {
   switch (section) {
     case "transform":
       return transformValues(animatedTransform(clip, rel));
     case "opacity":
       return { opacity: propValue(clip.keyframes, "opacity", rel, clip.opacity ?? 1) };
     case "volume":
-      return { "volume.gainDb": propValue(clip.keyframes, "volume.gainDb", rel, clip.volume?.gainDb ?? 0) };
+      return {
+        "volume.gainDb": propValue(clip.keyframes, "volume.gainDb", rel, clip.volume?.gainDb ?? 0),
+        "volume.pan": propValue(clip.keyframes, "volume.pan", rel, clip.volume?.pan ?? 0),
+      };
     default:
       // The look sections' values come from the clip's own fields (timeline/edit/keyframes.ts `valuesAt`).
       return {};

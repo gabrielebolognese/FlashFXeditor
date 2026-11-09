@@ -334,7 +334,7 @@ function MeterStrip() {
   return (
     <div className={styles.meter}>
       <div ref={ref} className={styles.meterCanvas} />
-      <button type="button" className={styles.clipReset} aria-label="Reset the clip indicator" data-tooltip="Clip indicator: click to reset" data-command="audio.resetMeters" onMouseDown={keepFocus} onClick={run("audio.resetMeters")} />
+      <button type="button" className={styles.clipReset} aria-label="Reset the clip indicator and the integrated loudness" data-tooltip="Clip indicator and loudness (M, S, I bars; peak tick): click to reset" data-command="audio.resetMeters" onMouseDown={keepFocus} onClick={run("audio.resetMeters")} />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 // What the main thread hands export.worker for one export (spec §16, Batch 43), and what comes back.
 // The document is a snapshot taken when the export starts: edits made meanwhile never reach it.
-import type { Frame, MediaId, Project } from "../core/document/types.js";
+import type { Frame, LoudnessTarget, MediaId, Project } from "../core/document/types.js";
 import type { SlateLook } from "../render/compositor/Compositor.js";
 import type { RendererBackend } from "../render/gpu/backend.js";
 import type { FontDescriptor } from "../render/text/FontLibrary.js";
@@ -8,6 +8,7 @@ import type { LutAtlas } from "../core/effects/lut.js";
 import type { PipelineProgress } from "./pipeline.js";
 import type { AudioFileFormat } from "./audioExport.js";
 import type { ExportFormat } from "./presets.js";
+import type { LoudnessReport } from "./loudness.js";
 
 /** A media file the worker decodes, with its cache/index/ sample index when there is one. */
 export interface ExportMediaFile {
@@ -60,6 +61,8 @@ export interface ExportJobResult {
   height: number;
   /** Wall time in the worker (ms), setup included. */
   ms: number;
+  /** The loudness normalization (spec §21.21), when the project has a target and sound is heard. */
+  loudness?: LoudnessReport;
 }
 
 /** Export audio (spec §16 extras): the range's mixdown written as a file. */
@@ -75,10 +78,13 @@ export interface AudioJobParams {
   audioBitrate: number;
   /** Starts paused (`ExportPauseSync`). */
   paused: boolean;
+  /** The project loudness target (spec §21.21), or none. */
+  loudness?: LoudnessTarget | null;
 }
 
 export interface AudioJobResult {
   samples: number;
   codec: string;
   ms: number;
+  loudness?: LoudnessReport;
 }

@@ -329,13 +329,15 @@
   --timeline-silence-fill: var(--danger-wash);
   --timeline-silence-hatch: var(--timeline-transition-warning);
   --timeline-silence-edge: var(--danger);
+  --mixer-popover-width: calc(var(--control-default) * 8); /* gain and pan faders with readouts, Mute and Solo (Batch 77) */
   --marker-popover-width: calc(var(--control-default) * 7); /* the label field over 8 swatches and Delete */
 
   /* Audio (gap: the DS has no meter or knob). Stereo peak meter along the preview's right edge, master volume knob. */
   --meter-bar-width: var(--space-1);
   --meter-bar-gap: var(--space-0);
   --meter-led-height: var(--space-1);
-  --meter-width: calc(2 * var(--meter-bar-width) + var(--meter-bar-gap) + 2 * var(--space-2));
+  /* Two peak bars and (Batch 77) three loudness bars (momentary, short-term, integrated), a gap of two bar gaps between the groups. */
+  --meter-width: calc(5 * var(--meter-bar-width) + 6 * var(--meter-bar-gap) + 2 * var(--space-2));
   --knob-size: var(--space-5);
 
   /* Clip bodies and label bars per kind (gap): washes of DS colors, never the gold */

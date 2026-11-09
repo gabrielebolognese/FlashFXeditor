@@ -7,6 +7,7 @@
 // one per animation frame, never while playing.
 import { AudioMixer, type AudioGraphContext } from "../audio/AudioMixer.js";
 import { DecodedAudio } from "../audio/decode/DecodedAudio.js";
+import { LoudnessTap } from "../audio/LoudnessTap.js";
 import { MeterView } from "../audio/MeterView.js";
 import { AudioScheduler } from "../audio/scheduler/AudioScheduler.js";
 import { AudioScrubber } from "../audio/scrub/AudioScrubber.js";
@@ -42,6 +43,7 @@ export const decodedAudio = new DecodedAudio({
 });
 
 let mixer: AudioMixer | null = null;
+let loudnessTap: LoudnessTap | null = null;
 
 /** The graph on the clock's running AudioContext (created on first use, rebuilt for a new context). */
 function currentMixer(): AudioMixer | null {
@@ -49,7 +51,11 @@ function currentMixer(): AudioMixer | null {
   if (!ctx || ctx.state !== "running") return null;
   if (mixer?.context !== ctx) {
     mixer?.dispose();
+    loudnessTap?.dispose();
     mixer = new AudioMixer(ctx);
+    // The loudness meter taps the same bus (Batch 77); it fills as the worklet loads.
+    loudnessTap = new LoudnessTap(ctx as unknown as AudioContext, mixer.bus);
+    void loudnessTap.start();
     const { monitorVolumeDb, monitorMuted } = appSettings.getState();
     mixer.setMonitor(monitorVolumeDb, monitorMuted);
   }
@@ -90,6 +96,7 @@ export const meterView = new MeterView({
   scheduler,
   theme: themeBridge,
   meters: () => mixer?.meters ?? null,
+  loudness: () => loudnessTap?.reading() ?? null,
   active: () => audioScheduler.active,
   now: () => performance.now() / 1000,
 });
@@ -174,7 +181,10 @@ export function installAudioController(): () => void {
     actions.register("audio.toggleMute", toggleMonitorMute),
     actions.register("toggle.audioScrub", toggleAudioScrub),
     // The meter's clip indicators (the LED row is its button).
-    actions.register("audio.resetMeters", () => meterView.resetClip()),
+    actions.register("audio.resetMeters", () => {
+      meterView.resetClip();
+      loudnessTap?.reset();
+    }),
   ];
   if (import.meta.env.DEV) {
     const editor = ((globalThis as { __editor?: Record<string, unknown> }).__editor ??= {});
@@ -183,6 +193,8 @@ export function installAudioController(): () => void {
       scrubber: audioScrubber,
       decoded: decodedAudio,
       meter: meterView,
+      /** The loudness meter's latest reading (Batch 77) and its taps' block count. */
+      loudness: () => ({ ...(loudnessTap?.reading() ?? meterView.reading), blocks: loudnessTap?.blocks ?? 0 }),
       get mixer() {
         return mixer;
       },

@@ -225,6 +225,8 @@ export interface WorkerMethods {
   /** The cache/peaks/ file of a whole level 0: the pyramid, stamped with the source file. */
   peaksFile: { params: { level0: ArrayBuffer; sampleRate: number; frames: number; channels: number; stamp: SourceStamp }; result: ArrayBuffer };
   /** Silence detection (spec §14) over a media's peaks level 0: the silent spans (media µs, flat pairs) of each source range. */
+  /** Beats and tempo of mono samples (spec §21.21, Batch 77); the samples are transferred. */
+  detectBeats: { params: { samples: ArrayBuffer; sampleRate: number }; result: { beats: number[]; bpm: number } };
   detectSilence: { params: SilenceParams & { level0: ArrayBuffer; sampleRate: number; frames: number; channels: number; ranges: SourceRange[] }; result: { spans: number[][] } };
   /** One thumbnail sprite sheet (spec §9.6), decoded by the analysis worker's own video sessions. */
   thumbSheet: { params: ThumbSheetParams; result: ThumbSheetResult };
@@ -275,6 +277,7 @@ export const METHOD_WORKER: Record<Method, WorkerKind> = {
   peaksLevel0: "analysis",
   peaksFile: "analysis",
   detectSilence: "analysis",
+  detectBeats: "analysis",
   thumbSheet: "analysis",
   decodeSheet: "analysis",
   mediaHeader: "analysis",

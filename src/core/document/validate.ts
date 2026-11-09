@@ -8,7 +8,7 @@ import { sequenceDurationUs, sequenceRecordIssues } from "./sequence.js";
 import { pathDataIssue } from "../shapes/pathData.js";
 import { effectIssues, isEffectProp } from "../effects/effectParams.js";
 import { PRIMITIVE_LIMITS, PRIMITIVE_PARAMS } from "../shapes/primitives.js";
-import { type AdjustmentClip, BLEND_MODES, MASK_MODES, MATTE_MODES, CAPTION_HIGHLIGHTS, COUNTER_SEPARATORS, CUE_ANIM_KINDS, FILL_RULES, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_UNITS, isFreeze, isMediaClip, LABEL_COLORS, LINE_CAPS, LINE_JOINS, PRIMITIVE_KINDS, SOLID_SHAPE_IDS, type NullClip, type PrimitiveKind, type ShapeClip, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type CompoundClip, type Sequence, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextSpan, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
+import { type AdjustmentClip, BLEND_MODES, FADE_CURVES, MASK_MODES, MATTE_MODES, CAPTION_HIGHLIGHTS, COUNTER_SEPARATORS, CUE_ANIM_KINDS, FILL_RULES, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_UNITS, isFreeze, isMediaClip, LABEL_COLORS, LINE_CAPS, LINE_JOINS, PRIMITIVE_KINDS, SOLID_SHAPE_IDS, type NullClip, type PrimitiveKind, type ShapeClip, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type CompoundClip, type Sequence, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextSpan, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
 
 export class DocumentInvariantError extends Error {
   readonly issues: readonly string[];
@@ -711,6 +711,33 @@ interface TrackScan {
 }
 
 /** The tracks of the project (`scope` null) or of one sequence: order, overlaps, clip kinds, transitions. */
+/** Audio v2 fields (spec §21.21, Batch 77): the track's gain and pan, the loudness target. */
+function trackAudioIssues(track: Track): string[] {
+  const issues: string[] = [];
+  if (track.gainDb !== undefined && (!isFiniteNumber(track.gainDb) || track.gainDb < -60 || track.gainDb > 12)) issues.push(`${trackLabel(track)}: gainDb ${String(track.gainDb)} must be -60..12`);
+  if (track.pan !== undefined && (!isFiniteNumber(track.pan) || track.pan < -1 || track.pan > 1)) issues.push(`${trackLabel(track)}: pan ${String(track.pan)} must be -1..1`);
+  return issues;
+}
+
+function clipAudioIssues(clip: Clip): string[] {
+  const issues: string[] = [];
+  const pan = (clip as { volume?: { pan?: unknown } }).volume?.pan;
+  if (pan !== undefined && (!isFiniteNumber(pan) || (pan as number) < -1 || (pan as number) > 1)) issues.push(`${clipLabel(clip)}: volume.pan ${String(pan)} must be -1..1`);
+  const curve = (clip as { fades?: { curve?: unknown } }).fades?.curve;
+  if (curve !== undefined && !(FADE_CURVES as readonly unknown[]).includes(curve)) issues.push(`${clipLabel(clip)}: fades.curve ${String(curve)} must be one of ${FADE_CURVES.join(", ")}`);
+  return issues;
+}
+
+function loudnessIssues(loudness: unknown): string[] {
+  if (loudness === undefined || loudness === null) return [];
+  const l = loudness as { targetLufs: number; truePeakDb: number };
+  if (!isObjectLike(loudness) || !isFiniteNumber(l.targetLufs) || !isFiniteNumber(l.truePeakDb)) return ["settings: loudness must be { targetLufs, truePeakDb }"];
+  const issues: string[] = [];
+  if (l.targetLufs < -40 || l.targetLufs > 0) issues.push(`settings: loudness.targetLufs ${l.targetLufs} must be -40..0`);
+  if (l.truePeakDb < -20 || l.truePeakDb > 0) issues.push(`settings: loudness.truePeakDb ${l.truePeakDb} must be -20..0`);
+  return issues;
+}
+
 function trackIssues(project: Project, tracks: readonly Track[], scope: Sequence | null, state: TrackScan): string[] {
   const { trackIds, placed, transitionIds } = state;
   const issues: string[] = [];
@@ -718,6 +745,7 @@ function trackIssues(project: Project, tracks: readonly Track[], scope: Sequence
   for (const track of tracks) {
     if (trackIds.has(track.id)) issues.push(`${trackLabel(track)}: duplicate track id`);
     trackIds.add(track.id);
+    issues.push(...trackAudioIssues(track));
     if (scope && track.kind === "caption") issues.push(`${trackLabel(track)}: sequence "${scope.name}" cannot have a caption track`);
     if (track.kind === "audio") sawAudio = true;
     else if (track.kind === "video" && sawAudio) issues.push(`${trackLabel(track)}: video track placed after an audio track`);
@@ -732,6 +760,7 @@ function trackIssues(project: Project, tracks: readonly Track[], scope: Sequence
       }
       if (placed.has(clipId)) issues.push(`${clipLabel(clip)}: listed more than once across tracks`);
       placed.add(clipId);
+      issues.push(...clipAudioIssues(clip));
       if (clip.trackId !== track.id) issues.push(`${clipLabel(clip)}: listed on ${trackLabel(track)} but points to track ${clip.trackId}`);
       if (!ALLOWED_CLIPS[track.kind].has(clip.kind)) issues.push(`${clipLabel(clip)}: a ${clip.kind} clip cannot sit on ${track.kind} ${trackLabel(track)}`);
       issues.push(...clipIssues(project, clip));
@@ -770,6 +799,7 @@ export function validateProject(project: Project): string[] {
   const state: TrackScan = { trackIds, placed, transitionIds };
   issues.push(...trackIssues(project, project.tracks, null, state));
   issues.push(...perspectiveIssues(project.settings?.perspective, "settings"));
+  issues.push(...loudnessIssues(project.settings?.loudness));
   for (const [key, sequence] of Object.entries(project.sequences ?? {})) {
     issues.push(...sequenceIssues(key, sequence));
     if (!Array.isArray(sequence?.tracks)) continue;
