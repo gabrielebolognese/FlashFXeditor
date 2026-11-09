@@ -628,7 +628,7 @@ export class Compositor {
     const blend = clip.blend ?? "normal";
     const source = clip.matte ? doc.clips[clip.matte.clipId] : undefined;
     // A matte clip that is gone, is the clip itself, draws no picture or is not in this sequence is ignored.
-    const view = clip.matte && source && source.id !== clip.id && isVisualClip(source) ? matteView(doc, source.id) : null;
+    const view = clip.matte && source && source !== clip && isVisualClip(source) ? matteView(doc, clip.matte.clipId) : null;
     const matte = view ? clip.matte : null;
     if (blend === "normal" && !matte && !mask && !effects) return false;
     const layers = this.out.layers;

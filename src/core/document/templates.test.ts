@@ -83,6 +83,21 @@ describe("validation of the model (spec §21.1, §21.24)", () => {
     expect(templateParamIssues(p, seq(p), "s")).toEqual([]);
     expect(validateProject(p)).toEqual([]);
   });
+  it("refuses a color parameter on a field that is not a color, and a media parameter naming no media", () => {
+    const p = fixture();
+    paramsOf(p).push(
+      { id: "c2", label: "C2", kind: "color", targets: [{ clipId: "card-bar", path: "transform" }], default: { r: 0, g: 1, b: 0, a: 1 } },
+      { id: "m2", label: "M2", kind: "media", targets: [{ clipId: "card-bar", path: "mediaId" }], default: "no-such-media" },
+    );
+    const issues = templateParamIssues(p, seq(p), "s").join("\n");
+    expect(issues).toContain('has no color field at "transform"');
+    expect(issues).toContain("default must be a media id of the project");
+    const clip = inst(p, "card-b");
+    clip.params = { m2: "no-such-media" };
+    expect(instanceParamIssues(p, clip, "c").join("\n")).toContain("must be a media id of the project");
+    expect(kindsForValue("transform", { x: 0, y: 0 })).toEqual([]);
+    expect(kindsForValue("fill", { from: { r: 0, g: 0, b: 0, a: 1 }, to: { r: 1, g: 1, b: 1, a: 1 } })).toEqual(["color"]);
+  });
   it("checks an instance's values against its sequence", () => {
     const p = fixture();
     const clip = inst(p, "card-b");
@@ -170,5 +185,22 @@ describe("rendering instances of one sequence", () => {
     const view = instanceView(p, seq(p), inst(p, "card-b"));
     expect((view.clips["card-paper"] as SolidClip).fill).toEqual({ r: 1, g: 0, b: 0, a: 1 });
     expect((view.clips["card-title"] as TextClip).text.value).toBe("Launch day");
+  });
+});
+
+describe("track mattes inside a template", () => {
+  it("keeps a matte when an instance sets a value on the matte clip", () => {
+    const p = fixture();
+    (p.clips["card-paper"] as SolidClip).matte = { clipId: "card-bar", mode: "alpha" };
+    (p.clips["card-bar"] as SolidClip).matteOnly = true;
+    const groups = (project: Project, frame: number) => {
+      const layers = new Compositor().evaluate(project, frame).layers as unknown as { kind: string; inner?: { layers: { kind: string; matte?: unknown }[] } }[];
+      return layers.filter((l) => l.kind === "compound").flatMap((l) => (l.inner?.layers ?? []).filter((x) => x.kind === "group").map((x) => x.matte));
+    };
+    // Card A has no values; Card B recolors the bar (the matte clip): both still key the paper.
+    expect(groups(p, 15)).toHaveLength(1);
+    expect(groups(p, 15)[0]).toBeTruthy();
+    expect(groups(p, 45)).toHaveLength(1);
+    expect(groups(p, 45)[0]).toBeTruthy();
   });
 });

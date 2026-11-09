@@ -73,15 +73,24 @@ export function paramValueIssue(param: Pick<TemplateParam, "kind" | "min" | "max
   }
 }
 
+const hasChannels = (value: unknown): boolean => isObject(value) && ["r", "g", "b", "a"].every((key) => typeof value[key] === "number");
+
+/** A color field holds an RGBA color; a field named `fill` may also hold a gradient (a color replaces it). */
+function colorFieldFits(path: string, existing: unknown): boolean {
+  if (hasChannels(existing)) return true;
+  if (!isObject(existing) || (path.split(".").pop() ?? "") !== "fill") return false;
+  return (hasChannels(existing.from) && hasChannels(existing.to)) || Array.isArray(existing.stops);
+}
+
 /** Whether a field that holds `existing` can be set by a parameter of `kind`. */
-export function kindFitsField(kind: TemplateParamKind, existing: unknown): boolean {
+export function kindFitsField(kind: TemplateParamKind, existing: unknown, path = ""): boolean {
   switch (kind) {
     case "text":
     case "media":
     case "font":
       return typeof existing === "string";
     case "color":
-      return isObject(existing);
+      return colorFieldFits(path, existing);
     case "number":
       return typeof existing === "number";
     case "toggle":
@@ -93,7 +102,7 @@ export function kindFitsField(kind: TemplateParamKind, existing: unknown): boole
 export function kindsForValue(path: string, existing: unknown): TemplateParamKind[] {
   if (typeof existing === "boolean") return ["toggle"];
   if (typeof existing === "number") return ["number"];
-  if (isObject(existing)) return ["color"];
+  if (isObject(existing)) return colorFieldFits(path, existing) ? ["color"] : [];
   if (typeof existing === "string") {
     const last = path.split(".").pop() ?? "";
     if (last === "mediaId") return ["media"];
@@ -132,6 +141,7 @@ export function templateParamIssues(project: Project, sequence: Sequence, label:
     if (typeof param.min === "number" && typeof param.max === "number" && param.min > param.max) issues.push(`${name}: min ${param.min} is above max ${param.max}`);
     const bad = paramValueIssue(param, param.default);
     if (bad) issues.push(`${name}: default ${bad}`);
+    else if (param.kind === "media" && !(typeof param.default === "string" && Object.hasOwn(project.media, param.default))) issues.push(`${name}: default must be a media id of the project`);
     if (!Array.isArray(param.targets) || param.targets.length === 0) {
       issues.push(`${name}: targets must list at least one clip field`);
       continue;
@@ -149,7 +159,7 @@ export function templateParamIssues(project: Project, sequence: Sequence, label:
       else if (!parts || FORBIDDEN_PATH_ROOTS.has(parts[0] as string)) issues.push(`${name}: target path "${target.path}" cannot be set by a parameter`);
       else if (clip) {
         const existing = getPath(clip, target.path);
-        if (existing !== undefined && !kindFitsField(param.kind, existing)) issues.push(`${name}: clip ${target.clipId} has no ${param.kind} field at "${target.path}"`);
+        if (existing !== undefined && !kindFitsField(param.kind, existing, target.path)) issues.push(`${name}: clip ${target.clipId} has no ${param.kind} field at "${target.path}"`);
       }
     }
   }
@@ -169,6 +179,7 @@ export function instanceParamIssues(project: Project, clip: CompoundClip, label:
     else {
       const bad = paramValueIssue(param, value);
       if (bad) issues.push(`${label}: params "${id}" ${bad}`);
+      else if (param.kind === "media" && !(typeof value === "string" && Object.hasOwn(project.media, value))) issues.push(`${label}: params "${id}" must be a media id of the project`);
     }
   }
   return issues;
@@ -228,7 +239,7 @@ export function instanceView(doc: Project, sequence: Sequence, clip: CompoundCli
     for (const target of param.targets) {
       const inner = base.clips[target.clipId];
       const parts = pathSegments(target.path);
-      if (!inner || !parts || FORBIDDEN_PATH_ROOTS.has(parts[0] as string) || !kindFitsField(param.kind, getPath(inner, target.path))) continue;
+      if (!inner || !parts || FORBIDDEN_PATH_ROOTS.has(parts[0] as string) || !kindFitsField(param.kind, getPath(inner, target.path), target.path)) continue;
       const list = byClip.get(target.clipId) ?? [];
       list.push({ path: target.path, value });
       byClip.set(target.clipId, list);

@@ -82,7 +82,7 @@ export function exposeParam(project: Project, clipId: ClipId, path: string, fiel
   const sequence = clipSequence(project, clipId) as Sequence;
   const kind = fields.kind ?? (exposeKinds(project, clipId, path)[0] as TemplateParamKind);
   const existing = getPath(project.clips[clipId], path);
-  if (!kindFitsField(kind, existing)) return null;
+  if (!kindFitsField(kind, existing, path)) return null;
   const id = nextParamId(sequence.params);
   const value = structuredClone(existing) as JsonValue;
   const param: TemplateParam = { id, label: cleanLabel(fields.label ?? "") ?? defaultParamLabel(project, clipId, path), kind, targets: [{ clipId, path }], default: value };
@@ -107,7 +107,7 @@ export function addParamTarget(project: Project, sequenceId: SequenceId, paramId
   const clip = project.clips[clipId];
   if (!sequence || !param || !clip || clipSequence(project, clipId)?.id !== sequenceId) return null;
   const parts = pathSegments(path);
-  if (!parts || FORBIDDEN_PATH_ROOTS.has(parts[0] as string) || !kindFitsField(param.kind, getPath(clip, path))) return null;
+  if (!parts || FORBIDDEN_PATH_ROOTS.has(parts[0] as string) || !kindFitsField(param.kind, getPath(clip, path), path)) return null;
   if (param.targets.some((target) => target.clipId === clipId && target.path === path)) return null;
   return {
     id: "template.addTarget",
