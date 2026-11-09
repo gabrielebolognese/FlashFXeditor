@@ -30,6 +30,9 @@ Shape the sound of your clips. Set each clip's volume. Make the volume rise and 
 - [Know what edits do to the volume](#know-what-edits-do-to-the-volume)
 - [Undo audio changes](#undo-audio-changes)
 - [What is not available yet](#what-is-not-available-yet)
+- [Pan a clip and choose a fade curve](#pan-a-clip-and-choose-a-fade-curve)
+- [Detect beats in music](#detect-beats-in-music)
+- [Mix a track and normalize the export](#mix-a-track-and-normalize-the-export)
 
 ## Know what you can change
 
@@ -360,7 +363,7 @@ Select a music clip and run **Detect beats** from the command palette (<kbd>Ctrl
 
 ## Mix a track and normalize the export
 
-Right-click an audio track's header and choose **Mixer...** (or run **Track mixer** from the command palette) to open the track mixer. It has a **Gain** fader (-60 to +12 dB), a **Pan** slider (`-1` to `1`, shown as L, C or R), and the **Mute** and **Solo** toggles of the track. Drag a fader to hear the change live; a whole drag is one undo step. Double-clicking is not needed to reset: set the fader back to `0`.
+Right-click an audio track's header and choose **Mixer...** (or run **Track mixer** from the command palette) to open the track mixer. It has a **Gain** fader (-60 to +12 dB), a **Pan** slider (`-1` to `1`, shown as L, C or R), and the **Mute** and **Solo** toggles of the track. Drag a fader to hear the change live; a whole drag is one undo step.
 
 The **Reels**, **TikTok** and **Shorts** export presets normalize the whole mix to -14 LUFS with a true peak at or below -1 dBTP. The meter at the edge of the preview now also shows momentary, short-term and integrated loudness bars with a true-peak tick. See [Exporting your video](exporting-video.md).
 
