@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 80
+last_completed_batch: 81
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -913,6 +913,7 @@ Why each dependency exists (Batch rule 8).
 - Batch 57: no new dependency. The CLI drives headless Chrome with Node's built-in `WebSocket` and `fetch`; SSIM and PSNR are small pure functions.
 - Batch 55: no new dependency. The Node header readers reuse mp4box (MP4, MOV, M4A) and the app's EBML demuxer (WebM); the rest are small pure readers.
 - `@huggingface/transformers` 4.3.1: local Whisper transcription (spec §10.6 names it), with `onnxruntime-web` (its WebGPU / WASM runtime). Imported only by `transcribe.worker`, loaded when the Transcribe dialog opens: a 580.90 kB chunk, the 53.05 kB runtime loader and the 26.86 MB runtime WASM (6.76 MB gzip) bundled as assets; the main bundle does not contain it. npm also installs its Node-only dependencies (`onnxruntime-node`, `sharp`, about 320 MB in node_modules), never bundled. (Batch 33)
+- `gifenc` 1.0.3 (MIT): the GIF encoder (spec §21.25, Batch 81): quantization, palette and LZW frames; imported only by `export/gif.ts` in export.worker (a few kB). `webm-muxer` was tried and not kept: it writes no BlockAdditions (see the Batch 81 deviations); the WebM writer is `export/webm/WebmMuxer.ts`. (Batch 81)
 - [from Batch 77 -> Batch 82] Browser checks: meters at 60 fps with zero React commits during playback; export of the audio fixture read back by the app's loudness meter.
 - [from Batch 77 -> Batch 82] Project loudness target and an Export tab loudness row in the UI (only presets and the document field set it now).
 - [from Batch 77 -> Batch 82] Apply the clip pan to scrub grains.
@@ -7568,3 +7569,39 @@ Why each dependency exists (Batch rule 8).
 - review: accepted
   - All four problems from the first review are fixed. 1: `Compositor.group` (src/render/compositor/Compositor.ts:631) now looks up the matte by `clip.matte.clipId` and compares clip identity, so a patched matte clip keeps its matte; covered by the new test in src/core/document/templates.test.ts:191 (Card B recolors the matte clip and still produces a group layer with a matte). 2: `kindFitsField` takes the path; a color target must hold RGBA channels (a gradient only on a `fill` field), and media defaults and values must be keys of `project.media` (templates.ts:76-98, :144, :182); test at templates.test.ts:86. 3: CompoundTemplates.tsx:14 now says `TODO(batch 82)`, and the comment matches the card. 4: the context-menu departure is listed under deviations with its reason. Acceptance 1-4 are covered as the first review found. No untagged TODOs in the batch's files, no new literals, nothing from Do not build yet. `npm run check`: typecheck, lint and 3567 unit tests pass; the perf project fails only `fuzz.perf.test.ts` on time (63.1 s against 60 s, the environmental miss of Batches 74-79); `npm run build` run separately exits 0.
 - docs: templates.md (new), compound-clips.md, README.md, whats-new.md in docs/user-guide/ (2026-11-09)
+
+### Batch 81: Export v2: WebM with alpha, image sequences, GIF, stems, collect project
+- status: done
+- date: 2026-11-10
+- notes:
+  - Built in auto mode. `npm run check`: typecheck, lint, 3610 unit tests (372 files) and `npm run build` pass; the perf project fails only `fuzz.perf.test.ts` on time (65.3 s against 60 s, the environmental miss of Batches 74-80).
+  - WebM (`export/webm/WebmMuxer.ts`): own EBML writer, VP9 or AV1 plus Opus (OpusHead from the encoder, pre-skip 312 by default), SeekHead, Cues, a Cluster per key frame, 8-byte patched sizes. Tested by reading its files back with the app's `readWebm`/`webmVideoTable` (8 tests).
+  - Transparent WebM: Chrome's VideoEncoder rejects `alpha: "keep"`, so the color goes into one VP9 stream and the alpha (I420, luma = alpha) into a second VP9 stream at a quarter of the bitrate; each frame's alpha packet is a BlockAdditional (BlockAddID 1) and the track has AlphaMode 1, as ffmpeg writes it. Browser check (headless Chrome, real pipeline `runExport`): the file plays in a `<video>` with alpha (transparent pixel alpha 0-1, opaque 255, half-alpha 128), and decoded again through the app's alpha path (`readWebm` + `createAlphaDecoder`) the composite over gray scores SSIM 0.998 and the alpha plane 0.999 (frames 0, 9, 18, 27 of 30), both over 0.98.
+  - Renderer: `readPixels` (straight alpha) on WebGPU, WebGL2 and the switch; `ExportRenderer.renderPixels` draws into an offscreen target with a transparent background when the export is transparent.
+  - PNG sequence: `export/png.ts` (own writer from straight RGBA, Sub filter, CompressionStream; RGBA when transparent, else RGB), `export/frames.ts` (`runFrames`), files `<name>_00001.png` numbered from 1 in `exports/<name>/` (a free folder name). A cancelled job removes the frames it wrote (the empty folder stays: the file system layer has no folder removal).
+  - GIF: `export/gif.ts` on gifenc: one global palette from 8 frames spread over the range (rgb565), optional ordered 4x4 dithering, cumulative-rounded centisecond delays, bytes streamed with positions; the job projects the size from encoding its sample frames (`estimate` progress value, logged in the console). 15 fps and 540 px wide by default. Measured with `cli render --format gif` on `fixtures/interop/basic` (90 frames, 540x960): 1,388,242 bytes = 0.030 bytes per pixel and frame; on `alpha` (30 frames): 297,014 bytes = 0.019. `GIF_BYTES_PER_PIXEL` is set to 0.03 dithered and 0.02 plain from those.
+  - Stems (`export/stems.ts`, `app/extrasController.ts`): one 16-bit 48 kHz WAV per audible audio track with clips (compound audio as extra stems), `exports/<project>-stems/01 <track>.wav`; a stem is the mixdown with every other audio track muted and its own soloed. `nullTestDb` is the null test; the stems sum to the mixdown to float rounding (-120 dB in the unit test, limit -60 dB).
+  - Collect project (`project/collect.ts`, `extrasController.collectProject`): linked media are copied into `media/` and relinked in one command; linked image sequences are left linked. Zip (`project/zip.ts`, `zipProject`): store-only, CRC in a first pass, UTF-8 names, one top folder, without cache/, history/, exports/, session.json.
+  - CLI: `render --format mp4|webm|png|gif [--transparent]` (format also from the `--out` extension; for png `--out` is the folder). Rendered and checked here: `basic` as GIF, PNG sequence (90 frames, RGB) and transparent WebM; `alpha` as GIF and as a transparent PNG sequence (color type 6).
+  - Export tab: Format select (MP4, WebM, PNG sequence, GIF), Opaque/Transparent chips (Transparent disabled with the reason when VP9 cannot be encoded), GIF width and dither, rows that do not apply to a container are hidden; Extras has Export stems, Collect and Zip. Commands `export.stems`, `export.collect`, `export.zip` in the registry and the palette. Presets Overlay (transparent WebM), GIF and PNG sequence added.
+  - Manifest: `LAST_BATCH` 81, `export` = containers mp4/webm/png/gif, videoCodecs h264/hevc/av1/vp9, alpha/imageSequence/gif/stems true; `capabilities.json` regenerated; INTEROP.md section 5.18.
+- deviations:
+  - Own WebM muxer instead of `webm-muxer`: it writes no BlockAdditions, which the alpha stream needs. `gifenc` is used as the spec says.
+  - Alpha is a second VP9 stream (not `alpha: "keep"`): Chrome's VideoEncoder does not support it. Transparent WebM is VP9 only (no AV1 alpha).
+  - Stems are not loudness-normalized (they are the track as the timeline mixes it) and leave out muted, silenced and empty tracks.
+  - The zip has no ZIP64 (4 GB and 65535 files, a clear error beyond them) and no compression.
+  - A PNG sequence and stems always go to `exports/` (folders): the save picker names one file, so "Choose file…" is ignored for them. Collect and zip do not ask for a destination.
+  - The Export tab's GIF size is a heuristic from bytes per pixel (graphics); photographic clips cost several times more. The job's own estimate from its sample frames is only logged, not shown in the UI yet.
+  - The import-back SSIM and the playback check ran on a synthetic moving-shapes sequence through the real encoder, muxer and decoders (page-side), not on a project imported through the Media tab.
+- follow-ups:
+  - [from Batch 81 -> Batch 82] Show the job's refined GIF size estimate in its queue card; a destination folder picker for PNG sequences and stems.
+  - [from Batch 81 -> Batch 82] Proxies for alpha media can now be muxed (BlockAdditions exist in `WebmMuxer`); a proxy for alpha videos is still not made.
+  - [from Batch 81 -> Batch 82] ZIP64 and deflate for the project zip; removal of the empty folder of a cancelled PNG sequence.
+- design gaps:
+  - None: the new rows reuse Row, Select, Chips, NumberField and Button of the Export tab.
+- pending manual checks:
+  1. Overlay preset on a title project: export, drop the WebM into a Chrome tab (or a page with a coloured background): the title shows over it; import it into the editor (Media tab): it lies over other clips with transparency.
+  2. GIF preset on a 6 s project: file size close to the tab's estimate (graphics) and to the log's `size estimate` line; opens in a browser and loops.
+  3. PNG sequence preset: `exports/<name>/<name>_00001.png ...` open with transparency in an image viewer when Transparent is on.
+  4. A project with two audio tracks: Export stems writes two WAVs that add up to Export audio (null test in an audio editor).
+  5. Link a media file from outside the project (import with Link), Collect: the Media tab shows it in media/ and the project folder opens from a copy elsewhere with nothing missing; Zip the project: the zip opens in Windows Explorer.

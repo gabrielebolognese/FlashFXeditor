@@ -55,7 +55,7 @@ describe("capabilities.json (spec §21.2)", () => {
     expect(manifest.mediaFrame).toEqual({ stroke: true, shadow: true, cornerRadius: true });
     expect(manifest.text.fills).toEqual(["color", "gradient2", "linear", "radial"]);
     expect(manifest.compositing).toEqual({ compound: true, blendModes: [...BLEND_MODES], trackMatte: true, masks: true, maskModes: [...MASK_MODES], maskKeyframeProps: [...MASK_KEYFRAME_PROPS], adjustment: true });
-    expect(manifest.export).toEqual({ containers: ["mp4"], videoCodecs: ["h264", "hevc", "av1"], alpha: false, imageSequence: false, gif: false, stems: false });
+    expect(manifest.export).toEqual({ containers: ["mp4", "webm", "png", "gif"], videoCodecs: ["h264", "hevc", "av1", "vp9"], alpha: true, imageSequence: true, gif: true, stems: true });
     expect(manifest.effects).toEqual([...EFFECT_TYPES]);
     expect((manifest.keyframes as { effectProps: string[] }).effectProps).toEqual(["effects.<id>.<param>"]);
   });

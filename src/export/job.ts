@@ -5,7 +5,7 @@ import type { SlateLook } from "../render/compositor/Compositor.js";
 import type { RendererBackend } from "../render/gpu/backend.js";
 import type { FontDescriptor } from "../render/text/FontLibrary.js";
 import type { LutAtlas } from "../core/effects/lut.js";
-import type { PipelineProgress } from "./pipeline.js";
+import type { FramesProgress } from "./frames.js";
 import type { AudioFileFormat } from "./audioExport.js";
 import type { ExportFormat } from "./presets.js";
 import type { LoudnessReport } from "./loudness.js";
@@ -49,9 +49,11 @@ export interface ExportJobParams {
   paused: boolean;
   /** Headless renders (spec §21.6): the MP4 gets a fixed creation time, so a project renders to the same bytes. */
   fixedCreationTime?: boolean;
+  /** PNG sequence (Batch 81): the base name of the frame files (`<name>_00001.png`). */
+  outputName?: string;
 }
 
-export type ExportProgress = PipelineProgress;
+export type ExportProgress = FramesProgress;
 
 export interface ExportJobResult {
   frames: number;
@@ -59,6 +61,8 @@ export interface ExportJobResult {
   audioCodec: string | null;
   width: number;
   height: number;
+  /** Files written when the output is a PNG sequence (one per frame). */
+  files?: number;
   /** Wall time in the worker (ms), setup included. */
   ms: number;
   /** The loudness normalization (spec §21.21), when the project has a target and sound is heard. */

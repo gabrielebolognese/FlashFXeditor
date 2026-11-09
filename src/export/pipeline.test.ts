@@ -194,7 +194,7 @@ describe("runExport", () => {
     const h = harness();
     await runExport(job(90), h.deps, new AbortController().signal, () => undefined);
     expect(h.muxed.options).toEqual({
-      video: { codec: "avc", width: 1080, height: 1920, timescale: 90_000 },
+      video: { codec: "avc", width: 1080, height: 1920, timescale: 90_000, fps: 30, alpha: false },
       audio: { codec: "aac", sampleRate: 48000, channels: 2 },
       expectedVideoChunks: 90,
       expectedAudioChunks: Math.ceil(144_000 / 1024) + 8,

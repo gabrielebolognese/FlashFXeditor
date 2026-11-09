@@ -12,7 +12,7 @@ import { BLEND_MODES, EFFECT_TYPES, FADE_CURVES, MASK_MODES, CAPTION_HIGHLIGHTS,
 /** The `manifestVersion`: changes only when a key changes meaning (new keys do not change it). */
 export const MANIFEST_VERSION = 1;
 /** The last batch that touched the manifest (spec §21.1: each batch sets it to its own number). */
-export const LAST_BATCH = 80;
+export const LAST_BATCH = 81;
 
 /** The flags of the manifest: a batch that adds a capability flips its key here (spec §21.2 table). */
 export const FEATURES = {
@@ -28,7 +28,7 @@ export const FEATURES = {
   audio: { fades: true, trackGain: true, pan: true, loudness: true, beatMarkers: true },
   time: { freeze: true, reverse: true, remap: true, frameBlend: true },
   templates: true,
-  export: { alpha: false, imageSequence: false, gif: false, stems: false },
+  export: { alpha: true, imageSequence: true, gif: true, stems: true },
   cli: { validate: true, normalize: true, info: true, render: true, compare: true, fill: true },
   interop: { openLink: true, externalReload: true, repairOnOpen: true, fallbackOf: true, generatorMeta: true },
 } as const;
@@ -108,7 +108,7 @@ export function buildCapabilities(appVersion: string): Capabilities {
     templates: f.templates,
     // Template parameters (Batch 80): the kinds a `Sequence.params` entry can have.
     templateParamKinds: [...TEMPLATE_PARAM_KINDS],
-    export: { containers: ["mp4"], videoCodecs: ["h264", "hevc", "av1"], ...f.export },
+    export: { containers: ["mp4", "webm", "png", "gif"], videoCodecs: ["h264", "hevc", "av1", "vp9"], ...f.export },
     cli: { ...f.cli },
     interop: { ...f.interop },
   };

@@ -539,6 +539,10 @@ export class WebGl2Renderer implements BackendRenderer {
   }
 
   async readBitmap(target: OffscreenTarget): Promise<ImageBitmap> {
+    return createImageBitmap(await this.readPixels(target), { premultiplyAlpha: "none" });
+  }
+
+  async readPixels(target: OffscreenTarget): Promise<ImageData> {
     const res = this.require();
     if (!(target instanceof GlOffscreenTarget) || !target.texture.valid || res.gl.isContextLost()) throw new Error("The render target is not valid on this context");
     const { width, height } = target;
@@ -548,7 +552,7 @@ export class WebGl2Renderer implements BackendRenderer {
     gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     // Rows come top first (framebuffers are drawn that way up), premultiplied.
-    return createImageBitmap(new ImageData(unpadAndUnpremultiply(pixels, width, height, width * 4), width, height), { premultiplyAlpha: "none" });
+    return new ImageData(unpadAndUnpremultiply(pixels, width, height, width * 4), width, height);
   }
 
   /** Puts the view of a `width` x `height` target (rows top first when `topDown`) into `viewData`. */

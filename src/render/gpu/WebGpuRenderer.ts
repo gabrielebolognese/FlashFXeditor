@@ -1330,6 +1330,10 @@ export class WebGpuRenderer implements BackendRenderer {
   }
 
   async readBitmap(target: OffscreenTarget): Promise<ImageBitmap> {
+    return createImageBitmap(await this.readPixels(target), { premultiplyAlpha: "none" });
+  }
+
+  async readPixels(target: OffscreenTarget): Promise<ImageData> {
     const res = this.require();
     if (!(target instanceof GpuOffscreenTarget) || !target.texture.valid) throw new Error("The render target is not valid on this device");
     const { width, height } = target;
@@ -1342,7 +1346,7 @@ export class WebGpuRenderer implements BackendRenderer {
       await buffer.mapAsync(GPUMapMode.READ);
       const pixels = unpadAndUnpremultiply(new Uint8Array(buffer.getMappedRange()), width, height, bytesPerRow);
       buffer.unmap();
-      return await createImageBitmap(new ImageData(pixels, width, height), { premultiplyAlpha: "none" });
+      return new ImageData(pixels, width, height);
     } finally {
       buffer.destroy();
     }

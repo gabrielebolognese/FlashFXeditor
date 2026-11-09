@@ -7,8 +7,10 @@
 // ends, however it ends (P13).
 import { runAudioExport } from "../../export/audioExport.js";
 import { applyExportLoudness } from "../../export/loudness.js";
-import { createAudioEncoder, createAudioMp4Muxer, createMp4Muxer, createVideoEncoder, planarAudioData } from "../../export/browserCodecs.js";
+import { createAudioEncoder, createAudioMp4Muxer, createMp4Muxer, createVideoEncoder, createWebmMuxer, createWebmVideoEncoder, opaqueWebmFrame, planarAudioData, transparentWebmFrame } from "../../export/browserCodecs.js";
 import { ExportRenderer } from "../../export/ExportRenderer.js";
+import { runFrames } from "../../export/frames.js";
+import { encodePng } from "../../export/png.js";
 import { PauseGate, runExport } from "../../export/pipeline.js";
 import { exportPlan } from "../../export/plan.js";
 import type { Method } from "./protocol.js";
@@ -34,23 +36,61 @@ new WorkerHost(
         const plan = exportPlan(range, project.settings.fps, format.fps, format.keyframeSeconds, format.sampleRate);
         const mix = params.audio ? applyExportLoudness(params.audio.channels.map((buffer) => new Float32Array(buffer)), params.audio.sampleRate, format.loudness ?? project.settings.loudness) : null;
         const audio = mix?.planes ?? null;
+        const done = (extra: { frames: number; videoCodec: string; audioCodec: string | null; files?: number }) => ({ ...extra, width: format.width, height: format.height, ms: performance.now() - started, ...(mix?.report && { loudness: mix.report }) });
+        if (format.container === "png" || format.container === "gif") {
+          const result = await runFrames(
+            { plan, container: format.container, width: format.width, height: format.height, dither: format.gifDither !== false, name: params.outputName ?? "frame" },
+            {
+              render: async (frame, _k, frameSignal) => renderer.renderPixels(frame, frameSignal),
+              encodePng: (image) => encodePng(image, format.transparent === true),
+              now: () => performance.now(),
+            },
+            signal,
+            emit,
+            gate,
+          );
+          return done({ frames: result.frames, videoCodec: format.container, audioCodec: null, files: result.files });
+        }
+        const shared = {
+          createAudioEncoder,
+          audioSupported: async (config: AudioEncoderConfig) => (await AudioEncoder.isConfigSupported(config)).supported === true,
+          audioData: planarAudioData,
+          videoSupported: async (config: VideoEncoderConfig) => (await VideoEncoder.isConfigSupported(config)).supported === true,
+          now: () => performance.now(),
+        };
+        if (format.container === "webm") {
+          const alpha = format.transparent === true;
+          const result = await runExport(
+            { plan, format, audio },
+            {
+              ...shared,
+              render: async (frame, timestampUs, durationUs, frameSignal) => {
+                if (!alpha) return opaqueWebmFrame(await renderer.render(frame, timestampUs, durationUs, frameSignal));
+                const pixels = await renderer.renderPixels(frame, frameSignal);
+                return transparentWebmFrame(pixels.data, pixels.width, pixels.height, timestampUs, durationUs);
+              },
+              createVideoEncoder: (callbacks) => createWebmVideoEncoder(callbacks, alpha),
+              createMuxer: (options, onData) => createWebmMuxer(options, onData),
+            },
+            signal,
+            emit,
+            gate,
+          );
+          return done({ frames: result.frames, videoCodec: result.videoCodec, audioCodec: result.audioCodec });
+        }
         const result = await runExport(
           { plan, format, audio },
           {
+            ...shared,
             render: (frame, timestampUs, durationUs, frameSignal) => renderer.render(frame, timestampUs, durationUs, frameSignal),
             createVideoEncoder,
-            createAudioEncoder,
-            videoSupported: async (config) => (await VideoEncoder.isConfigSupported(config)).supported === true,
-            audioSupported: async (config) => (await AudioEncoder.isConfigSupported(config)).supported === true,
-            audioData: planarAudioData,
             createMuxer: (options, onData) => createMp4Muxer(options, onData, params.fixedCreationTime === true),
-            now: () => performance.now(),
           },
           signal,
           emit,
           gate,
         );
-        return { frames: result.frames, videoCodec: result.videoCodec, audioCodec: result.audioCodec, width: format.width, height: format.height, ms: performance.now() - started, ...(mix?.report && { loudness: mix.report }) };
+        return done({ frames: result.frames, videoCodec: result.videoCodec, audioCodec: result.audioCodec });
       } finally {
         if (running === renderer) running = null;
         renderer.dispose();

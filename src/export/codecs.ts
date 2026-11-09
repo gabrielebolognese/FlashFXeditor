@@ -4,6 +4,8 @@
 //   the rate and the bitrate (ITU-T H.264 Table A-1; High allows 1.25x the bitrate).
 // - HEVC Main and AV1 Main (8-bit) at their lowest fitting level; an export asking for one of them
 //   falls back to H.264 when this browser cannot encode it.
+// - VP9 (profile 0, 8-bit) for WebM (Batch 81), with `alpha: "keep"` for a transparent export; AV1 or VP9
+//   at their lowest fitting level. A WebM's audio is Opus only.
 // - Audio: AAC-LC (spec §14), else Opus (both muxed into MP4).
 // Quality latency mode (spec §16); the format's bitrate mode (variable around the target, or constant)
 // and hardware preference (spec §16 Custom). WebCodecs has no peak bitrate: the level is chosen to hold
@@ -47,6 +49,17 @@ const AV1_LEVELS: readonly [idx: number, picture: number, perSecond: number, kbp
   [16, 35_651_584, 1_069_547_520, 60_000],
 ];
 
+/** VP9 levels (x10): max picture size, max luma samples per second (VP9 bitstream spec, Annex A). */
+const VP9_LEVELS: readonly [id: number, picture: number, perSecond: number, kbps: number][] = [
+  [31, 983_040, 36_864_000, 18_000],
+  [40, 2_228_224, 83_558_400, 30_000],
+  [41, 2_228_224, 160_432_128, 60_000],
+  [50, 8_912_896, 311_951_360, 120_000],
+  [51, 8_912_896, 588_251_136, 180_000],
+  [52, 8_912_896, 1_176_502_272, 180_000],
+  [60, 35_651_584, 1_176_502_272, 240_000],
+];
+
 const hex = (value: number) => value.toString(16).padStart(2, "0");
 
 /** The lowest H.264 level holding the size, rate and bitrate (`factor`: High's 1.25). */
@@ -74,6 +87,8 @@ export function codecStrings(codec: VideoCodecId, width: number, height: number,
       return [`hvc1.1.6.L${tableLevel(HEVC_LEVELS, width, height, fps, bitrate)}.B0`];
     case "av1":
       return [`av01.0.${String(tableLevel(AV1_LEVELS, width, height, fps, bitrate)).padStart(2, "0")}M.08`];
+    case "vp9":
+      return [`vp09.00.${tableLevel(VP9_LEVELS, width, height, fps, bitrate)}.08`];
   }
 }
 
@@ -81,13 +96,15 @@ export function codecStrings(codec: VideoCodecId, width: number, height: number,
 export function muxerVideoCodec(codec: string): VideoCodecId {
   if (codec.startsWith("hvc1") || codec.startsWith("hev1")) return "hevc";
   if (codec.startsWith("av01")) return "av1";
+  if (codec.startsWith("vp09")) return "vp9";
   return "avc";
 }
 
-export type VideoConfigFormat = Pick<ExportFormat, "codec" | "width" | "height" | "fps" | "videoBitrate" | "maxBitrate" | "bitrateMode" | "hardware">;
+export type VideoConfigFormat = Pick<ExportFormat, "codec" | "width" | "height" | "fps" | "videoBitrate" | "maxBitrate" | "bitrateMode" | "hardware"> & Partial<Pick<ExportFormat, "container" | "transparent">>;
 
-/** The video encoder configurations to try, best first (H.264 last for the other codecs). */
+/** The video encoder configurations to try, best first (H.264 last for the other MP4 codecs; VP9 last for a WebM). */
 export function videoEncoderConfigs(format: VideoConfigFormat): VideoEncoderConfig[] {
+  if (format.container === "webm") return [...codecConfigs(format, format.codec), ...(format.codec !== "vp9" ? codecConfigs(format, "vp9") : [])];
   return [...codecConfigs(format, format.codec), ...(format.codec !== "avc" ? codecConfigs(format, "avc") : [])];
 }
 
@@ -112,8 +129,9 @@ export function codecConfigs(format: VideoConfigFormat, codec: VideoCodecId): Vi
 }
 
 /** The audio encoder configurations to try: AAC-LC, then Opus. */
-export function audioEncoderConfigs(format: { sampleRate: number; channels: number; audioBitrate: number }): AudioEncoderConfig[] {
+export function audioEncoderConfigs(format: { sampleRate: number; channels: number; audioBitrate: number; container?: string }): AudioEncoderConfig[] {
   const base = { sampleRate: format.sampleRate, numberOfChannels: format.channels, bitrate: format.audioBitrate };
+  if (format.container === "webm") return [{ codec: "opus", ...base }];
   return [
     { codec: "mp4a.40.2", ...base },
     { codec: "opus", ...base },

@@ -45,6 +45,7 @@ import { installStandInController } from "./app/standInController.js";
 import { installTemplateController } from "./app/templateController.js";
 import { installCacheController } from "./app/cacheController.js";
 import { installExportController } from "./app/exportController.js";
+import { installExtrasController } from "./app/extrasController.js";
 import { chooseBackend, forcedBackend } from "./render/gpu/backend.js";
 import { webgl2Available } from "./render/gpu/GlContext.js";
 import { requestGpuAdapter } from "./render/gpu/GpuDevice.js";
@@ -81,6 +82,7 @@ async function start(): Promise<void> {
   installTemplateController();
   installCacheController();
   installExportController();
+  installExtrasController();
   installMediaController();
   installDropController();
   installPreviewController();

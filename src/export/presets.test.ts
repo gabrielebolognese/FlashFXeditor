@@ -198,7 +198,7 @@ describe("sanitizing", () => {
   it("keeps valid settings and replaces each invalid field by its fallback", () => {
     const valid: ExportSettings = { ...DEFAULT_CUSTOM_SETTINGS, codec: "av1", scale: 75, fps: fps(15), bitrateMode: "constant", videoBitrate: 5_000_000, maxBitrate: "auto", keyframeSeconds: 1, audioBitrate: 320_000, hardware: "prefer-software" };
     expect(sanitizeExportSettings(JSON.parse(JSON.stringify(valid)))).toEqual(valid);
-    const broken = sanitizeExportSettings({ codec: "vp9", scale: 60, fps: { num: 0, den: 1 }, videoBitrate: 1, maxBitrate: "x", keyframeSeconds: 5, audioBitrate: 100, hardware: 1, maxLongEdge: 2.5, maxLongEdge4k: null });
+    const broken = sanitizeExportSettings({ codec: "prores", scale: 60, fps: { num: 0, den: 1 }, videoBitrate: 1, maxBitrate: "x", keyframeSeconds: 5, audioBitrate: 100, hardware: 1, maxLongEdge: 2.5, maxLongEdge4k: null });
     expect(broken).toEqual({ ...DEFAULT_CUSTOM_SETTINGS, maxLongEdge4k: null });
     expect(sanitizeExportSettings(null)).toEqual(DEFAULT_CUSTOM_SETTINGS);
     expect(sanitizeExportSettings({ fps: { num: 60000, den: 2002 } }).fps).toEqual(fps(30000, 1001));

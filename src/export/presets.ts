@@ -16,13 +16,25 @@ import { fpsToNumber } from "../core/document/time.js";
 import type { LoudnessTarget, Project, Rational } from "../core/document/types.js";
 import { formatFps } from "../project/projectPresets.js";
 
-export type VideoCodecId = "avc" | "hevc" | "av1";
+export type VideoCodecId = "avc" | "hevc" | "av1" | "vp9";
+/** What an export writes (spec §21.25): an MP4 or WebM video, a numbered PNG sequence, a GIF. */
+export type ExportContainer = "mp4" | "webm" | "png" | "gif";
 export type BitrateMode = "variable" | "constant";
 export type HardwarePreference = "no-preference" | "prefer-hardware" | "prefer-software";
 export type ResolutionScale = 100 | 75 | 50;
 
+/** The codecs of an MP4 (Custom's codec select). */
 export const VIDEO_CODECS: readonly VideoCodecId[] = ["avc", "hevc", "av1"];
-export const CODEC_NAMES: Record<VideoCodecId, string> = { avc: "H.264", hevc: "HEVC", av1: "AV1" };
+/** The codecs of a WebM (VP9 first: the one with transparency). */
+export const WEBM_CODECS: readonly VideoCodecId[] = ["vp9", "av1"];
+export const CODEC_NAMES: Record<VideoCodecId, string> = { avc: "H.264", hevc: "HEVC", av1: "AV1", vp9: "VP9" };
+export const CONTAINERS: readonly ExportContainer[] = ["mp4", "webm", "png", "gif"];
+export const CONTAINER_NAMES: Record<ExportContainer, string> = { mp4: "MP4", webm: "WebM", png: "PNG sequence", gif: "GIF" };
+/** A PNG sequence has no file of its own: its frames are `<name>_%05d.png` in a folder. */
+export const CONTAINER_EXTENSIONS: Record<ExportContainer, string> = { mp4: "mp4", webm: "webm", png: "png", gif: "gif" };
+/** GIF width options (px; a project narrower than it keeps its own width). */
+export const GIF_WIDTH_RANGE = { min: 64, max: 1080 } as const;
+export const DEFAULT_GIF_WIDTH = 540;
 export const RESOLUTION_SCALES: readonly ResolutionScale[] = [100, 75, 50];
 export const BITRATE_MODES: readonly BitrateMode[] = ["variable", "constant"];
 export const HARDWARE_PREFERENCES: readonly HardwarePreference[] = ["no-preference", "prefer-hardware", "prefer-software"];
@@ -57,6 +69,22 @@ export interface ExportSettings {
   hardware: HardwarePreference;
   /** The loudness the mixdown is normalized to (spec §21.21); absent or null: the project's own target, if it has one. */
   loudness?: LoudnessTarget | null;
+  /** What is written (Batch 81); absent: an MP4. */
+  container?: ExportContainer;
+  /** WebM (VP9) and PNG sequences: the project's background is not drawn and the alpha channel is kept; absent: false. */
+  transparent?: boolean;
+  /** GIF: the width (px, `GIF_WIDTH_RANGE`); absent: `DEFAULT_GIF_WIDTH`. */
+  gifWidth?: number;
+  /** GIF: ordered dithering of the palette; absent: true. */
+  gifDither?: boolean;
+}
+
+export const containerOf = (settings: { container?: ExportContainer }): ExportContainer => settings.container ?? "mp4";
+
+/** The codec a container writes for a chosen one: a WebM takes VP9 or AV1, an MP4 H.264, HEVC or AV1. */
+export function codecFor(container: ExportContainer, codec: VideoCodecId): VideoCodecId {
+  if (container === "webm") return codec === "av1" ? "av1" : "vp9";
+  return codec === "vp9" ? "avc" : codec;
 }
 
 export interface ExportPreset {
@@ -108,7 +136,31 @@ export const SHORTS_PRESET: ExportPreset = {
   settings: { ...SHORT_FORM, maxLongEdge4k: LONG_EDGE_4K, fps: { num: 60, den: 1 }, videoBitrate: "auto", maxBitrate: "auto" },
 };
 
-export const BUILT_IN_PRESETS: readonly ExportPreset[] = [REELS_PRESET, TIKTOK_PRESET, SHORTS_PRESET];
+/** Spec §21.25: a WebM overlay with transparency (VP9 and its alpha channel, Opus), the project's size, no loudness change. */
+export const TRANSPARENT_PRESET: ExportPreset = {
+  id: "transparent",
+  name: "Overlay",
+  description: "Transparent overlay: WebM (VP9 with alpha, Opus), the project's size, up to 30 fps",
+  settings: { ...SHORT_FORM, container: "webm", transparent: true, codec: "vp9", videoBitrate: 8_000_000, maxBitrate: 12_000_000, audioBitrate: 128_000, loudness: null },
+};
+
+/** Spec §21.25: a GIF preview, 15 fps and 540 px wide, ordered dithering. */
+export const GIF_PRESET: ExportPreset = {
+  id: "gif",
+  name: "GIF",
+  description: "GIF preview: 540 px wide, 15 fps, no sound",
+  settings: { ...SHORT_FORM, container: "gif", gifWidth: DEFAULT_GIF_WIDTH, gifDither: true, fps: { num: 15, den: 1 }, videoBitrate: 1_000_000, maxBitrate: 1_000_000, loudness: null },
+};
+
+/** Spec §21.25: a numbered PNG sequence with alpha (`<name>_00001.png`), the project's size and rate. */
+export const PNG_PRESET: ExportPreset = {
+  id: "png-sequence",
+  name: "PNG",
+  description: "PNG sequence with alpha: one numbered file per frame, in a folder",
+  settings: { ...SHORT_FORM, container: "png", transparent: true, maxLongEdge: null, fps: { num: 60, den: 1 }, videoBitrate: 1_000_000, maxBitrate: 1_000_000, loudness: null },
+};
+
+export const BUILT_IN_PRESETS: readonly ExportPreset[] = [REELS_PRESET, TIKTOK_PRESET, SHORTS_PRESET, TRANSPARENT_PRESET, GIF_PRESET, PNG_PRESET];
 export const CUSTOM_PRESET_ID = "custom";
 
 /** Custom's settings before the first change: Reels with no size cap (the project's own size). */
@@ -127,7 +179,7 @@ export function fillFileName(template: string, values: { project: string; preset
   return template.replace(/\{(project|preset|date)\}/g, (_match, key: string) => (key === "project" ? values.project : key === "preset" ? values.preset : day));
 }
 
-const KNOWN_EXTENSION = /\.(mp4|m4a|wav|png|srt|vtt)$/i;
+const KNOWN_EXTENSION = /\.(mp4|webm|gif|zip|m4a|wav|png|srt|vtt)$/i;
 
 /** `name` ending in `.ext`: a known export extension at its end is replaced, else `.ext` is added. */
 export function withExtension(name: string, ext: string): string {
@@ -161,6 +213,12 @@ export interface ExportFormat {
   hardware: HardwarePreference;
   /** The loudness target of the mixdown (spec §21.21): the settings', else the project's; absent: none. */
   loudness?: LoudnessTarget;
+  /** What is written (Batch 81); absent: an MP4. */
+  container?: ExportContainer;
+  /** The background is not drawn and the alpha channel is kept (WebM VP9, PNG); absent: false. */
+  transparent?: boolean;
+  /** GIF: ordered dithering; absent: true. */
+  gifDither?: boolean;
   /** The mixdown's rate and channels (spec §14: 48 kHz stereo). */
   sampleRate: 48000;
   channels: 2;
@@ -225,16 +283,27 @@ export function autoBitrate(width: number, height: number, fps: Rational): numbe
 
 const loudnessOf = (target: LoudnessTarget | null | undefined): { loudness?: LoudnessTarget } => (target ? { loudness: { targetLufs: target.targetLufs, truePeakDb: target.truePeakDb } } : {});
 
+/** A GIF's size: `gifWidth` px wide (never wider than the project), the height by the project's aspect. */
+export function gifSize(width: number, height: number, gifWidth: number | undefined): { width: number; height: number } {
+  const w = Math.max(1, Math.min(width, gifWidth ?? DEFAULT_GIF_WIDTH));
+  return { width: w, height: Math.max(1, Math.round((w * height) / width)) };
+}
+
 export function exportFormat(project: Project, settings: ExportSettings): ExportFormat {
   const { width, height } = project.settings;
-  const size = exportSize(width, height, settings);
+  const container = containerOf(settings);
+  const size = container === "gif" ? gifSize(width, height, settings.gifWidth) : exportSize(width, height, settings);
   const fps = exportFps(project.settings.fps, settings.fps);
   const target = settings.videoBitrate === "auto" ? autoBitrate(size.width, size.height, fps) : settings.videoBitrate;
   const peak = settings.bitrateMode === "constant" ? target : settings.maxBitrate === "auto" ? Math.round(target * 1.5) : Math.max(target, settings.maxBitrate);
   return {
     ...size,
     fps,
-    codec: settings.codec,
+    // Alpha is VP9 only (a second VP9 stream, webm/): a transparent WebM never takes AV1.
+    codec: codecFor(container, settings.transparent && container === "webm" ? "vp9" : settings.codec),
+    ...(container !== "mp4" && { container }),
+    ...(settings.transparent && (container === "webm" || container === "png") && { transparent: true }),
+    ...(container === "gif" && { gifDither: settings.gifDither !== false }),
     bitrateMode: settings.bitrateMode,
     videoBitrate: target,
     maxBitrate: peak,
@@ -258,14 +327,34 @@ export function customFrom(settings: ExportSettings, project: Project): ExportSe
   return { ...settings, scale, maxLongEdge: null, maxLongEdge4k: null, fps: format.fps, videoBitrate: format.videoBitrate, maxBitrate: format.maxBitrate };
 }
 
-/** The file size an export of `seconds` should reach (bytes): both bitrates plus about 1% of container. */
-export function estimateBytes(format: Pick<ExportFormat, "videoBitrate" | "audioBitrate">, seconds: number): number {
-  return Math.round(((format.videoBitrate + format.audioBitrate) * Math.max(0, seconds) * 1.01) / 8);
+/**
+ * Bytes per pixel of a GIF frame (ordered dithering on or off): measured on the interop fixtures at
+ * 15 fps and 540 px (Batch 81, PROGRESS.md); gifenc has no inter-frame prediction, so a frame costs
+ * about the same whatever the motion. Measured: basic 0.030 and alpha 0.019 bytes per pixel and frame (graphics; photographic content costs several times more, so the job refines the estimate from its own frames).
+ */
+export const GIF_BYTES_PER_PIXEL = { dithered: 0.03, plain: 0.02 } as const;
+/** Bytes of a PNG frame per pixel (graphics at 8 bits with alpha; photographic frames cost 3 to 4 times as much). */
+export const PNG_BYTES_PER_PIXEL = 0.9;
+
+/** The file size an export of `seconds` should reach (bytes): both bitrates plus about 1% of container; a GIF's and a PNG sequence's by their pixels. */
+export function estimateBytes(format: Pick<ExportFormat, "videoBitrate" | "audioBitrate"> & Partial<Pick<ExportFormat, "container" | "width" | "height" | "fps" | "gifDither">>, seconds: number): number {
+  const s = Math.max(0, seconds);
+  const pixels = (format.width ?? 0) * (format.height ?? 0);
+  const frames = Math.ceil(s * fpsToNumber(format.fps ?? { num: 30, den: 1 }));
+  if (format.container === "gif") return Math.round(pixels * frames * (format.gifDither === false ? GIF_BYTES_PER_PIXEL.plain : GIF_BYTES_PER_PIXEL.dithered) + 800);
+  if (format.container === "png") return Math.round(pixels * frames * PNG_BYTES_PER_PIXEL);
+  return Math.round(((format.videoBitrate + format.audioBitrate) * s * 1.01) / 8);
 }
 
 /** "1080×1920 · 30 fps · H.264 · 12 Mbps · AAC 192 kbps". */
 export function formatSummary(format: ExportFormat): string {
   const fps = formatFps(format.fps);
+  if (format.container === "gif") return `${format.width}×${format.height} · ${fps} fps · GIF${format.gifDither === false ? "" : " · dithered"}`;
+  if (format.container === "png") return `${format.width}×${format.height} · ${fps} fps · PNG sequence${format.transparent ? " · alpha" : ""}`;
+  if (format.container === "webm") {
+    const rate = (format.videoBitrate / 1_000_000).toFixed(format.videoBitrate % 1_000_000 === 0 ? 0 : 1);
+    return `${format.width}×${format.height} · ${fps} fps · WebM ${CODEC_NAMES[format.codec]}${format.transparent ? " · alpha" : ""} · ${rate} Mbps · Opus ${Math.round(format.audioBitrate / 1000)} kbps`;
+  }
   const mbps = (format.videoBitrate / 1_000_000).toFixed(format.videoBitrate % 1_000_000 === 0 ? 0 : 1);
   const mode = format.bitrateMode === "constant" ? " CBR" : "";
   return `${format.width}×${format.height} · ${fps} fps · ${CODEC_NAMES[format.codec]} · ${mbps} Mbps${mode} · AAC ${Math.round(format.audioBitrate / 1000)} kbps`;
@@ -295,7 +384,7 @@ function sanitizeEdge(value: unknown, fallback: number | null): number | null {
 export function sanitizeExportSettings(value: unknown, fallback: ExportSettings = DEFAULT_CUSTOM_SETTINGS): ExportSettings {
   const raw = obj(value);
   return {
-    codec: oneOf(VIDEO_CODECS, raw.codec, fallback.codec),
+    codec: oneOf<VideoCodecId>([...VIDEO_CODECS, "vp9"], raw.codec, fallback.codec),
     scale: oneOf(RESOLUTION_SCALES, raw.scale, fallback.scale),
     maxLongEdge: sanitizeEdge(raw.maxLongEdge, fallback.maxLongEdge),
     maxLongEdge4k: sanitizeEdge(raw.maxLongEdge4k, fallback.maxLongEdge4k),
@@ -307,6 +396,21 @@ export function sanitizeExportSettings(value: unknown, fallback: ExportSettings 
     audioBitrate: oneOf(AUDIO_BITRATES, raw.audioBitrate, fallback.audioBitrate),
     hardware: oneOf(HARDWARE_PREFERENCES, raw.hardware, fallback.hardware),
     ...sanitizeLoudness(raw.loudness, fallback.loudness),
+    ...sanitizeOutput(raw, fallback),
+  };
+}
+
+/** The Batch 81 fields: kept only when they differ from their defaults (an MP4 with no extras stores none). */
+function sanitizeOutput(raw: Raw, fallback: ExportSettings): Partial<ExportSettings> {
+  const container = oneOf(CONTAINERS, raw.container, containerOf(fallback));
+  const transparent = typeof raw.transparent === "boolean" ? raw.transparent : (fallback.transparent ?? false);
+  const gifWidth = typeof raw.gifWidth === "number" && Number.isInteger(raw.gifWidth) && inRange(raw.gifWidth, GIF_WIDTH_RANGE.min, GIF_WIDTH_RANGE.max) ? raw.gifWidth : fallback.gifWidth;
+  const gifDither = typeof raw.gifDither === "boolean" ? raw.gifDither : fallback.gifDither;
+  return {
+    ...(container !== "mp4" && { container }),
+    ...(transparent && { transparent }),
+    ...(gifWidth !== undefined && { gifWidth }),
+    ...(gifDither !== undefined && { gifDither }),
   };
 }
 

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { findChrome, insideRoot, parseRange, PROFILE_PREFIX, RESERVED_PORTS, startServer, type RunServer } from "../../../scripts/cli/headless.js";
-import { judge, parseArgs, parseFrameList, parseFrameRange } from "../../../scripts/cli/render.js";
+import { formatOf, judge, parseArgs, parseFrameList, parseFrameRange } from "../../../scripts/cli/render.js";
 import type { CompareReport } from "./compareFrames.js";
 
 describe("render and compare arguments", () => {
@@ -157,5 +157,19 @@ describe("render server", () => {
     await fetch(`${base}progress`, { method: "POST", body: JSON.stringify({ done: 3, total: 9 }) });
     expect(seen).toEqual(["3/9"]);
     expect(server.progress()).toEqual({ done: 3, total: 9 });
+  });
+});
+
+describe("render --format", () => {
+  it("takes --format, else the extension of --out, else mp4", () => {
+    expect(formatOf("png", "out")).toBe("png");
+    expect(formatOf(undefined, "a/b.webm")).toBe("webm");
+    expect(formatOf(undefined, "a/b.GIF")).toBe("gif");
+    expect(formatOf(undefined, "a/b.mp4")).toBe("mp4");
+    expect(formatOf(undefined, "a/bwebm")).toBe("mp4");
+    expect(formatOf("mov", "a.mp4")).toBeNull();
+    const parsed = parseArgs(["p", "--out", "x", "--format", "gif", "--transparent"]);
+    expect(parsed.options.get("--format")).toBe("gif");
+    expect(parsed.flags.has("--transparent")).toBe(true);
   });
 });

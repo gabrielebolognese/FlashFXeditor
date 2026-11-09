@@ -20,7 +20,7 @@ import { contentEnd } from "../../timeline/model/queries.js";
 import { setPlayhead } from "../../core/store/sessionStore.js";
 import type { Frame, Project } from "../../core/document/types.js";
 import { ExportFile } from "../../export/exportFile.js";
-import { BUILT_IN_PRESETS, exportFormat, REELS_PRESET } from "../../export/presets.js";
+import { BUILT_IN_PRESETS, codecFor, exportFormat, REELS_PRESET } from "../../export/presets.js";
 import { openProjectFolder } from "../../project/openProject.js";
 import { MediaSources } from "../../project/mediaSources.js";
 import { safeFileName } from "../../project/mediaFiles.js";
@@ -41,7 +41,12 @@ export interface RenderInfo {
 export interface VideoOptions {
   range?: { start: Frame; end: Frame } | null;
   preset?: string | null;
+  /** The file's name; for a PNG sequence the base of the frame names (`<name>_00001.png`). */
   fileName: string;
+  /** The container (Batch 81); mp4 when absent. */
+  format?: "mp4" | "webm" | "png" | "gif";
+  /** Keep alpha (webm with VP9, png). */
+  transparent?: boolean;
 }
 
 export interface VideoResult {
@@ -148,10 +153,15 @@ export function startRenderMode(search: string, origin: string): RenderApi {
       const project = documentStore.getState();
       const range = options.range ?? { start: 0, end: contentEnd(project) };
       if (range.end <= range.start) throw new Error("Nothing to render: the range is empty");
-      const format = exportFormat(project, presetSettings(options.preset));
+      const container = options.format ?? "mp4";
+      const settings = { ...presetSettings(options.preset), container, ...(options.transparent && { transparent: true }) };
+      const format = exportFormat(project, container === "gif" || container === "webm" || container === "png" ? { ...settings, codec: codecFor(container, settings.codec) } : settings);
       const controller = new AbortController();
       const inputs = await gatherInputs(projectDir, project, range, controller.signal);
-      const output = await ExportFile.toPicked(new HttpSink(base, options.fileName), (error) => console.error("[render] write failed", error));
+      const sequence = container === "png";
+      const output = sequence ? null : await ExportFile.toPicked(new HttpSink(base, options.fileName), (error) => console.error("[render] write failed", error));
+      const name = sequence ? options.fileName.replace(/\.[^.]+$/, "") : options.fileName;
+      let written: Promise<unknown> = Promise.resolve();
       try {
         const result = await requestVideoExport(
           project,
@@ -161,15 +171,18 @@ export function startRenderMode(search: string, origin: string): RenderApi {
           false,
           controller.signal,
           (value) => {
-            if (value.kind === "bytes") output.write(new Uint8Array(value.data), value.position);
-            else if (value.kind !== "started") postProgress(base, value.done, value.total);
+            if (value.kind === "bytes") output?.write(new Uint8Array(value.data), value.position);
+            else if (value.kind === "file") written = written.then(() => putOutput(base, value.name, new Blob([value.data])));
+            else if (value.kind === "frames") postProgress(base, value.done, value.total);
           },
           true,
+          name,
         );
-        const name = await output.finish(options.fileName);
-        return { name, bytes: output.bytes, frames: result.frames, width: result.width, height: result.height, videoCodec: result.videoCodec, audioCodec: result.audioCodec, ms: result.ms };
+        await written;
+        const fileName = output ? await output.finish(options.fileName) : name;
+        return { name: fileName, bytes: output?.bytes ?? 0, frames: result.frames, width: result.width, height: result.height, videoCodec: result.videoCodec, audioCodec: result.audioCodec, ms: result.ms };
       } catch (error) {
-        await output.discard();
+        await output?.discard();
         throw error;
       }
     },

@@ -423,7 +423,7 @@ Add `-start_number 0` for a sequence that starts at 0. Dropping or importing a f
 }
 ```
 
-`fixtures/interop/alpha` is a complete project: a VP9 alpha WebM (`media/overlay.webm`, about 2 KB) and the same 30-frame animation as a PNG sequence (`media/sequence/frame_%04d.png`), both over a blue solid, with expected frames in `expected/`. Alpha export (a transparent output file) is not part of this version.
+`fixtures/interop/alpha` is a complete project: a VP9 alpha WebM (`media/overlay.webm`, about 2 KB) and the same 30-frame animation as a PNG sequence (`media/sequence/frame_%04d.png`), both over a blue solid, with expected frames in `expected/`. A transparent export is described in §5.18.
 
 ### 5.5 Vector shapes and trim paths (manifest keys `clipKinds` (adds `shape`), `vector.shapes`, `vector.trimPaths`, `vector.primitives`, `vector.keyframeProps`; schema 10)
 
@@ -1049,6 +1049,27 @@ Three optional fields of video clips (`reverse` also of audio clips); a missing 
 `npm run cli -- fill <folder> <values.json>` writes values into the instances: `values.json` is `{ "<instance clip id or name>": { "<parameter id or label>": <value> } }`, a color may be `"#rrggbb"`, and nothing is written unless every entry is valid (all or nothing; the project is validated again before it is saved).
 
 `fixtures/interop/templates` holds a paper card template (title and body text, an accent color for the bar and the dot, a width and a visibility toggle) with three instances, `values.json` for `fill`, and the expected frames in `expected/`. `fill` on the project without values reproduces the committed project. A template saved in the editor is the sequence tree, its clips, its media files and the fonts of its text, stored in the global store and in the library folder's `templates/` (one folder per template); a public template marketplace is not part of this version.
+
+### 5.18 Export formats, stems and collect (manifest keys `export.alpha`, `export.imageSequence`, `export.gif`, `export.stems`, `export.containers`, `export.videoCodecs`)
+
+The Export tab and `npm run cli -- render` write more than an MP4. `capabilities.json` lists `export.containers` (`mp4`, `webm`, `png`, `gif`) and `export.videoCodecs` (`h264`, `hevc`, `av1`, `vp9`), and `export.alpha`, `export.imageSequence`, `export.gif` and `export.stems` are all `true`. ProRes and other formats WebCodecs cannot encode are not offered.
+
+| Output | CLI | Notes |
+| --- | --- | --- |
+| MP4 | `--format mp4` (default) | H.264, HEVC or AV1 with AAC. |
+| WebM | `--format webm` or an `.webm` name | VP9 or AV1 with Opus. `--transparent` keeps alpha (VP9 only). |
+| PNG sequence | `--format png --out <folder>` | One 8-bit PNG per frame, `<name>_00001.png`, numbered from 1; RGBA with `--transparent`, else RGB. |
+| GIF | `--format gif` or a `.gif` name | One global palette, optional ordered dithering, 15 fps and 540 px wide by default; no sound. |
+
+**Transparent WebM.** Chrome's encoder has no alpha output, so the editor writes what ffmpeg writes: the color in a VP9 stream and the alpha in a second VP9 stream (a gray picture), stored as BlockAdditions with BlockAddID 1 in the same block. Chrome plays the file with alpha (the video element must show it over a page color) and the editor imports it back as an alpha video (§5.4); `-auto-alt-ref 0` is the rule the editor follows when it encodes. Transparent output draws the sequence without its project background.
+
+**GIF size.** The Export tab's size is a rough estimate from the frame size and the dither setting (about 0.03 bytes per pixel and frame for graphics); the job projects the size from encoding frames spread over the range and logs it.
+
+**Stems.** `Export stems` writes one 16-bit 48 kHz stereo WAV per audible audio track that holds a clip, in track order, as `exports/<project>-stems/01 <track>.wav`. A stem is the project mixed with every other audio track muted, so the stems add up to the mixdown (the sum differs from it by less than -60 dB; Export audio's loudness normalization is not applied to stems). Tracks that are muted, silenced by another track's solo or empty are left out; the audio of compound clips is one more stem ("Compound audio 1").
+
+**Collect project.** Media that a project links outside its folder (`file` has a `handleKey` instead of a `relPath`) are copied into `media/` and the project points at the copies, in one undo step; the project then opens from another folder with nothing missing. Linked image sequences stay linked. `Zip the project` writes the project folder as a store-only zip (UTF-8 names, at most 4 GB and 65535 files, no ZIP64) under one top folder, without `cache/`, `history/`, `exports/` and `session.json`.
+
+`fixtures/interop/basic` and `fixtures/interop/alpha` are the projects the export checks render with `npm run cli -- render <folder> --format gif|png|webm`: `basic` as a GIF (1.39 MB for 90 frames at 540 px), a PNG sequence and a transparent WebM, `alpha` as a GIF and a transparent PNG sequence.
 
 ## 6. Captions and word timings
 

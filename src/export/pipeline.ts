@@ -13,6 +13,7 @@
 // - `gate` pauses between frames; an aborted signal stops at the next wait with its reason, an
 //   encoder error with that error. Encoders are closed whatever happens; the muxer is finalized only
 //   when every frame and sample was encoded.
+import { fpsToNumber } from "../core/document/time.js";
 import type { Frame } from "../core/document/types.js";
 import { abortError } from "../media/workers/protocol.js";
 import { audioEncoderConfigs, chooseConfig, muxerAudioCodec, muxerVideoCodec, videoEncoderConfigs, type VideoConfigFormat } from "./codecs.js";
@@ -57,7 +58,7 @@ export interface AudioEncoderLike<A> {
 }
 
 export interface MuxOptions {
-  video: { codec: VideoCodecId; width: number; height: number; timescale: number };
+  video: { codec: VideoCodecId; width: number; height: number; timescale: number; /** Frames per second (WebM's track metadata). */ fps: number; /** The frames carry an alpha stream (a transparent WebM). */ alpha: boolean };
   audio: { codec: "aac" | "opus"; sampleRate: number; channels: number } | null;
   /** Upper bounds of the chunks it will get (room for the tables at the front of the file). */
   expectedVideoChunks: number;
@@ -152,7 +153,7 @@ export async function runExport<F extends PipelineFrame, A extends PipelineFrame
   signal.throwIfAborted();
   const videoConfig = await chooseConfig(videoEncoderConfigs(format), (config) => deps.videoSupported(config));
   if (!videoConfig) throw new ExportEncoderError(`This browser cannot encode ${format.width}x${format.height} video`);
-  const audioConfig = await chooseConfig(audioEncoderConfigs(format), (config) => deps.audioSupported(config));
+  const audioConfig = await chooseConfig(audioEncoderConfigs({ ...format, container: format.container ?? "mp4" }), (config) => deps.audioSupported(config));
   if (!audioConfig) console.warn("[export] no audio encoder: the file has no sound");
   signal.throwIfAborted();
   emit({ kind: "started", videoCodec: videoConfig.codec, audioCodec: audioConfig?.codec ?? null });
@@ -185,7 +186,7 @@ export async function runExport<F extends PipelineFrame, A extends PipelineFrame
   const expected = expectedChunks(plan, audioCodec);
   const muxer = deps.createMuxer(
     {
-      video: { codec: muxerVideoCodec(videoConfig.codec), width: format.width, height: format.height, timescale: videoTimescale(plan.fps) },
+      video: { codec: muxerVideoCodec(videoConfig.codec), width: format.width, height: format.height, timescale: videoTimescale(plan.fps), fps: fpsToNumber(plan.fps), alpha: format.transparent === true },
       audio: audioCodec ? { codec: audioCodec, sampleRate: plan.sampleRate, channels: format.channels } : null,
       expectedVideoChunks: expected.video,
       expectedAudioChunks: expected.audio,

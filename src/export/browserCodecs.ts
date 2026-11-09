@@ -7,7 +7,8 @@
 // in MUX_CHUNK_BYTES pieces with their positions.
 import { Muxer, StreamTarget } from "mp4-muxer";
 import type { AudioMuxerLike, AudioMuxOptions } from "./audioExport.js";
-import type { AudioEncoderLike, EncoderCallbacks, MuxerLike, MuxOptions, VideoEncoderLike } from "./pipeline.js";
+import type { AudioEncoderLike, EncoderCallbacks, MuxerLike, MuxOptions, PipelineFrame, VideoEncoderLike } from "./pipeline.js";
+import { WebmMuxer, type WebmAudioPacket, type WebmVideoPacket } from "./webm/WebmMuxer.js";
 
 export const MUX_CHUNK_BYTES = 4 << 20;
 
@@ -93,6 +94,109 @@ export function createAudioMp4Muxer(options: AudioMuxOptions, onData: (data: Uin
   });
   return {
     addAudio: (chunk, meta) => muxer.addAudioChunk(chunk, meta as EncodedAudioChunkMetadata | undefined),
+    finalize: () => muxer.finalize(),
+  };
+}
+
+// WebM (Batch 81). The video frame the WebM pipeline carries: the color frame and, for a transparent
+// export, the alpha plane as a second frame (luma = alpha), because VideoEncoder cannot encode alpha.
+
+export interface WebmFrame extends PipelineFrame {
+  color: VideoFrame;
+  alpha: VideoFrame | null;
+}
+
+/** A WebM frame from a color frame alone (no transparency). */
+export function opaqueWebmFrame(color: VideoFrame): WebmFrame {
+  return { color, alpha: null, close: () => color.close() };
+}
+
+/** A WebM frame from straight RGBA pixels: the color frame (alpha dropped by the encoder) and the alpha plane as a gray I420 frame. */
+export function transparentWebmFrame(pixels: Uint8ClampedArray, width: number, height: number, timestampUs: number, durationUs: number): WebmFrame {
+  const init = { timestamp: timestampUs, duration: durationUs };
+  const color = new VideoFrame(pixels as Uint8ClampedArray<ArrayBuffer>, { format: "RGBA", codedWidth: width, codedHeight: height, ...init });
+  const plane = width * height;
+  const gray = new Uint8Array(plane + 2 * (plane >> 2));
+  for (let i = 0; i < plane; i++) gray[i] = pixels[i * 4 + 3] as number;
+  gray.fill(128, plane);
+  const alpha = new VideoFrame(gray, { format: "I420", codedWidth: width, codedHeight: height, ...init });
+  return { color, alpha, close: () => (color.close(), alpha.close()) };
+}
+
+/**
+ * The WebM video encoder: one VideoEncoder for the color stream and, when frames carry alpha, a second
+ * (same codec, a lower bitrate) for the alpha stream. Both are given the same key frames, and their
+ * outputs are paired in order into one packet, which the muxer writes as a block with its BlockAdditional.
+ */
+export function createWebmVideoEncoder(callbacks: EncoderCallbacks<WebmVideoPacket>, alpha: boolean): VideoEncoderLike<WebmFrame> {
+  const colors: { chunk: EncodedVideoChunk; meta: EncodedVideoChunkMetadata | undefined }[] = [];
+  const alphas: Uint8Array[] = [];
+  const bytes = (chunk: EncodedVideoChunk) => {
+    const data = new Uint8Array(chunk.byteLength);
+    chunk.copyTo(data);
+    return data;
+  };
+  const drain = () => {
+    while (colors.length > 0 && (!alpha || alphas.length > 0)) {
+      const { chunk, meta } = colors.shift() as (typeof colors)[number];
+      callbacks.output({ timestampUs: chunk.timestamp, durationUs: chunk.duration, key: chunk.type === "key", data: bytes(chunk), alpha: alpha ? (alphas.shift() as Uint8Array) : null }, meta);
+    }
+  };
+  const make = (output: (chunk: EncodedVideoChunk, meta?: EncodedVideoChunkMetadata) => void) => {
+    const encoder = new VideoEncoder({ output, error: (error) => callbacks.error(error) });
+    encoder.addEventListener("dequeue", () => callbacks.dequeue());
+    return encoder;
+  };
+  const color = make((chunk, meta) => {
+    colors.push({ chunk, meta });
+    drain();
+  });
+  const side = alpha
+    ? make((chunk) => {
+        alphas.push(bytes(chunk));
+        drain();
+      })
+    : null;
+  const close = (encoder: VideoEncoder | null) => {
+    if (encoder && encoder.state !== "closed") encoder.close();
+  };
+  return {
+    get encodeQueueSize() {
+      return Math.max(color.encodeQueueSize, side?.encodeQueueSize ?? 0);
+    },
+    configure: (config) => {
+      color.configure(config);
+      // The alpha plane is flat most of the time: a quarter of the color's bitrate is plenty.
+      side?.configure({ ...config, bitrate: Math.max(200_000, Math.round((config.bitrate ?? 1_000_000) / 4)) });
+    },
+    encode: (frame, options) => {
+      color.encode(frame.color, options);
+      if (side && frame.alpha) side.encode(frame.alpha, options);
+    },
+    flush: async () => {
+      await Promise.all([color.flush(), side?.flush()]);
+      drain();
+    },
+    close: () => (close(color), close(side)),
+  };
+}
+
+/** The WebM writer behind the pipeline's muxer interface (video packets from `createWebmVideoEncoder`, Opus chunks). */
+export function createWebmMuxer(options: MuxOptions, onData: (data: Uint8Array, position: number) => void): MuxerLike<WebmVideoPacket, EncodedAudioChunk> {
+  const video = options.video;
+  const muxer = new WebmMuxer(
+    { video: { codec: video.codec === "av1" ? "av1" : "vp9", width: video.width, height: video.height, fps: video.fps, alpha: video.alpha }, audio: options.audio ? { sampleRate: options.audio.sampleRate, channels: options.audio.channels } : null },
+    onData,
+  );
+  return {
+    addVideo: (packet) => muxer.addVideo(packet),
+    addAudio: (chunk, meta) => {
+      muxer.setAudioDescription((meta as EncodedAudioChunkMetadata | undefined)?.decoderConfig?.description);
+      const data = new Uint8Array(chunk.byteLength);
+      chunk.copyTo(data);
+      const packet: WebmAudioPacket = { timestampUs: chunk.timestamp, durationUs: chunk.duration, data };
+      muxer.addAudio(packet);
+    },
     finalize: () => muxer.finalize(),
   };
 }

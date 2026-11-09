@@ -28,7 +28,7 @@ import { WorkerPool, type WorkerLike } from "../media/workers/WorkerPool.js";
 import { Compositor, type OfflineSlates } from "../render/compositor/Compositor.js";
 import type { BackendRenderer, RenderDevice } from "../render/gpu/backend.js";
 import { createBackend } from "../render/gpu/createBackend.js";
-import type { CanvasTarget } from "../render/gpu/renderer.js";
+import type { CanvasTarget, OffscreenTarget } from "../render/gpu/renderer.js";
 import { DETAIL_MAX_SIZE } from "../render/preview/detail.js";
 import { CompoundTargets } from "../render/preview/CompoundTargets.js";
 import { LayerTextures } from "../render/preview/LayerTextures.js";
@@ -48,6 +48,11 @@ const noWorker = (kind: WorkerKind) => (): WorkerLike => {
 /** The error of an export whose GPU device was lost. */
 export const DEVICE_LOST_MESSAGE = "The GPU was reset during the export (device lost). Export again.";
 
+/** Whether the export reads pixels back (PNG sequence, GIF, transparent WebM) rather than wrapping the canvas in a VideoFrame. */
+export function needsPixels(format: Pick<ExportJobParams["format"], "container" | "transparent">): boolean {
+  return format.container === "png" || format.container === "gif" || format.transparent === true;
+}
+
 export class ExportRenderer {
   private readonly gpu: RenderDevice;
   private readonly renderer: BackendRenderer;
@@ -66,9 +71,14 @@ export class ExportRenderer {
   private readonly svgByFile = new Map<File, ImageBitmap>();
   private readonly stops: (() => void)[] = [];
   private target: CanvasTarget | null = null;
+  /** The pixel outputs' target (PNG, GIF, transparent WebM): drawn into a texture and read back with straight alpha. */
+  private pixelTarget: OffscreenTarget | null = null;
+  /** The project the image outputs draw: with a transparent background when the export is (the background is not drawn). */
+  private readonly drawProject: Project;
 
   constructor(private readonly params: ExportJobParams) {
     const { project, media, svg } = params;
+    this.drawProject = params.format.transparent ? { ...project, settings: { ...project.settings, background: { r: 0, g: 0, b: 0, a: 0 } } } : project;
     this.canvas = new OffscreenCanvas(params.format.width, params.format.height);
     // The device is not replaced mid-export (Batch 47); a WebGL2 context lives on the frame canvas.
     const backend = createBackend(params.renderer, { recover: false, canvas: this.canvas });
@@ -156,6 +166,7 @@ export class ExportRenderer {
     );
     signal.throwIfAborted();
     this.target = this.renderer.createCanvasTarget(this.canvas);
+    if (needsPixels(this.params.format)) this.pixelTarget = this.renderer.createOffscreenTarget(this.params.format.width, this.params.format.height);
   }
 
   /** Project frame `frame` drawn at the export size, as a VideoFrame at `timestampUs` (the caller closes it). */
@@ -169,10 +180,34 @@ export class ExportRenderer {
     }
   }
 
+  /**
+   * Project frame `frame` as straight-alpha RGBA pixels at the export size (the PNG sequence, the GIF and a
+   * transparent WebM): drawn into a texture (the project background only when the export is not transparent)
+   * and read back; an opaque export's pixels are fully opaque.
+   */
+  async renderPixels(frame: Frame, signal: AbortSignal): Promise<ImageData> {
+    try {
+      const target = this.pixelTarget;
+      if (!target) throw new Error("The export renderer is not started");
+      const read = await this.drawInto(frame, signal, target, this.drawProject, () => this.renderer.readPixels(target));
+      const pixels = await read;
+      if (!this.params.format.transparent) for (let i = 3; i < pixels.data.length; i += 4) pixels.data[i] = 255;
+      return pixels;
+    } catch (error) {
+      if (this.gpu.state !== "ready" && !signal.aborted) throw new Error(DEVICE_LOST_MESSAGE);
+      throw error;
+    }
+  }
+
   private async draw(frame: Frame, timestampUs: number, durationUs: number, signal: AbortSignal): Promise<VideoFrame> {
     const { canvas, target } = this;
     if (!target) throw new Error("The export renderer is not started");
-    const project: Project = this.params.project;
+    // The VideoFrame is made in the same task as the draw (the canvas texture is only valid until it ends).
+    return this.drawInto(frame, signal, target, this.params.project, () => new VideoFrame(canvas, { timestamp: timestampUs, duration: durationUs }));
+  }
+
+  /** Resolves the textures of `frame`, draws it into `target` and returns what `after` makes of it (called right after the draw). */
+  private async drawInto<T>(frame: Frame, signal: AbortSignal, target: CanvasTarget | OffscreenTarget, project: Project, after: () => T): Promise<T> {
     const offline = this.offline.size;
     let resolved = await this.textures.resolveExact(this.compositor.evaluate(project, frame), Math.min(DETAIL_MAX_SIZE, this.renderer.maxTextureSize));
     // A media failed while this frame resolved: draw it again, with its slate.
@@ -184,7 +219,7 @@ export class ExportRenderer {
     try {
       signal.throwIfAborted();
       if (this.gpu.state !== "ready" || !this.renderer.draw(list, target)) throw new Error(DEVICE_LOST_MESSAGE);
-      return new VideoFrame(canvas, { timestamp: timestampUs, duration: durationUs });
+      return after();
     } finally {
       release();
     }
@@ -199,6 +234,8 @@ export class ExportRenderer {
   dispose(): void {
     if (this.target) this.renderer.releaseTarget(this.target);
     this.target = null;
+    if (this.pixelTarget) this.renderer.releaseTarget(this.pixelTarget);
+    this.pixelTarget = null;
     this.textures.clear();
     this.text.clear();
     for (const stop of this.stops.splice(0).reverse()) stop();

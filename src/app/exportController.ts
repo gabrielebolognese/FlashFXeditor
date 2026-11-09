@@ -28,16 +28,20 @@ import { renderMixdown } from "../audio/mixdown.js";
 import { loudnessText } from "../export/loudness.js";
 import { createStore, type Store } from "../core/store/createStore.js";
 import type { MediaId, Project } from "../core/document/types.js";
+
 import { AUDIO_FILE_EXTENSIONS, type AudioFileFormat } from "../export/audioExport.js";
 import { EtaEstimator, formatRemaining } from "../export/eta.js";
 import { clearExportTemp, EXPORTS_DIR, ExportFile, pickedFile, saveExport, type PickedFile } from "../export/exportFile.js";
 import { exportNeeds } from "../export/inputs.js";
+import { sequenceRange } from "../export/frames.js";
 import type { AudioJobParams, AudioJobResult, ExportJobParams, ExportJobResult, ExportMediaFile, ExportProgress } from "../export/job.js";
 import { pushLogEntry, type ExportKind, type ExportLogEntry, type ExportRequest } from "../export/log.js";
 import { ExportPauseSync } from "../export/pauseSync.js";
 import { exportPlan } from "../export/plan.js";
 import {
   BUILT_IN_PRESETS,
+  containerOf,
+  CONTAINER_EXTENSIONS,
   customFrom,
   CUSTOM_PRESET_ID,
   exportFormat,
@@ -62,7 +66,7 @@ import { formatBytes } from "../project/cache.js";
 import { errorMessage } from "../project/errorMessage.js";
 import { isDirectoryHandle, type FsDir } from "../project/fs.js";
 import { subdir } from "../project/layout.js";
-import { resolveFile, resolveSequenceFiles, safeFileName, sampleIndexPath } from "../project/mediaFiles.js";
+import { resolveFile, resolveSequenceFiles, safeFileName, sampleIndexPath, takenNames, uniqueName } from "../project/mediaFiles.js";
 import { sequencePaths } from "../media/sequence.js";
 import type { ProjectSession } from "../project/ProjectSession.js";
 import { slateLook } from "../render/preview/PreviewView.js";
@@ -253,14 +257,15 @@ export function requestVideoExport(
   signal: AbortSignal,
   onProgress: (value: ExportProgress) => void,
   deterministic = false,
+  outputName?: string,
 ): Promise<ExportJobResult> {
-  const params: ExportJobParams = { project, range, format, slate: slateLook(themeBridge.theme), textureBudget: Math.round(textureBudget() * (1 - MAIN_TEXTURE_SHARE)), renderer: renderer.backend ?? "webgpu", ...inputs, paused, ...(deterministic && { fixedCreationTime: true }) };
+  const params: ExportJobParams = { project, range, format, slate: slateLook(themeBridge.theme), textureBudget: Math.round(textureBudget() * (1 - MAIN_TEXTURE_SHARE)), renderer: renderer.backend ?? "webgpu", ...inputs, paused, ...(deterministic && { fixedCreationTime: true }), ...(outputName && { outputName }) };
   const transfer: Transferable[] = [...Object.values(inputs.svg), ...(inputs.audio?.channels ?? []), ...inputs.fonts.flatMap((face) => (face.data ? [face.data] : [])), ...Object.values(inputs.luts).map((atlas) => atlas.rgba.buffer as ArrayBuffer)];
   return workerPool.request("exportVideo", params, { priority: "user", signal, transfer, onProgress });
 }
 
 /** The stereo mixdown of the range (the master volume is monitoring only, spec §14: never in it). */
-async function mixdown(project: Project, range: FrameRange, signal: AbortSignal): Promise<{ sampleRate: number; channels: ArrayBuffer[] } | null> {
+export async function mixdown(project: Project, range: FrameRange, signal: AbortSignal): Promise<{ sampleRate: number; channels: ArrayBuffer[] } | null> {
   const mix = await renderMixdown(project, range, { sampleRate: MIX_RATE, channels: MIX_CHANNELS, signal }, { audio: decodedAudio, createContext: (init) => new OfflineAudioContext(init) });
   return mix ? { sampleRate: mix.sampleRate, channels: mix.channels.map((plane) => plane.buffer) } : null;
 }
@@ -272,11 +277,30 @@ async function runJob(job: QueueJob<ExportJobSpec>, signal: AbortSignal, fail: (
   if (spec.request.kind === "video") setTextureShare(MAIN_TEXTURE_SHARE);
   showProgress(job.id);
   syncProgressToast();
-  const ext = spec.request.kind === "video" ? "mp4" : AUDIO_FILE_EXTENSIONS[spec.request.audioFormat];
+  const ext = requestExtension(spec.request);
   let output: ExportFile | null = null;
+  /** A PNG sequence: the folder under exports/ its frames go into, and the names written (removed again on a cancel). */
+  let sequence: { dir: FsDir; written: string[] } | null = null;
+  let sequenceWrites: Promise<unknown> = Promise.resolve();
+  let sequenceError: unknown = null;
   const onProgress = (value: ExportProgress) => {
     if (value.kind === "bytes") {
       output?.write(new Uint8Array(value.data), value.position);
+      return;
+    }
+    if (value.kind === "file") {
+      const target = sequence;
+      if (target) {
+        target.written.push(value.name);
+        sequenceWrites = sequenceWrites.then(() => target.dir.writeFile(value.name, new Blob([value.data])).catch((error) => {
+          sequenceError ??= error;
+          fail(error);
+        }));
+      }
+      return;
+    }
+    if (value.kind === "estimate") {
+      console.info(`[export] size estimate ${formatBytes(value.bytes)}`);
       return;
     }
     if (value.kind === "started") rt.started = true;
@@ -292,6 +316,17 @@ async function runJob(job: QueueJob<ExportJobSpec>, signal: AbortSignal, fail: (
     if (spec.request.kind === "video") {
       const inputs = await gatherInputs(dir, spec.project, spec.range, signal);
       signal.throwIfAborted();
+      if (containerOf(spec.request.settings) === "png") {
+        const exportsDir = await subdir(dir, EXPORTS_DIR);
+        const folder = uniqueName(await takenNames(exportsDir), stripExtension(spec.fileName));
+        sequence = { dir: await subdir(exportsDir, folder), written: [] };
+        const result = await requestVideoExport(spec.project, spec.range, spec.format, inputs, rt.pause.post(), signal, onProgress, false, folder);
+        await sequenceWrites;
+        if (sequenceError !== null) throw sequenceError;
+        const bytes = await folderBytes(sequence.dir, sequence.written);
+        console.info(`[export] ${folder}/: ${result.frames} frames ${result.width}x${result.height} PNG in ${Math.round(result.ms)} ms, ${bytes} bytes`);
+        return { name: folder, bytes, detail: `${result.width}×${result.height} · ${sequenceRange(folder, result.frames)}` };
+      }
       output = spec.picked ? await ExportFile.toPicked(spec.picked.file, fail) : await ExportFile.create(dir, crypto.randomUUID(), fail, ext);
       // Read right before the post (no await in between): a Pause from now on is sent after the job.
       const result = await requestVideoExport(spec.project, spec.range, spec.format, inputs, rt.pause.post(), signal, onProgress);
@@ -314,11 +349,29 @@ async function runJob(job: QueueJob<ExportJobSpec>, signal: AbortSignal, fail: (
     return { name, bytes, detail: audioDuration(samples), ...(result.loudness && { loudness: loudnessText(result.loudness) }) };
   } catch (error) {
     await output?.discard();
+    if (sequence) {
+      await sequenceWrites.catch(() => undefined);
+      for (const name of sequence.written) await sequence.dir.remove(name).catch(() => undefined);
+    }
     throw error;
   } finally {
     // A fresh worker per job: the device, decoders and textures of this one go at once (P13).
     workerPool.stop("export");
   }
+}
+
+/** The extension of the file a request writes (a PNG sequence has none: it is a folder). */
+function requestExtension(request: ExportRequest): string {
+  return request.kind === "video" ? CONTAINER_EXTENSIONS[containerOf(request.settings)] : AUDIO_FILE_EXTENSIONS[request.audioFormat];
+}
+
+const stripExtension = (name: string): string => name.replace(/\.[A-Za-z0-9]{1,5}$/, "");
+
+/** Total size of the named files of `dir`. */
+async function folderBytes(dir: FsDir, names: string[]): Promise<number> {
+  let total = 0;
+  for (const name of names) total += (await dir.getFile(name))?.size ?? 0;
+  return total;
 }
 
 function audioDuration(samples: number): string {
@@ -473,6 +526,9 @@ export function requestFileName(request: Pick<ExportRequest, "template" | "prese
 
 const PICKER_TYPES: Record<string, { description: string; accept: Record<string, string[]> }> = {
   mp4: { description: "MP4 video", accept: { "video/mp4": [".mp4"] } },
+  webm: { description: "WebM video", accept: { "video/webm": [".webm"] } },
+  gif: { description: "GIF image", accept: { "image/gif": [".gif"] } },
+  zip: { description: "Zip archive", accept: { "application/zip": [".zip"] } },
   m4a: { description: "M4A audio", accept: { "audio/mp4": [".m4a"] } },
   wav: { description: "WAV audio", accept: { "audio/wav": [".wav"] } },
   png: { description: "PNG image", accept: { "image/png": [".png"] } },
@@ -514,10 +570,12 @@ export async function enqueueExport(request: ExportRequest): Promise<string | nu
     showToast({ tone: "info", message: "Nothing to export", detail: "Add clips to the timeline first." });
     return null;
   }
-  const ext = request.kind === "video" ? "mp4" : AUDIO_FILE_EXTENSIONS[request.audioFormat];
+  const ext = requestExtension(request);
   const fileName = requestFileName(request, project, ext);
-  const picked = request.destination === "pick" ? await pickDestination(fileName, ext) : null;
-  if (request.destination === "pick" && !picked) return null;
+  // A PNG sequence is a folder of files: always written under exports/ (the save picker names one file).
+  const sequence = request.kind === "video" && containerOf(request.settings) === "png";
+  const picked = request.destination === "pick" && !sequence ? await pickDestination(fileName, ext) : null;
+  if (request.destination === "pick" && !sequence && !picked) return null;
   const format = exportFormat(project, request.settings);
   const summary = request.kind === "video" ? formatSummary(format) : audioSummary(request.audioFormat, format.audioBitrate);
   const id = exportQueue.add({ request, project, session, fileName: picked ? picked.handle.name : fileName, picked, range, format, summary });

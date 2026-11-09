@@ -148,6 +148,10 @@ export class SwitchRenderer implements Renderer {
     return this.chosen ? this.chosen.readBitmap(target) : Promise.reject(new Error("The GPU device is not ready"));
   }
 
+  readPixels(target: OffscreenTarget): Promise<ImageData> {
+    return this.chosen ? this.chosen.readPixels(target) : Promise.reject(new Error("The GPU device is not ready"));
+  }
+
   releaseTarget(target: RenderTarget): void {
     this.chosen?.releaseTarget(target);
   }

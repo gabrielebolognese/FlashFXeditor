@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { BookmarkPlus, Captions, Copy, FileAudio, ImageDown, Info, Trash2, Upload } from "lucide-react";
+import { AudioLines, BookmarkPlus, Captions, Copy, FileAudio, FileDown, FolderInput, ImageDown, Info, Trash2, Upload } from "lucide-react";
 import {
   changeExportSettings,
   chooseExportPreset,
@@ -24,7 +24,13 @@ import {
   BITRATE_MODES,
   BUILT_IN_PRESETS,
   CODEC_NAMES,
+  CONTAINER_EXTENSIONS,
+  CONTAINER_NAMES,
+  CONTAINERS,
+  containerOf,
   CUSTOM_PRESET_ID,
+  GIF_WIDTH_RANGE,
+  WEBM_CODECS,
   estimateBytes,
   exportFormat,
   formatSummary,
@@ -38,6 +44,7 @@ import {
   VIDEO_CODECS,
   exportSize,
   type BitrateMode,
+  type ExportContainer,
   type ExportSettings,
   type HardwarePreference,
   type VideoCodecId,
@@ -166,7 +173,8 @@ function useCodecSupport(format: Parameters<typeof codecSupported>[0]): Partial<
   const key = JSON.stringify([format.width, format.height, format.fps, format.videoBitrate, format.maxBitrate, format.bitrateMode, format.hardware]);
   useEffect(() => {
     let live = true;
-    void Promise.all(VIDEO_CODECS.map(async (codec) => [codec, await codecSupported(format, codec)] as const)).then((answers) => {
+    // VP9 only exists in a WebM: asked for as one.
+    void Promise.all([...VIDEO_CODECS, "vp9" as const].map(async (codec) => [codec, await codecSupported(codec === "vp9" ? { ...format, container: "webm" } : format, codec)] as const)).then((answers) => {
       if (!live) return;
       const next: Partial<Record<VideoCodecId, boolean>> = {};
       for (const [codec, supported] of answers) if (supported !== null) next[codec] = supported;
@@ -209,7 +217,7 @@ export function ExportTab() {
     const format = exportFormat(project, preset.settings);
     const range = exportRange(project) ?? { start: 0, end: contentEnd(project) };
     const seconds = ((range.end - range.start) * project.settings.fps.den) / project.settings.fps.num;
-    const fileName = requestFileName({ template: settings.exportFileTemplate, presetId: preset.id, presetName: preset.name }, project, "mp4");
+    const fileName = requestFileName({ template: settings.exportFileTemplate, presetId: preset.id, presetName: preset.name }, project, CONTAINER_EXTENSIONS[containerOf(preset.settings)]);
     return { project, preset, editable, format, range, seconds, fileName };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presetId, custom, own, template, size, fpsValue, name, end, rangeMode, inOut]);
@@ -227,6 +235,10 @@ export function ExportTab() {
       peak: settingBinding(
         (s, p) => exportFormat(p, s).maxBitrate / MBPS,
         (value) => ({ maxBitrate: Math.round(value * MBPS) }),
+      ),
+      gifWidth: settingBinding(
+        (s, p) => exportFormat(p, s).width,
+        (value) => ({ gifWidth: Math.round(value) }),
       ),
       keyframes: settingBinding(
         (s) => s.keyframeSeconds,
@@ -249,8 +261,13 @@ export function ExportTab() {
   const projectFps = project.settings.fps;
   const fps = (frames: number) => formatTimecode(frames, projectFps, timecode);
   const useInOut = rangeMode === "inOut" && inOutRange !== null;
-  const unsupported = support[format.codec] === false;
-  const fallback = `${CODEC_NAMES[format.codec]} is not supported here: H.264 is used`;
+  const container = containerOf(editable);
+  const video = container === "mp4" || container === "webm";
+  const unsupported = video && support[format.codec] === false;
+  const fallback = `${CODEC_NAMES[format.codec]} is not supported here: ${container === "webm" ? "VP9" : "H.264"} is used`;
+  // Transparency needs the VP9 alpha stream (WebM) or a PNG sequence; the checkbox says why when VP9 is missing.
+  const transparentOk = container === "png" || (container === "webm" && support.vp9 !== false);
+  const codecChoices = container === "webm" ? WEBM_CODECS : VIDEO_CODECS;
   const ownChosen = preset.id !== CUSTOM_PRESET_ID && !isBuiltIn(preset.id);
   const setRange = (mode: "whole" | "inOut") => sessionStore.state.set((state) => (state.exportRange === mode ? state : { ...state, exportRange: mode }));
   const scaleOptions = RESOLUTION_SCALES.map((scale) => {
@@ -302,17 +319,49 @@ export function ExportTab() {
         <ExportJobs />
       </Section>
       <Section id="exportSettings" title="Settings">
-        <Row label="Codec">
+        <Row label="Format">
+          <Select<ExportContainer> value={container} options={CONTAINERS.map((id) => ({ value: id, label: CONTAINER_NAMES[id] }))} onChange={(next) => changeExportSettings({ container: next, ...(next === "webm" && editable.codec !== "av1" && { codec: "vp9" }), ...(next === "mp4" && editable.codec === "vp9" && { codec: "avc" }), ...(next === "gif" || next === "mp4" ? { transparent: false } : {}) })} label="Output format" />
+        </Row>
+        {(container === "webm" || container === "png") && (
+          <Row label="Background">
+            <Chips label="Background">
+              <Chip checked={editable.transparent !== true} label="Opaque" tooltip="The project background is drawn" onSelect={() => changeExportSettings({ transparent: false })} />
+              <Chip
+                checked={editable.transparent === true}
+                label="Transparent"
+                tooltip={transparentOk ? "Keep the empty areas transparent (alpha)" : "Transparent: this browser cannot encode VP9, which carries the alpha"}
+                disabled={!transparentOk}
+                onSelect={() => changeExportSettings({ transparent: true, ...(container === "webm" && { codec: "vp9" }) })}
+              />
+            </Chips>
+          </Row>
+        )}
+        {container === "gif" && (
+          <>
+            <Row label="Width">
+              <NumberField binding={bindings.gifWidth} unit="px" min={GIF_WIDTH_RANGE.min} max={GIF_WIDTH_RANGE.max} step={10} precision={0} ariaLabel="GIF width" />
+            </Row>
+            <Row label="Dither">
+              <Chips label="Dither">
+                <Chip checked={editable.gifDither !== false} label="Ordered" tooltip="Dithering hides banding: a larger file" onSelect={() => changeExportSettings({ gifDither: true })} />
+                <Chip checked={editable.gifDither === false} label="None" tooltip="Flat colors: a smaller file" onSelect={() => changeExportSettings({ gifDither: false })} />
+              </Chips>
+            </Row>
+          </>
+        )}
+        {video && <Row label="Codec">
           <Select<VideoCodecId>
             value={editable.codec}
-            options={VIDEO_CODECS.map((codec) => ({ value: codec, label: support[codec] === false ? `${CODEC_NAMES[codec]} (not supported here)` : CODEC_NAMES[codec] }))}
+            options={codecChoices.map((codec) => ({ value: codec, label: support[codec] === false ? `${CODEC_NAMES[codec]} (not supported here)` : CODEC_NAMES[codec] }))}
             onChange={(codec) => changeExportSettings({ codec })}
             label="Codec"
           />
-        </Row>
-        <Row label="Resolution">
-          <Select value={String(editable.scale)} options={scaleOptions} onChange={(value) => changeExportSettings({ scale: Number(value) as ExportSettings["scale"] })} label="Resolution" />
-        </Row>
+        </Row>}
+        {container !== "gif" && (
+          <Row label="Resolution">
+            <Select value={String(editable.scale)} options={scaleOptions} onChange={(value) => changeExportSettings({ scale: Number(value) as ExportSettings["scale"] })} label="Resolution" />
+          </Row>
+        )}
         <Row label="Frame rate">
           <Select
             value={editableFps}
@@ -324,6 +373,7 @@ export function ExportTab() {
             label="Export frame rate"
           />
         </Row>
+        {video && (<>
         <Row label="Bitrate">
           <Select<BitrateMode> value={editable.bitrateMode} options={BITRATE_MODES.map((mode) => ({ value: mode, label: BITRATE_LABELS[mode] }))} onChange={(bitrateMode) => changeExportSettings({ bitrateMode })} label="Bitrate mode" />
         </Row>
@@ -337,11 +387,12 @@ export function ExportTab() {
           <NumberField binding={bindings.keyframes} label="Every" unit="s" min={KEYFRAME_SECONDS_RANGE.min} max={KEYFRAME_SECONDS_RANGE.max} step={0.5} precision={1} ariaLabel="Keyframe interval" />
         </Row>
         <Row label="Audio">
-          <Select value={String(editable.audioBitrate)} options={AUDIO_BITRATES.map((bps) => ({ value: String(bps), label: `AAC ${bps / 1000} kbps` }))} onChange={(value) => changeExportSettings({ audioBitrate: Number(value) })} label="Audio bitrate" />
+          <Select value={String(editable.audioBitrate)} options={AUDIO_BITRATES.map((bps) => ({ value: String(bps), label: `${container === "webm" ? "Opus" : "AAC"} ${bps / 1000} kbps` }))} onChange={(value) => changeExportSettings({ audioBitrate: Number(value) })} label="Audio bitrate" />
         </Row>
         <Row label="Encoder">
           <Select<HardwarePreference> value={editable.hardware} options={HARDWARE_PREFERENCES.map((h) => ({ value: h, label: HARDWARE_LABELS[h] }))} onChange={(hardware) => changeExportSettings({ hardware })} label="Hardware acceleration" />
         </Row>
+        </>)}
         <SettingsHint text={isBuiltIn(preset.id) ? `Changing a setting switches ${preset.name} to Custom.` : "Changes are kept in this preset."} />
         <Row label="Presets">
           {naming ? <PresetNameField /> : <PresetButtons own={ownChosen} />}
@@ -382,7 +433,24 @@ export function ExportTab() {
             </Button>
           </div>
         </Row>
-        <span className={sectionStyles.hint}>Saved where exports go; audio and captions follow the range.</span>
+        <Row label="Stems">
+          <div className={sectionStyles.textButtons}>
+            <Button size="compact" commandId="export.stems" icon={AudioLines}>
+              Export stems
+            </Button>
+          </div>
+        </Row>
+        <Row label="Project">
+          <div className={sectionStyles.textButtons}>
+            <Button size="compact" commandId="export.collect" icon={FolderInput}>
+              Collect
+            </Button>
+            <Button size="compact" commandId="export.zip" icon={FileDown}>
+              Zip
+            </Button>
+          </div>
+        </Row>
+        <span className={sectionStyles.hint}>Saved where exports go (stems and a PNG sequence in a folder of their own); audio, stems and captions follow the range. Collect copies linked media into the project.</span>
       </Section>
       <Section id="exportLog" title="Log">
         <ExportLog />

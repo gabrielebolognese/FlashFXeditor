@@ -1,7 +1,8 @@
 // `cli render` and `cli compare` (spec §21.6, Batch 57). The work happens in the render page (the app's
 // own compositor, export job and decoders, in headless Chrome); this file parses the command line,
 // starts the session (headless.ts), prints the progress and the report, and sets the exit code.
-//   render <dir> --out <file.mp4> [--range <from>:<to>] [--preset <id>] [--backend webgpu|webgl2]
+//   render <dir> --out <file.mp4> [--format mp4|webm|png|gif] [--transparent] [--range <from>:<to>] [--preset <id>] [--backend webgpu|webgl2]
+//   (--format png writes numbered frames <name>_00001.png into the folder --out; webm and gif follow the file's extension)
 //   render <dir> --frames <f1,f2,...> --png <outdir> [--backend ...]
 //   compare <a> <b> [--ssim <min>] [--psnr <min>] [--region x,y,w,h] [--diff <dir>] [--json]
 // Exit codes: 0 done / within thresholds, 1 below thresholds (compare) or a failed render, 2 usage.
@@ -17,15 +18,26 @@ import { parseRegion, type Rect } from "../../src/render/headless/ssim.js";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const DIST = join(root, "dist");
 
-export const RENDER_USAGE = `  render <dir> --out <file.mp4> [--range <from>:<to>] [--preset <id>] [--backend webgpu|webgl2]
+export const RENDER_USAGE = `  render <dir> --out <file.mp4> [--format mp4|webm|png|gif] [--transparent] [--range <from>:<to>] [--preset <id>] [--backend webgpu|webgl2]
+                            --format png: --out is a folder of numbered PNG frames; --transparent keeps alpha (webm, png)
   render <dir> --frames <f1,f2,...> --png <outdir> [--backend webgpu|webgl2]
                             render a project folder with the editor's own compositor and encoders
   compare <a> <b> [--ssim <min>] [--psnr <min>] [--region x,y,w,h] [--diff <dir>] [--json]
                             compare two videos or PNG folders frame by frame (exit 1 below the thresholds)
 `;
 
-const VALUE_OPTIONS = new Set(["--out", "--range", "--preset", "--backend", "--frames", "--png", "--ssim", "--psnr", "--region", "--diff", "--worst"]);
-const FLAG_OPTIONS = new Set(["--json"]);
+const VALUE_OPTIONS = new Set(["--format", "--out", "--range", "--preset", "--backend", "--frames", "--png", "--ssim", "--psnr", "--region", "--diff", "--worst"]);
+const FLAG_OPTIONS = new Set(["--json", "--transparent"]);
+
+export type RenderFormat = "mp4" | "webm" | "png" | "gif";
+const FORMATS: readonly RenderFormat[] = ["mp4", "webm", "png", "gif"];
+
+/** The output format: --format, else the extension of --out (.webm, .gif), else mp4; null for an unknown name. */
+export function formatOf(explicit: string | undefined, out: string | undefined): RenderFormat | null {
+  if (explicit !== undefined) return (FORMATS as readonly string[]).includes(explicit) ? (explicit as RenderFormat) : null;
+  const ext = out?.toLowerCase().match(/\.(webm|gif)$/)?.[1];
+  return ext === "webm" || ext === "gif" ? ext : "mp4";
+}
 
 export interface ParsedArgs {
   positional: string[];
@@ -114,8 +126,14 @@ export async function renderCommand(argv: readonly string[]): Promise<number> {
   const range = rangeText === undefined ? null : parseFrameRange(rangeText);
   if (rangeText !== undefined && !range) return usage("--range is <from>:<to> in frames, end after start");
 
-  const outFile = out ? resolve(out) : null;
-  const pngDir = png ? resolve(png) : null;
+  const format = formatOf(parsed.options.get("--format"), out);
+  if (!format) return usage("--format is mp4, webm, png or gif");
+  const transparent = parsed.flags.has("--transparent");
+  if (transparent && (format === "mp4" || format === "gif")) return usage("--transparent is for --format webm or png");
+  // A PNG sequence is a folder: --out is the folder the frames go into.
+  const sequenceDir = format === "png" && out ? resolve(out) : null;
+  const outFile = out && !sequenceDir ? resolve(out) : null;
+  const pngDir = sequenceDir ?? (png ? resolve(png) : null);
   if (outFile) mkdirSync(dirname(outFile), { recursive: true });
   if (pngDir) mkdirSync(pngDir, { recursive: true });
   try {
@@ -130,11 +148,16 @@ export async function renderCommand(argv: readonly string[]): Promise<number> {
         for (const name of result.files) console.log(join(png as string, name));
         return;
       }
-      const options = JSON.stringify({ fileName: basename(outFile as string), range, preset: parsed.options.get("--preset") ?? null });
+      const options = JSON.stringify({ fileName: basename((outFile ?? sequenceDir) as string), range, preset: parsed.options.get("--preset") ?? null, format, transparent });
       const started = Date.now();
       const result = await page.evaluate<VideoResult>(`window.__render.video(${options})`);
       const seconds = (Date.now() - started) / 1000;
       const length = result.frames / ((info.project?.fps.num ?? 30) / (info.project?.fps.den ?? 1));
+      if (sequenceDir) {
+        console.error(`${sequenceDir}: ${result.frames} PNG frames ${result.width}x${result.height} in ${((Date.now() - started) / 1000).toFixed(1)} s`);
+        console.log(sequenceDir);
+        return;
+      }
       console.error(`${outFile}: ${result.frames} frames ${result.width}x${result.height} ${result.videoCodec}${result.audioCodec ? ` / ${result.audioCodec}` : ""}, ${result.bytes} bytes in ${seconds.toFixed(1)} s (${(seconds / length).toFixed(2)}x real time)`);
       console.log(outFile);
       if (!statSync(outFile as string).isFile()) throw new Error("The render wrote no file");

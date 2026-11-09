@@ -112,6 +112,8 @@ export interface Renderer {
   createOffscreenTarget(width: number, height: number): OffscreenTarget;
   /** The target's pixels as a bitmap with straight alpha. */
   readBitmap(target: OffscreenTarget): Promise<ImageBitmap>;
+  /** The target's pixels as straight-alpha RGBA bytes, rows top first (the transparent exports, spec §21.25). */
+  readPixels(target: OffscreenTarget): Promise<ImageData>;
   /** Frees a target (an offscreen texture, or a canvas configuration). */
   releaseTarget(target: RenderTarget): void;
   /** "lost": every texture handle became invalid. "ready": a device (the first or a replacement) can draw; re-upload and redraw. */
