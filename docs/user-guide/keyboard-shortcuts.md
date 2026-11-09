@@ -823,7 +823,7 @@ See [Projects and saving](projects-and-saving.md) and [Project settings and temp
 
 - <kbd>Ctrl</kbd>+<kbd>E</kbd> followed by <kbd>Enter</kbd> exports with the choices you used last.
 - <kbd>Esc</kbd> closes the **Export** tab only when it has nothing else to do; see the order under [Preview](#preview).
-- These commands of the **Export** category have no key: **Export the video**, **Close the Export tab**, **Copy frame**, **Export audio**, **Export captions**, **Export again**, **Open the exports folder**, **Save export settings as a preset…**, **Delete the export preset**, **Pause or resume the export** and **Cancel the export**. **Export frame** is in the **Preview** category and has no key either. Run them from the command palette, or give them one in **Settings** > **Shortcuts**.
+- These commands of the **Export** category have no key: **Export the video**, **Close the Export tab**, **Copy frame**, **Export audio**, **Export captions**, **Export audio stems**, **Collect project**, **Zip the project**, **Export again**, **Open the exports folder**, **Save export settings as a preset…**, **Delete the export preset**, **Pause or resume the export** and **Cancel the export**. **Export frame** is in the **Preview** category and has no key either. Run them from the command palette, or give them one in **Settings** > **Shortcuts**.
 - The job cards in the **Queue** and the progress message have **Pause** / **Resume** and **Cancel** buttons.
 
 See [Exporting your video](exporting-video.md).

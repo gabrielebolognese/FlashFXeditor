@@ -1,6 +1,6 @@
 # Exporting your video
 
-When your edit is ready, the **Export** tab turns it into an MP4 video with picture and sound. Use it for Instagram Reels, TikTok, YouTube Shorts or settings of your own. You can export the whole timeline or only the part between your in and out points. The file goes into the `exports` folder of your project, or to a file you choose. Exports wait in a queue and run in the background while you keep editing. The same tab also saves the current frame as a picture, the sound as an audio file and the captions as a subtitle file.
+When your edit is ready, the **Export** tab turns it into an video with picture and sound (MP4, or WebM, a PNG sequence or a GIF). Use it for Instagram Reels, TikTok, YouTube Shorts or settings of your own. You can export the whole timeline or only the part between your in and out points. The file goes into the `exports` folder of your project, or to a file you choose. Exports wait in a queue and run in the background while you keep editing. The same tab also saves the current frame as a picture, the sound as an audio file and the captions as a subtitle file.
 
 > **Video placeholder: Export a video in two clicks**
 > - File: `videos/exporting-video/overview.mp4` (not recorded yet)
@@ -30,6 +30,9 @@ When your edit is ready, the **Export** tab turns it into an MP4 video with pict
 - [Find the exported file](#find-the-exported-file)
 - [See your last exports and export again](#see-your-last-exports-and-export-again)
 - [Export a frame, the sound or the captions](#export-a-frame-the-sound-or-the-captions)
+- [Export WebM, a PNG sequence or a GIF](#export-webm-a-png-sequence-or-a-gif)
+- [Export audio stems](#export-audio-stems)
+- [Collect or zip the project](#collect-or-zip-the-project)
 - [Keep editing while you export](#keep-editing-while-you-export)
 - [When an export doesn't start or stops](#when-an-export-doesnt-start-or-stops)
 - [Related pages](#related-pages)
@@ -71,6 +74,9 @@ Click a chip in the **Preset** row. The line under the chips shows what the expo
 | **TikTok** | For TikTok: as **Reels**, with H.264 at 10 Mbps. |
 | **Shorts** | For YouTube Shorts: 1080×1920 (2160×3840 for a 4K project), up to 60 fps, H.264 at the bitrate YouTube recommends for that size and frame rate, AAC at 192 kbps. |
 | Your own presets | The settings you saved under that name. They sit between **Shorts** and **Custom**. See [Save your own preset](#save-your-own-preset). |
+| **Overlay** | A transparent WebM (VP9 with alpha, Opus sound) at the project's size, up to 30 fps, to lay over other video. |
+| **GIF** | A GIF preview, 540 px wide, 15 fps, no sound. |
+| **PNG** | A PNG sequence with alpha: one numbered picture per frame, in a folder. |
 | **Custom** | The settings you choose in the **Settings** section: codec, size, frame rate and bitrates. Until you change anything, **Custom** is **Reels** at your project's own size. |
 
 **Reels**, **TikTok** and **Shorts** never change. When you change a setting while one of them is chosen, the tab switches to **Custom**, with that preset's values and your change. See [Change the export settings](#change-the-export-settings).
@@ -373,6 +379,43 @@ While any export runs, video or audio:
 | **Can't export the frame**, **Can't copy the frame** or **Couldn't export the captions**, with the reason | The picture or the file could not be saved or copied. | Try again, or choose another place with **Choose file…**. |
 | **Too many export presets**: "Delete one of your 30 presets first." | You already have 30 presets of your own. | Delete one you don't need. |
 
+## Export WebM, a PNG sequence or a GIF
+
+Besides MP4, the **Format** row at the top of **Settings** offers **MP4**, **WebM**, **PNG sequence** and **GIF**. The **Overlay**, **GIF** and **PNG** presets pick them for you. Rows that don't apply to the chosen format are hidden.
+
+> **Video placeholder: Export a transparent overlay, a GIF and a PNG sequence**
+> - File: `videos/exporting-video/other-formats.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows:
+>   1. A project with only a title on V1. Press <kbd>Ctrl</kbd>+<kbd>E</kbd> and click the **Overlay** chip: **Settings** shows **Format** **WebM** and **Background** **Transparent**.
+>   2. Click **Export**. Drag the finished WebM into a browser tab with a coloured page: the title shows over it.
+>   3. Click the **GIF** chip: **Width** `540` px and **Dither** **Ordered** appear. Click **Export** and open the GIF in the browser: it loops.
+>   4. Click the **PNG** chip and **Export**: click **Open folder** and show the numbered files in an image viewer.
+
+| Format | What you get |
+| --- | --- |
+| **MP4** | A video with sound, as described above. |
+| **WebM** | A video with Opus sound, with VP9 or AV1 picture. Choose **Opaque** or **Transparent** in the **Background** row. **Transparent** is VP9 only. It is dimmed, with the reason in its tooltip, when your browser cannot encode VP9. |
+| **PNG sequence** | One picture per frame, named *name*`_00001.png`, *name*`_00002.png` and so on, in a folder `exports/`*name* (a free folder name). With **Transparent** the pictures have an alpha channel; otherwise they are RGB. |
+| **GIF** | An animated GIF without sound. **Width** goes from 64 to 1080 px (540 by default). **Dither** **Ordered** hides banding and makes a larger file; **None** keeps flat colors and a smaller file. |
+
+> **Note:** A PNG sequence always goes into a folder in `exports`: **Choose file…** is ignored for it. Cancelling the export removes the frames it wrote; the empty folder stays.
+
+> **Note:** The size beside the **Export** button for a GIF is a rough guess for graphics. Photographs and video can give a file several times larger. Choosing **GIF** in **Custom** keeps your project's frame rate; only the **GIF** preset sets 15 fps.
+
+## Export audio stems
+
+Click **Export stems** in the **Extras** section (row **Stems**). It writes one 16-bit, 48 kHz WAV for each audio track that has clips, into the folder `exports/`*project*`-stems`, named like `01 Music.wav`. Muted, silenced and empty tracks are left out. A stem is the track as the timeline mixes it, with its gain and pan, but it is not loudness-normalized. Played together, the stems add up to the mixdown. The stems follow the range, like **Export audio**. You can also run **Export audio stems** from the command palette.
+
+## Collect or zip the project
+
+The **Project** row of **Extras** has two buttons:
+
+1. **Collect** copies the media you linked from other folders into the project's `media` folder and relinks the project to the copies. Afterwards the project opens from another folder with nothing missing. Linked image sequences stay linked.
+2. **Zip** saves the whole project as one `.zip` file without compression. It leaves out the cache, history and exports. A zip over 4 GB or 65,535 files shows an error.
+
+Neither asks for a destination. In the command palette they are **Collect project** and **Zip the project**.
+
 ## Related pages
 - [Preview and playback](preview-and-playback.md#export-the-current-frame)
 - [Markers and in/out points](markers-and-in-out-points.md)
@@ -386,4 +429,4 @@ While any export runs, video or audio:
 - [Keyboard shortcuts](keyboard-shortcuts.md#export)
 - [Troubleshooting](troubleshooting.md#export)
 
-<sub>Last updated: Batch 53, 2026-10-19</sub>
+<sub>Last updated: Batch 81, 2026-11-10</sub>

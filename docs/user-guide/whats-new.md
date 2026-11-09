@@ -2,6 +2,14 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+## Batch 81: Export WebM, PNG sequences, GIF, stems and project zip
+The **Settings** section of the **Export** tab gets a **Format** row: **MP4**, **WebM**, **PNG sequence** and **GIF**. WebM can be **Transparent**. New presets **Overlay**, **GIF** and **PNG**. **Extras** gets **Export stems** (one WAV per audio track), **Collect** (copy linked media into the project) and **Zip**. See [Export WebM, a PNG sequence or a GIF](exporting-video.md#export-webm-a-png-sequence-or-a-gif).
+
+> **Video placeholder: What's new in Batch 81**
+> - File: `videos/whats-new/batch-81.mp4` (not recorded yet)
+> - Length: about 40 seconds
+> - Shows: open the **Export** tab; click **Overlay** and **Export**; click **GIF** and **Export**; open **Extras** and click **Export stems**, then **Zip**.
+
 ## Batch 80: Templates
 Turn a compound clip into a template. In **Properties** > **Parameters**, **As parameter** makes a field (text, color, media, size, position) changeable; each copy then has its own values in **Properties**, with **Reset** and **Reset all**. **Save as template** stores the card, and the **Templates** section of the **Presets** tab inserts it in any project with a double-click. See [Templates](templates.md).
 
