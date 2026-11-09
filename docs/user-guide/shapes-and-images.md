@@ -32,6 +32,7 @@ Solids are shapes you add with one click: a rectangle, a rounded rectangle, an e
 - [Edit a shape](#edit-a-shape)
 - [Import an SVG as shapes](#import-an-svg-as-shapes)
 - [Undo shape and image changes](#undo-shape-and-image-changes)
+- [Use Lottie animations](#use-lottie-animations)
 - [Related pages](#related-pages)
 
 ## Add a shape
@@ -307,6 +308,28 @@ When you drop an SVG on the timeline or the preview, it is added as an image, an
 
 See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
+## Use Lottie animations
+
+A Lottie animation is a vector animation such as an animated sticker, icon or emoji. It stays sharp at any size, including 300 percent.
+
+1. Open the **Media** tab and click **Import**.
+2. Choose a `.json` animation file or a `.lottie` archive. The editor recognizes an animation by its content, so an ordinary `.json` file is refused.
+3. The animation appears as a card with a **Lottie** chip. Use the **Lottie** filter chip to show only animations.
+4. Drag the card to the timeline. It behaves like an image clip: you can make it any length.
+
+Select the clip and open **Properties** to find the Lottie section:
+
+| Control | What it does |
+|---|---|
+| **Loop** | On: the animation repeats for the whole clip. Off: it plays once and holds its last frame. |
+| **Add color** | Adds a color pair for a color the animation really uses. |
+| **Color 1**, **Color 2**... | The first swatch is the color to replace, the second is the new color. Change the second swatch and the animation recolors live. The **X** button removes a pair. |
+| **Clear** | Removes every color replacement. |
+
+Use the **Speed** control to play the animation faster or slower.
+
+> **Note:** Gradient colors cannot be replaced. A clip cannot be played in reverse or time-remapped, and it has no **Crop** or **Frame** section. A file that is not an animation, has no frames, no size or no layers is refused with a message.
+
 ## Related pages
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Keyframes](keyframes.md)
@@ -319,4 +342,4 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 - [Titles and text](titles-and-text.md)
 - [Troubleshooting](troubleshooting.md#shapes-and-images)
 
-<sub>Last updated: Batch 66, 2026-11-08
+<sub>Last updated: Batch 79, 2026-11-09

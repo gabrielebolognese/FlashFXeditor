@@ -39,7 +39,7 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 23. [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md): speed clips up or slow them down, hold a frame, and punch in on a shot.
 24. [Keyframes](keyframes.md): make pictures move, grow, turn and fade over time with a stopwatch, keyframes on the timeline and eight easings.
 25. [Fades and transitions](fades-and-transitions.md): fade clips in and out with a drag or one click, and add cross dissolves and dips to black or white at your cuts, with the sound crossfading under them.
-26. [Shapes and images](shapes-and-images.md): add rectangles, ellipses, lines and gradient backgrounds in one click, place images at the playhead, and use animated GIF and WebP stickers and sharp SVG logos, and editable vector shapes from the **Add shape** menu or an SVG file.
+26. [Shapes and images](shapes-and-images.md): add rectangles, ellipses, lines and gradient backgrounds in one click, place images at the playhead, and use animated GIF and WebP stickers and sharp SVG logos, and editable vector shapes from the **Add shape** menu or an SVG file, and Lottie animations.
 27. [Titles and text](titles-and-text.md): add a title or a subtitle with one key, type it in the preview, and style it with fonts, outlines, shadows and boxes.
 28. [Fonts](fonts.md): find one of 330 fonts by look, weight or name, see it on your text before you choose, add your own font files, and use the fonts on your computer.
 29. [Text animations](text-animations.md): make titles fade, slide, pop or type themselves in and out, count numbers and animate letters, words or lines.

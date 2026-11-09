@@ -7481,6 +7481,7 @@ Why each dependency exists (Batch rule 8).
 
 ### Batch 79: Lottie clips
 - status: done
+- docs: shapes-and-images.md, importing-media.md, whats-new.md, README.md in docs/user-guide/ (2026-11-09)
 - date: 2026-11-09
 - notes:
   - Built in auto mode. `npm run check`: typecheck, lint (CSS checks), 3490+ unit tests and `npm run build` pass (wasm bundled as `dotlottie-player-*.wasm`); the perf project fails only `fuzz.perf.test.ts` on time (73.6 s against 60 s: the environmental miss Batches 74-78 recorded; every invariant holds).

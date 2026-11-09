@@ -75,6 +75,7 @@ Only images are pasted this way. Paste imports only when the Media panel has the
 | Video | .mp4, .mov, .m4v, .webm | The video must use a codec Chrome can decode on your computer, such as H.264, HEVC (H.265) or AV1. Phone recordings from iPhone (HEVC .mov) and Android (H.264 .mp4) work, including portrait and variable frame rate clips. .webm files hold VP9, AV1, VP8 or H.264 video, for example screen recordings: see [WebM files and screen recordings](#webm-files-and-screen-recordings). |
 | Audio | .mp3, .m4a, .aac, .wav, .ogg, and .webm with sound only | .mp3, .aac, .wav and .ogg files can be up to 45 minutes long, and so can .webm files with **Vorbis** sound. .m4a files, .webm files with **Opus** sound and the sound of .mp4 and .mov videos have no length limit. |
 | Images | .png, .jpg, .jpeg, .webp, .gif, .svg | Animated GIF and WebP files keep their animation length as their duration, and play in a loop on the timeline. An SVG needs a width and height, or a viewBox, and stays sharp at any size. See [Shapes and images](shapes-and-images.md). |
+| Lottie animations | .json, .lottie | Animated stickers and icons that stay sharp at any size. See [Use Lottie animations](shapes-and-images.md#use-lottie-animations). |
 
 Extensions are not case-sensitive (.MOV works). Any other type, for example .mkv, .avi or .heic, is refused with a message that names the file. Subtitle files (.srt, .vtt) are refused here too: import them in the **Captions** tab; see [Import an SRT or VTT file](captions.md#import-an-srt-or-vtt-file).
 
@@ -214,7 +215,7 @@ The Media panel has three tabs: **Media**, **Presets** and **Captions**. This pa
 
 The **Media** tab has two views. Switch between them with the **Grid view** and **List view** buttons in the panel header.
 
-Above the cards, the **Search media** field and the filter chips **Video**, **Audio**, **Images** and **Unused** narrow what the tab shows. On the left, the bin strip shows **All** your media, one kind, or one of the bins you create with **New bin**. See [Organizing media](organizing-media.md). When media are offline, a notice strip under the search field says so; see [Offline media and relinking](offline-media-and-relinking.md).
+Above the cards, the **Search media** field and the filter chips **Video**, **Audio**, **Images**, **Lottie** and **Unused** narrow what the tab shows. On the left, the bin strip shows **All** your media, one kind, or one of the bins you create with **New bin**. See [Organizing media](organizing-media.md). When media are offline, a notice strip under the search field says so; see [Offline media and relinking](offline-media-and-relinking.md).
 
 > **Video placeholder: Sort, rename and remove media**
 > - File: `videos/importing-media/organize-media.mp4` (not recorded yet)
@@ -418,4 +419,4 @@ If a card keeps its kind icon instead of a thumbnail, Chrome could not decode th
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 64, 2026-11-07</sub>
+<sub>Last updated: Batch 79, 2026-11-09</sub>
