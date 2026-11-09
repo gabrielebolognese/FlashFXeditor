@@ -44,6 +44,8 @@ export type PropertiesContext =
       primary: ClipId;
       /** The layer clips among them: what Transform, Opacity and the transform quick actions edit. */
       layerIds: readonly ClipId[];
+      /** The layers and the adjustment clips (Batch 76): what Opacity edits. */
+      opacityIds: readonly ClipId[];
       /** Visual clips that take masks (Batch 73). */
       maskIds: readonly ClipId[];
       /** The layers and the null clips: what Transform and its keyframes edit (Batch 69). */
@@ -113,6 +115,8 @@ export function propertiesContext(selection: Selection, markerId: string | null,
         const clip = project.clips[id];
         return clip !== undefined && isTransformClip(clip);
       });
+      // Opacity (Batch 76): the layers and the adjustment clips.
+      const opacityIds = clipIds.filter((id) => layerIds.includes(id) || project.clips[id]?.kind === "adjustment");
       const layerPrimary = layerIds.includes(primary) ? primary : (layerIds[0] ?? null);
       const mediaIds = layerIds.filter((id) => isCropClip(project.clips[id] as Clip));
       const speedIds = clipIds.filter((id) => {
@@ -126,7 +130,7 @@ export function propertiesContext(selection: Selection, markerId: string | null,
       const cue = cueIds.length > 0 ? project.clips[cueIds[0] as ClipId] : undefined;
       const audioIds = audioTargets(project, clipIds);
       const detachIds = clipIds.filter((id) => canDetach(project, id));
-      return { kind: "clips", clipIds, primary, layerIds, maskIds, transformIds, layerPrimary, mediaIds, speedIds, textIds, solidIds, shapeIds, audioIds, detachIds, captionTrackId: cue?.trackId ?? null, cueIds };
+      return { kind: "clips", clipIds, primary, layerIds, opacityIds, maskIds, transformIds, layerPrimary, mediaIds, speedIds, textIds, solidIds, shapeIds, audioIds, detachIds, captionTrackId: cue?.trackId ?? null, cueIds };
     }
   }
 }
@@ -165,7 +169,7 @@ export function sectionIds(context: PropertiesContext): SectionId[] {
       if (context.mediaIds.length > 0) ids.push("crop");
       // Frame (Batch 58): stroke, shadow and corners of the solids and the pictures.
       if (context.solidIds.length > 0 || context.mediaIds.length > 0) ids.push("frame");
-      if (context.layerIds.length > 0) ids.push("opacity");
+      if (context.opacityIds.length > 0) ids.push("opacity");
       // Compositing (Batch 72): blend mode and track matte of the visual clips.
       if (context.layerIds.length > 0) ids.push("compositing");
       // Masks (Batch 73): masks of the visual clips.

@@ -621,7 +621,7 @@ float blendChannel(float cbIn, float csIn, int mode) {
  * (the canvas), with `L_SHAPE.y` its height, so the texel row is found from gl_FragCoord either way.
  * The matte rule: Ported from FlashFX-v2 src/engine/renderer.ts (MATTE_SHADER) @ a91c675, adapted.
  */
-function compositeFragment(backdrop: boolean): string {
+function compositeFragment(backdrop: boolean, adjust = false): string {
   return /* glsl */ `${HEADER}${LAYER}${BLEND_FUNCTIONS}
 uniform sampler2D u_picture;
 uniform sampler2D u_matte;
@@ -675,7 +675,16 @@ vec4 matted(ivec2 p) {
 
 void main() {
   ivec2 p = texel();
-  vec4 s = matted(p);
+${adjust ? `  {
+    // An adjustment (spec §21.20): no matte, no blend mode.
+    vec4 b = texelFetch(u_backdrop, p, 0);
+    vec4 s = texelFetch(u_picture, p, 0);
+    float k = L_PARAMS.x;
+    if (u_layer[27].x > 0.5) { k *= coverage(u_mask, u_layer[21], u_layer[22], u_layer[23], targetPx()); }
+    outColor = mix(b, s, clamp(k, 0.0, 1.0));
+    return;
+  }
+` : ""}  vec4 s = matted(p);
 ${backdrop ? `  vec4 b = texelFetch(u_backdrop, p, 0);
   int mode = int(L_TFX.w + 0.5);
   vec3 cs = s.a > 0.0 ? s.rgb / max(s.a, 1e-6) : vec3(0.0);
@@ -689,6 +698,8 @@ ${backdrop ? `  vec4 b = texelFetch(u_backdrop, p, 0);
 
 export const COMPOSITE_FRAGMENT = compositeFragment(false);
 export const COMPOSITE_BACKDROP_FRAGMENT = compositeFragment(true);
+/** See fsAdjust in COMPOSITE_WGSL (adjustment clips, spec §21.20, Batch 76): the effect picture mixed with the backdrop by opacity times mask coverage. */
+export const COMPOSITE_ADJUST_FRAGMENT = compositeFragment(false, true);
 
 /**
  * See MASK_WGSL in shaders.ts: the coverage of a clip's masks over its coverage texture (drawn with
@@ -1047,6 +1058,65 @@ vec4 pixelEffect(int program, vec2 p) {
   return s;
 }
 
+// Batch 76: see EFFECT_WGSL stylize.
+float glitchShift(vec2 p) {
+  uint row = uint(int(floor((p.y - u_fx[4].y) / max(u_fx[1].y, 0.0001))) + 65536);
+  uint key = uint(u_fx[2].x + 0.5) * 7919u + uint(u_fx[2].y + 0.5);
+  if (grainHash(row, key, 1u) >= u_fx[1].x) { return 0.0; }
+  return (grainHash(row, key, 2u) * 2.0 - 1.0) * u_fx[1].z;
+}
+
+vec4 stylize(int program, vec2 p) {
+  vec4 a = u_fx[1];
+  vec4 rect = u_fx[4];
+  if (program == 17) {
+    vec4 r = tapSrc(p + a.xy);
+    vec4 g = tapSrc(p);
+    vec4 b = tapSrc(p - a.xy);
+    return vec4(r.r, g.g, b.b, max(r.a, max(g.a, b.a)));
+  }
+  if (program == 18) {
+    float cell = max(a.x, 0.0001);
+    return tapSrc(rect.xy + (floor((p - rect.xy) / cell) + vec2(0.5)) * cell);
+  }
+  if (program == 19) {
+    int side = int(a.x + 0.5);
+    vec2 q = p;
+    if (side < 2) {
+      float axisAt = rect.x + a.y * (rect.z - rect.x);
+      if (side == 0 ? p.x > axisAt : p.x < axisAt) { q.x = 2.0 * axisAt - p.x; }
+    } else {
+      float axisAt = rect.y + a.y * (rect.w - rect.y);
+      if (side == 2 ? p.y > axisAt : p.y < axisAt) { q.y = 2.0 * axisAt - p.y; }
+    }
+    return tapSrc(q);
+  }
+  if (program == 20) {
+    float len = max(a.y, 0.0001);
+    vec2 q = p;
+    if (a.z < 0.5) { q.x = p.x + a.x * sin(TAU * (p.y - rect.y) / len - TAU * a.w); }
+    else { q.y = p.y + a.x * sin(TAU * (p.x - rect.x) / len - TAU * a.w); }
+    return tapSrc(q);
+  }
+  if (program == 21) {
+    float du = glitchShift(p);
+    if (du == 0.0) { return tapSrc(p); }
+    vec4 r = tapSrc(p + vec2(du + a.w, 0.0));
+    vec4 g = tapSrc(p + vec2(du, 0.0));
+    vec4 b = tapSrc(p + vec2(du - a.w, 0.0));
+    return vec4(r.r, g.g, b.b, max(r.a, max(g.a, b.a)));
+  }
+  vec4 s = tapSrc(p);
+  if (s.a <= 0.0) { return vec4(0.0); }
+  vec3 c = s.rgb / s.a;
+  if (program == 22) {
+    float n = max(floor(a.x + 0.5), 2.0) - 1.0;
+    return vec4(floor(clamp(c, vec3(0.0), vec3(1.0)) * n + vec3(0.5)) / n * s.a, s.a);
+  }
+  if (program == 23) { return vec4((c + (vec3(1.0) - 2.0 * c) * clamp(a.x, 0.0, 1.0)) * s.a, s.a); }
+  return s;
+}
+
 void main() {
   vec2 p = gl_FragCoord.xy;
   int program = int(u_fx[0].z + 0.5);
@@ -1071,6 +1141,7 @@ void main() {
   if (program == 8) { outColor = tapSrc(p) * coverage(p); return; }
   if (program == 9) { outColor = vec4(dilate(p)); return; }
   if (program >= 10 && program <= 16) { outColor = pixelEffect(program, p); return; }
+  if (program >= 17 && program <= 23) { outColor = stylize(program, p); return; }
   outColor = tapSrc(p);
 }
 `;

@@ -13,6 +13,7 @@ import { BLEND_MODES, EFFECT_TYPES, type BlendMode, type ClipId, type RGBA } fro
 import { pushRecentColor } from "../project/appSettings.js";
 import { retimeClips, setEnabled, type ClipTimeField } from "../timeline/edit/clipProps.js";
 import { isCropClip, quickCrops, type QuickCrop } from "../timeline/edit/crop.js";
+import { addAdjustment } from "../timeline/edit/adjustment.js";
 import { addNull, convertFromMotionPath, convertToMotionPath, onMotionPath, setAutoOrient, setParent, smoothMotionPath } from "../timeline/edit/rig.js";
 import { isLayerClip, isTransformClip, quickTransforms, type QuickTransform } from "../timeline/edit/transform.js";
 import { selectClips, toSnapshot } from "../core/store/selection.js";
@@ -42,6 +43,13 @@ export function quickTransform(action: QuickTransform): void {
 /** `+ Null` (Batch 69): an invisible controller at the playhead, selected. */
 export function addNullClip(): ClipId {
   const result = addNull(documentStore.getState(), sessionStore.state.getState().playhead, () => crypto.randomUUID());
+  documentStore.dispatch(result.command, { selection: toSnapshot(selectClips([result.clipId])) });
+  return result.clipId;
+}
+
+/** `+ Adjustment` (Batch 76): an adjustment clip at the playhead on top of every video track, selected. */
+export function addAdjustmentClip(): ClipId {
+  const result = addAdjustment(documentStore.getState(), sessionStore.state.getState().playhead, () => crypto.randomUUID());
   documentStore.dispatch(result.command, { selection: toSnapshot(selectClips([result.clipId])) });
   return result.clipId;
 }
@@ -219,6 +227,7 @@ export function installPropertiesController(): () => void {
     actions.register("transform.flipV", () => quickTransform("flipV")),
     actions.register("transform.reset", () => quickTransform("reset")),
     actions.register("add.null", () => void addNullClip()),
+    actions.register("add.adjustment", () => void addAdjustmentClip()),
     actions.register("clip.clearParent", () => changeParent(null)),
     actions.register("clip.motionPath", toggleMotionPath),
     actions.register("clip.smoothPath", smoothPath),

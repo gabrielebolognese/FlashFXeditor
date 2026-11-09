@@ -1,14 +1,14 @@
 // Document invariants (spec §5.2). The DocumentStore runs `assertValid` after every command in dev
 // builds; messages name the track and clip so a broken command is found at once.
-import { isEaseId, keyframeIssues } from "./keyframes.js";
+import { isEaseId, isMaskProp, keyframeIssues } from "./keyframes.js";
 import { transitionIssues } from "./transitions.js";
 import { sequenceGraphIssues } from "./sequences.js";
 import { usPerFrame } from "./time.js";
 import { sequenceDurationUs, sequenceRecordIssues } from "./sequence.js";
 import { pathDataIssue } from "../shapes/pathData.js";
-import { effectIssues } from "../effects/effectParams.js";
+import { effectIssues, isEffectProp } from "../effects/effectParams.js";
 import { PRIMITIVE_LIMITS, PRIMITIVE_PARAMS } from "../shapes/primitives.js";
-import { BLEND_MODES, MASK_MODES, MATTE_MODES, CAPTION_HIGHLIGHTS, COUNTER_SEPARATORS, CUE_ANIM_KINDS, FILL_RULES, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_UNITS, isFreeze, isMediaClip, LABEL_COLORS, LINE_CAPS, LINE_JOINS, PRIMITIVE_KINDS, SOLID_SHAPE_IDS, type NullClip, type PrimitiveKind, type ShapeClip, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type CompoundClip, type Sequence, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextSpan, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
+import { type AdjustmentClip, BLEND_MODES, MASK_MODES, MATTE_MODES, CAPTION_HIGHLIGHTS, COUNTER_SEPARATORS, CUE_ANIM_KINDS, FILL_RULES, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_UNITS, isFreeze, isMediaClip, LABEL_COLORS, LINE_CAPS, LINE_JOINS, PRIMITIVE_KINDS, SOLID_SHAPE_IDS, type NullClip, type PrimitiveKind, type ShapeClip, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type CompoundClip, type Sequence, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextSpan, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
 
 export class DocumentInvariantError extends Error {
   readonly issues: readonly string[];
@@ -21,7 +21,7 @@ export class DocumentInvariantError extends Error {
 }
 
 const ALLOWED_CLIPS: Record<TrackKind, ReadonlySet<ClipKind>> = {
-  video: new Set(["video", "image", "text", "solid", "compound", "shape", "null"]),
+  video: new Set(["video", "image", "text", "solid", "compound", "shape", "null", "adjustment"]),
   audio: new Set(["audio"]),
   caption: new Set(["caption"]),
 };
@@ -81,13 +81,14 @@ function clipIssues(project: Project, clip: Clip): string[] {
   if (clip.kind === "compound") issues.push(...compoundIssues(project, clip, label));
   if (clip.kind === "shape") issues.push(...shapeIssues(clip, label));
   if (clip.kind === "null") issues.push(...nullIssues(clip, label));
+  if (clip.kind === "adjustment") issues.push(...adjustmentIssues(clip, label));
   if (clip.autoOrient !== undefined && typeof clip.autoOrient !== "boolean") issues.push(`${label}: autoOrient must be true or false`);
   if (clip.parentId !== undefined && typeof clip.parentId !== "string") issues.push(`${label}: parentId must be a clip id`);
   issues.push(...depthIssues(clip, label));
   issues.push(...compositingIssues(clip, label));
   issues.push(...maskIssues(clip, label));
   // Effects (spec §21.19, Batch 74): visual clips only; known types and parameters in range.
-  if ((clip.effects?.length ?? 0) > 0 && !VISUAL_KINDS.has(clip.kind)) issues.push(`${label}: a ${clip.kind} clip takes no effects`);
+  if ((clip.effects?.length ?? 0) > 0 && !VISUAL_KINDS.has(clip.kind) && clip.kind !== "adjustment") issues.push(`${label}: a ${clip.kind} clip takes no effects`);
   issues.push(...effectIssues(clip.effects as unknown, label));
   // Frame styles (spec §21.7): pictures have rounded corners, an outline and a shadow.
   if (clip.kind === "video" || clip.kind === "image") issues.push(...frameIssues(clip, label));
@@ -422,6 +423,22 @@ function nullIssues(clip: NullClip, label: string): string[] {
 }
 
 /**
+ * An adjustment clip (spec §21.20, Batch 76): an effects list, an opacity in 0..1, no transform, parent, blend
+ * mode or matte (it draws no picture of its own), keys only on its opacity, masks and effects.
+ */
+function adjustmentIssues(clip: AdjustmentClip, label: string): string[] {
+  const issues: string[] = [];
+  if (!Array.isArray(clip.effects as unknown)) issues.push(`${label}: an adjustment clip needs an effects list`);
+  if (typeof clip.opacity !== "number" || !Number.isFinite(clip.opacity) || clip.opacity < 0 || clip.opacity > 1) issues.push(`${label}: opacity ${String(clip.opacity)} must be within 0..1`);
+  if ("transform" in clip) issues.push(`${label}: an adjustment clip has no transform`);
+  if (clip.parentId !== undefined) issues.push(`${label}: an adjustment clip cannot have a parent`);
+  for (const prop of Object.keys(clip.keyframes ?? {})) {
+    if (prop !== "opacity" && !isMaskProp(prop) && !isEffectProp(prop)) issues.push(`${label}: keyframes.${prop}: not a property of an adjustment clip`);
+  }
+  return issues;
+}
+
+/**
  * Parents (spec §21.14): a visual clip of a video track, in the same sequence, never itself, no cycle.
  * Audio clips and cues take no parent; a parent is a clip with a transform.
  */
@@ -489,7 +506,7 @@ function maskIssues(clip: Clip, label: string): string[] {
   if (masks === undefined) return [];
   if (!Array.isArray(masks)) return [`${label}: masks must be a list`];
   const issues: string[] = [];
-  if (masks.length > 0 && !VISUAL_KINDS.has(clip.kind)) issues.push(`${label}: a ${clip.kind} clip takes no masks`);
+  if (masks.length > 0 && !VISUAL_KINDS.has(clip.kind) && clip.kind !== "adjustment") issues.push(`${label}: a ${clip.kind} clip takes no masks`);
   const ids = new Set<string>();
   masks.forEach((raw: unknown, index) => {
     const at = `${label}: masks[${index}]`;

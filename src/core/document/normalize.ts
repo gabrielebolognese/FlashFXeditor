@@ -161,6 +161,8 @@ function clipName(clip: Obj, media: Obj | undefined): string | undefined {
       return "Solid";
     case "null":
       return "Null";
+    case "adjustment":
+      return "Adjustment";
     default:
       return undefined;
   }
@@ -187,6 +189,8 @@ function normalizeClip(id: string, raw: Obj, project: Project): Obj {
   // A solid starts as `+ Solid` makes it in this frame (rounded rectangle, white).
   if (clip.kind === "solid") Object.assign(defaults, defaultSolid(project.settings));
   if (clip.kind === "null") defaults.size = { w: 100, h: 100 };
+  // An adjustment clip (Batch 76): no change until effects are added, fully shown.
+  if (clip.kind === "adjustment") Object.assign(defaults, { effects: [], opacity: 1 });
   const merged = merge(defaults, clip) as Obj;
   // Only a clip kind with a transform gets one.
   if (!(clip.kind === "video" || clip.kind === "audio" || clip.kind === "image" || clip.kind === "text" || clip.kind === "solid" || clip.kind === "shape" || clip.kind === "null")) delete merged.transform;

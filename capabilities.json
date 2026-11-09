@@ -2,8 +2,8 @@
   "manifestVersion": 1,
   "app": "shorts-editor",
   "appVersion": "1.1.0",
-  "lastBatch": 75,
-  "schemaVersion": 19,
+  "lastBatch": 76,
+  "schemaVersion": 20,
   "project": {
     "file": "project.json",
     "fontsManifest": "fonts/fonts.json",
@@ -59,7 +59,8 @@
     "caption",
     "compound",
     "shape",
-    "null"
+    "null",
+    "adjustment"
   ],
   "transform": {
     "rotation3d": true,
@@ -312,7 +313,7 @@
       "masks.<id>.opacity",
       "masks.<id>.path"
     ],
-    "adjustment": false
+    "adjustment": true
   },
   "vector": {
     "shapes": true,
@@ -364,7 +365,14 @@
     "grain",
     "chromaKey",
     "lumaKey",
-    "lut"
+    "lut",
+    "rgbSplit",
+    "pixelate",
+    "mirror",
+    "wave",
+    "glitch",
+    "posterize",
+    "invert"
   ],
   "audio": {
     "clipGainDb": [

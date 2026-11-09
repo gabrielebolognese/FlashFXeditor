@@ -24,7 +24,7 @@ export function setOpacities(project: Project, changes: ReadonlyMap<ClipId, numb
   const writes: { id: ClipId; opacity: number; keyframes?: Keyframes | undefined }[] = [];
   for (const [id, value] of changes) {
     const clip = project.clips[id];
-    if (!clip || !isLayerClip(clip) || isClipLocked(project, id) || !Number.isFinite(value)) continue;
+    if (!clip || !(isLayerClip(clip) || clip.kind === "adjustment") || isClipLocked(project, id) || !Number.isFinite(value)) continue;
     const opacity = Math.min(1, Math.max(0, value));
     if (options.at === undefined || !hasSectionKeys(clip.keyframes, "opacity")) {
       if (opacity !== clip.opacity) writes.push({ id, opacity });

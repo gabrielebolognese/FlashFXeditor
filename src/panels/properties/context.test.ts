@@ -40,6 +40,7 @@ describe("properties context (spec §11)", () => {
       transformIds: ["v"],
       layerPrimary: "v",
       mediaIds: ["v"],
+      opacityIds: ["v"],
       speedIds: ["a", "v"],
       textIds: [],
       solidIds: [],

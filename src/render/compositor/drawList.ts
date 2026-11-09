@@ -203,7 +203,21 @@ export interface GroupLayer extends LayerBase {
   matte: { mode: MatteMode; layers: readonly Layer[]; mask: MaskFrame | null } | null;
 }
 
-export type Layer = TextureLayer | DissolveLayer | SolidLayer | PathLayer | GroupLayer;
+/**
+ * An adjustment clip at its frame (spec §21.20, Batch 76): its `effects` apply to the picture of every layer
+ * drawn before it (the composite below, in this list), over the project frame (`effects.model` is the
+ * identity, the box the frame), kept where `mask` covers it (in the same frame px) and mixed with the
+ * unaffected picture by `opacity` (its keys and fades applied). `transform` is the identity, unused.
+ * Used as is in both the composite and the draw list; never inside a group.
+ */
+export interface AdjustLayer extends LayerBase {
+  kind: "adjust";
+  clipId: ClipId;
+  effects: EffectFrame;
+  mask: MaskFrame | null;
+}
+
+export type Layer = TextureLayer | DissolveLayer | SolidLayer | PathLayer | GroupLayer | AdjustLayer;
 
 /** A media frame not resolved to a texture yet: what a video or image clip shows at the frame. */
 export interface MediaLayer extends LayerBase {
@@ -424,7 +438,7 @@ export const MATTE_SLOT = "#matte";
 /** Every composite layer but a group (what a group holds). */
 export type PlainCompositeLayer = MediaLayer | SolidLayer | TextCompositeLayer | TransitionCompositeLayer | CompoundCompositeLayer | ShapeCompositeLayer;
 
-export type CompositeLayer = PlainCompositeLayer | GroupCompositeLayer;
+export type CompositeLayer = PlainCompositeLayer | GroupCompositeLayer | AdjustLayer;
 
 /** The document evaluated at a frame (`Compositor.evaluate`), before texture resolution. */
 export interface Composite {
@@ -443,10 +457,11 @@ export interface DrawList {
   layers: readonly Layer[];
 }
 
-/** Every layer of `layers` with groups opened (their layers, then their matte's; spec §21.17). Allocates: not for playback. */
+/** Every layer of `layers` with groups opened (their layers, then their matte's; spec §21.17) and adjustments left out. Allocates: not for playback. */
 export function plainLayers(layers: readonly CompositeLayer[]): PlainCompositeLayer[] {
   const out: PlainCompositeLayer[] = [];
   for (const layer of layers) {
+    if (layer.kind === "adjust") continue;
     if (layer.kind !== "group") out.push(layer);
     else out.push(...layer.layers, ...(layer.matte?.layers ?? []));
   }

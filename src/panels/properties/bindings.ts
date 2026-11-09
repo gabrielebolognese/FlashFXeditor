@@ -37,7 +37,9 @@ function layers(project: Project, ids: readonly ClipId[], prop: LayerNumberProp)
   const out: LayerClip[] = [];
   for (const id of ids) {
     const clip = project.clips[id];
-    if (clip && isTransformClip(clip) && (prop.applies?.(clip as LayerClip) ?? true)) out.push(clip as LayerClip);
+    // An adjustment clip (Batch 76) has only an opacity.
+    const has = clip !== undefined && (isTransformClip(clip) || (clip.kind === "adjustment" && prop.id === "opacity"));
+    if (has && (prop.applies?.(clip as LayerClip) ?? true)) out.push(clip as LayerClip);
   }
   return out;
 }

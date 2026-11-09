@@ -117,6 +117,7 @@ import { counterText } from "../../text/counter.js";
 import { applyMoveRequest, dropClips, moveToAdjacentLane, NO_LANE_DELTA, nudgeClips, type MoveMode, type MoveResult } from "./move.js";
 import { ATTRIBUTE_GROUPS, attributeTargets, pasteAttributes, pastedSpeed, type AttributeGroup } from "./pasteAttributes.js";
 import { closeSilences, cutSilences, REMOVE_SILENCE_LABEL, silencePlan, silenceTargets, spanFrames, type SilenceGroup } from "./silence.js";
+import { addAdjustment } from "./adjustment.js";
 import { addNull, convertFromMotionPath, convertToMotionPath, parentCandidates, setAutoOrient, setParent, smoothMotionPath } from "./rig.js";
 import { resetDepth, setBackfaceHidden, setDepthSort } from "./depth.js";
 import { matteCandidates, setBlend, setMatte, setMatteMode, setMatteOnly } from "./compositing.js";
@@ -2105,6 +2106,17 @@ function effectValue(rng: Rng, def: EffectParamDef): number | number[] | string 
   return fl(rng, min - (max - min) * 0.1, max + (max - min) * 0.1);
 }
 const EFFECT_OPS: FuzzOp[] = [
+  // Adjustment clips (Batch 76): on top of every video track; the ops below give them effects, keys and masks.
+  op(
+    "effects.addAdjustment",
+    "effects",
+    (store, rng, ctx) => {
+      const p = store.getState();
+      if (p.tracks.length >= MAX_TRACKS) return false;
+      return exec(store, addAdjustment(p, anyFrame(p, rng), ctx.newId).command);
+    },
+    { weight: 0.3, effect: "grow" },
+  ),
   op("effects.add", "effects", (store, rng) => {
     const p = store.getState();
     const clip = pickClip(p, rng, takesEffects);

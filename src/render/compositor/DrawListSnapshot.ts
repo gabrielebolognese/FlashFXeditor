@@ -7,7 +7,7 @@ import type { DissolveSide, DrawList, EffectFrame, Layer, MaskFrame } from "./dr
 import { blendCode } from "../../core/effects/blendModes.js";
 import { matteCode } from "../../core/effects/trackMatte.js";
 
-const KIND_CODE = { texture: 1, dissolve: 2, solid: 3, path: 4, group: 5 } as const;
+const KIND_CODE = { texture: 1, dissolve: 2, solid: 3, path: 4, group: 5, adjust: 6 } as const;
 const RULE_CODE = { nonzero: 1, evenodd: 2, union: 3, inside: 4, outside: 5 } as const;
 
 export class DrawListSnapshot {
@@ -121,6 +121,11 @@ export class DrawListSnapshot {
             for (let i = 0; i < 4; i++) this.push(draw.cover[i] as number);
           }
           for (let i = 0; i < 4; i++) this.push(layer.bounds[i] as number);
+          break;
+        case "adjust":
+          // An adjustment clip (spec §21.20): its masks and effects (the picture below is the layers before it).
+          this.mask(layer.mask);
+          this.effects(layer.effects);
           break;
         case "group":
           // Blend mode and track matte (spec §21.17): the mode, the layers, the matte's mode and layers.

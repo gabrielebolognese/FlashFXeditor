@@ -30,7 +30,7 @@ import type { GlContext } from "./GlContext.js";
 import { coverageSize, evictCoverage, maskDataRows, pickCoverage, writeMaskData, type CoverageEntry } from "./maskTargets.js";
 import { MASK_DATA_WIDTH } from "../../core/masks/maskCoverage.js";
 import type { MaskFrame } from "../compositor/drawList.js";
-import { BLUR_FRAGMENT, COMPOSITE_BACKDROP_FRAGMENT, COMPOSITE_FRAGMENT, DISSOLVE_FRAGMENT, DISSOLVE_VERTEX, EFFECT_FRAGMENT, FULLSCREEN_VERTEX, LAYER_VERTEX, MASK_FRAGMENT, PATH_COVER_FRAGMENT, PATH_COVER_VERTEX, PATH_STENCIL_FRAGMENT, PATH_STENCIL_VERTEX, SCALE_ALPHA_FRAGMENT, SCALE_FRAGMENT, SOLID_FRAGMENT, TEXTURED_FRAGMENT } from "./glShaders.js";
+import { BLUR_FRAGMENT, COMPOSITE_ADJUST_FRAGMENT, COMPOSITE_BACKDROP_FRAGMENT, COMPOSITE_FRAGMENT, DISSOLVE_FRAGMENT, DISSOLVE_VERTEX, EFFECT_FRAGMENT, FULLSCREEN_VERTEX, LAYER_VERTEX, MASK_FRAGMENT, PATH_COVER_FRAGMENT, PATH_COVER_VERTEX, PATH_STENCIL_FRAGMENT, PATH_STENCIL_VERTEX, SCALE_ALPHA_FRAGMENT, SCALE_FRAGMENT, SOLID_FRAGMENT, TEXTURED_FRAGMENT } from "./glShaders.js";
 import { isHdrColorSpace, toneMapToCanvas } from "./hdr.js";
 import { layerFloats, LAYER_SIZE, LAYER_STRIDE, packLayer, packMat3, pixelsToClipInto } from "./layerUniforms.js";
 import { mipLevelCount, textureBytes } from "./mipmaps.js";
@@ -184,6 +184,8 @@ interface GlComposite {
   /** The hardware modes (normal, screen, add: blend states) and the others (the W3C composite with the backdrop). */
   hardware: Program;
   backdrop: Program;
+  /** Adjustment clips (Batch 76): the effect picture mixed with the backdrop. */
+  adjust: Program;
   /** Masks (Batch 73): the coverage pass and the kept coverages. */
   mask: WebGLProgram;
   coverages: GlCoverage[];
@@ -444,7 +446,8 @@ export class WebGl2Renderer implements BackendRenderer {
     const { width, height } = target;
     if (this.layerData.length < layerFloats(count)) this.layerData = new Float32Array(layerFloats(Math.max(count, 2 * (this.layerData.length / LAYER_STRIDE_FLOATS))));
     // Effects (spec §21.19): see WebGpuRenderer.prepareStages and stagePasses.
-    if (this.records.stageCount > 0) this.stagePasses(res, this.prepareStages(res, count, width, height), count, width, height);
+    const effects = this.records.stageCount > 0 || this.records.adjustCount > 0 ? this.prepareStages(res, count, width, height) : null;
+    if (effects && this.records.stageCount > 0) this.stagePasses(res, effects, count, width, height);
     // Blend modes and track mattes (spec §21.17): each group's layers and matte into their pictures first.
     const composite = this.records.groupCount > 0 ? this.groupPasses(res, count, width, height) : null;
 
@@ -478,6 +481,10 @@ export class WebGl2Renderer implements BackendRenderer {
     for (let index = 0; index < count; index++) {
       const record = this.records.at(index);
       if (record.role !== ROLE.target) continue;
+      if (record.kind === "adjust") {
+        if (effects) this.adjust(res, effects, index, record, target, topDown);
+        continue;
+      }
       if (record.kind !== "composite") {
         this.quad(res, index, record, topDown, height);
         continue;
@@ -485,21 +492,8 @@ export class WebGl2Renderer implements BackendRenderer {
       const group = this.groupTargets[record.group - 1];
       if (!composite || !group) continue;
       const backdrop = this.records.groups[record.group - 1]?.backdrop === true;
-      if (backdrop) {
-        // A non-hardware mode reads what is below: copy the target (rows top first) into the backdrop.
-        const copy = this.backdropCopy(res, composite, width, height);
-        const read = topDown && target instanceof GlOffscreenTarget ? this.framebufferOf(res, target.texture.surface) : null;
-        const draw = this.framebufferOf(res, copy.surface);
-        gl.bindFramebuffer(gl.READ_FRAMEBUFFER, read);
-        gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, draw);
-        gl.disable(gl.SCISSOR_TEST);
-        if (topDown) gl.blitFramebuffer(0, 0, width, height, 0, 0, width, height, gl.COLOR_BUFFER_BIT, gl.NEAREST);
-        else gl.blitFramebuffer(0, 0, width, height, 0, height, width, 0, gl.COLOR_BUFFER_BIT, gl.NEAREST);
-        gl.enable(gl.SCISSOR_TEST);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, read);
-        last.width = -1;
-        this.backdropCopies += 1;
-      }
+      // A non-hardware mode reads what is below: copy the target (rows top first) into the backdrop.
+      if (backdrop) this.copyTarget(res, composite, target, topDown);
       this.scissor(record, topDown, height);
       const program = backdrop ? composite.backdrop : composite.hardware;
       this.useProgram(program);
@@ -598,7 +592,7 @@ export class WebGl2Renderer implements BackendRenderer {
   private quad(res: Resources, index: number, record: DrawRecord<GlTexture>, topDown: boolean, height: number): void {
     const { gl } = res;
     this.scissor(record, topDown, height);
-    if (record.kind === "path" || record.kind === "composite" || record.kind === "effect" || (record.kind === "textured" && !record.texture0)) return;
+    if (record.kind === "path" || record.kind === "composite" || record.kind === "effect" || record.kind === "adjust" || (record.kind === "textured" && !record.texture0)) return;
     const program = res.programs[record.kind];
     this.useProgram(program);
     packLayer(this.layerData, index, record.uniform);
@@ -668,39 +662,119 @@ export class WebGl2Renderer implements BackendRenderer {
         const record = this.records.at(index);
         if (record.role === ROLE.stage && record.stage === job.stage) this.quad(res, index, record, true, height);
       }
-      gl.disable(gl.BLEND);
-      gl.useProgram(fx.program);
-      this.current = null;
-      for (let i = job.first; i < job.first + job.count; i++) {
-        const dst = buffer(jobs.dst[i] as number);
-        const src = buffer(jobs.src[i] as number);
-        const origIndex = jobs.orig[i] as number;
-        this.framebufferOf(res, dst.surface);
-        gl.disable(gl.SCISSOR_TEST);
-        gl.viewport(0, 0, dst.width, dst.height);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.viewport(0, 0, width, height);
-        gl.enable(gl.SCISSOR_TEST);
-        gl.scissor(0, 0, width, height);
-        gl.uniform4fv(fx.fx, jobs.data, jobs.offset(i), FX_FLOATS);
-        gl.activeTexture(gl.TEXTURE1);
-        const orig = origIndex === FX_BUFFER.coverage ? coverage : origIndex === FX_BUFFER.lut ? (this.lutTexture(res, fx, jobs.lut[i] as number) ?? src.surface.texture) : buffer(origIndex).surface.texture;
-        gl.activeTexture(gl.TEXTURE1);
-        gl.bindTexture(gl.TEXTURE_2D, orig);
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, src.surface.texture);
-        gl.drawArrays(gl.TRIANGLES, 0, 3);
-        this.effectPasses += 1;
-      }
-      // The buffers are drawn into by the next stage: leave none bound.
-      gl.activeTexture(gl.TEXTURE1);
-      gl.bindTexture(gl.TEXTURE_2D, null);
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, null);
+      this.fxPasses(res, fx, job.first, job.count, width, height, (i) => (i === FX_BUFFER.coverage ? coverage : buffer(i).surface.texture));
     }
     buffers.fill(null);
     gl.disable(gl.SCISSOR_TEST);
     this.lastScissor.width = -1;
+  }
+
+  /** Copies the target drawn so far into the backdrop copy (rows top first) and binds the target again. */
+  private copyTarget(res: Resources, composite: GlComposite, target: GlCanvasTarget | GlOffscreenTarget, topDown: boolean): GlTexture {
+    const { gl } = res;
+    const { width, height } = target;
+    const copy = this.backdropCopy(res, composite, width, height);
+    const read = topDown && target instanceof GlOffscreenTarget ? this.framebufferOf(res, target.texture.surface) : null;
+    const draw = this.framebufferOf(res, copy.surface);
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, read);
+    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, draw);
+    gl.disable(gl.SCISSOR_TEST);
+    if (topDown) gl.blitFramebuffer(0, 0, width, height, 0, 0, width, height, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+    else gl.blitFramebuffer(0, 0, width, height, 0, height, width, 0, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+    gl.enable(gl.SCISSOR_TEST);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, read);
+    this.lastScissor.width = -1;
+    this.backdropCopies += 1;
+    return copy;
+  }
+
+  /**
+   * An adjustment (spec §21.20, Batch 76; see the WebGPU draw): the target copied, the clip's effect passes run
+   * over the copy (target-sized buffers, rows top first), then the result mixed back over the frame with the
+   * copy by the clip's opacity times its masks' coverage (no blending). The target's state is restored after.
+   */
+  private adjust(res: Resources, fx: GlEffects, index: number, record: DrawRecord<GlTexture>, target: GlCanvasTarget | GlOffscreenTarget, topDown: boolean): void {
+    const job = fx.jobs.adjustJobs[record.stage - 1];
+    const info = job?.info;
+    if (!job || !info || job.count === 0) return;
+    const { gl } = res;
+    const { width, height } = target;
+    const composite = (res.composite ??= this.buildComposite(res));
+    const copy = this.copyTarget(res, composite, target, topDown);
+    const coverage = info.mask ? this.coverage(res, composite, info.mask) : null;
+    const buffers = this.fxBuffers;
+    buffers.fill(null);
+    const buffer = (i: number): GlTexture => (buffers[i] ??= this.blurTexture(res, width, height));
+    this.fxPasses(res, fx, job.first, job.count, width, height, (i) => (i === FX_BUFFER.backdrop ? copy.surface.texture : buffer(i).surface.texture));
+    const picture = buffer(FX_BUFFER.out);
+    buffers.fill(null);
+    // Back to the target.
+    gl.bindFramebuffer(gl.FRAMEBUFFER, topDown && target instanceof GlOffscreenTarget ? this.framebufferOf(res, target.texture.surface) : null);
+    gl.viewport(0, 0, width, height);
+    gl.enable(gl.SCISSOR_TEST);
+    this.lastScissor.width = -1;
+    this.current = null;
+    this.setView(width, height, topDown);
+    this.scissor(record, topDown, height);
+    const program = composite.adjust;
+    this.useProgram(program);
+    packLayer(this.layerData, index, record.uniform);
+    // L_SHAPE: 1 when the target's rows run bottom up (the canvas), and its height.
+    const o = index * LAYER_STRIDE_FLOATS + 28;
+    this.layerData[o] = topDown ? 0 : 1;
+    this.layerData[o + 1] = height;
+    gl.uniform4fv(program.layer, this.layerData, index * LAYER_STRIDE_FLOATS, LAYER_FLOATS);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, picture.surface.texture);
+    gl.activeTexture(gl.TEXTURE2);
+    gl.bindTexture(gl.TEXTURE_2D, copy.surface.texture);
+    gl.activeTexture(gl.TEXTURE3);
+    gl.bindTexture(gl.TEXTURE_2D, coverage);
+    gl.disable(gl.BLEND);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    // Drawn into again on the next adjustment or draw: leave none bound.
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    gl.activeTexture(gl.TEXTURE2);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+  }
+
+  /** The effect passes `first` .. `first + count - 1` over a `width` x `height` stage (no blending); `texture` gives a buffer's texture (LUTs are looked up here). */
+  private fxPasses(res: Resources, fx: GlEffects, first: number, count: number, width: number, height: number, texture: (index: number) => WebGLTexture | null): void {
+    const { gl } = res;
+    const jobs = fx.jobs;
+    const buffers = this.fxBuffers;
+    gl.disable(gl.BLEND);
+    gl.useProgram(fx.program);
+    this.current = null;
+    gl.clearColor(0, 0, 0, 0);
+    for (let i = first; i < first + count; i++) {
+      const dst = (buffers[jobs.dst[i] as number] ??= this.blurTexture(res, width, height));
+      const src = texture(jobs.src[i] as number);
+      const origIndex = jobs.orig[i] as number;
+      this.framebufferOf(res, dst.surface);
+      gl.disable(gl.SCISSOR_TEST);
+      gl.viewport(0, 0, dst.width, dst.height);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.viewport(0, 0, width, height);
+      gl.enable(gl.SCISSOR_TEST);
+      gl.scissor(0, 0, width, height);
+      gl.uniform4fv(fx.fx, jobs.data, jobs.offset(i), FX_FLOATS);
+      const orig = origIndex === FX_BUFFER.lut ? (this.lutTexture(res, fx, jobs.lut[i] as number) ?? src) : texture(origIndex);
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, orig);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, src);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      this.effectPasses += 1;
+    }
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, null);
   }
 
   /** LUT `handle`'s atlas texture (uploaded on first use; read with texelFetch), or null when the library does not have it. */
@@ -880,7 +954,7 @@ export class WebGl2Renderer implements BackendRenderer {
     const mask = linkProgram(gl, "mask coverage", FULLSCREEN_VERTEX, MASK_FRAGMENT);
     gl.useProgram(mask);
     gl.uniform1i(gl.getUniformLocation(mask, "u_data"), 0);
-    const composite = { hardware: program("composite", COMPOSITE_FRAGMENT), backdrop: program("composite backdrop", COMPOSITE_BACKDROP_FRAGMENT), mask, coverages: [], groups: [], copy: null, copyUsed: 0 };
+    const composite = { hardware: program("composite", COMPOSITE_FRAGMENT), backdrop: program("composite backdrop", COMPOSITE_BACKDROP_FRAGMENT), adjust: program("composite adjust", COMPOSITE_ADJUST_FRAGMENT), mask, coverages: [], groups: [], copy: null, copyUsed: 0 };
     gl.useProgram(null);
     this.current = null;
     return composite;

@@ -797,6 +797,18 @@ const SCHEMAS: ObjectSchema[] = [
     },
   },
   {
+    name: "Clip.adjustment",
+    doc: "An adjustment clip (Batch 76): no picture of its own; during its range its effects apply to the composite of every layer below it in the same sequence, its masks (in project px) limit the area and its opacity mixes the result with the unaffected picture. No transform, parent, blend mode or matte.",
+    types: ["AdjustmentClip"],
+    fields: {
+      ...clipBaseFields("adjustment"),
+      effects: req(list(obj("Effect")), "The effect stack applied to the picture below, in order; empty = no change.", []),
+      opacity: req(range(0, 1), "How much of the adjusted picture shows over the unaffected one.", 1),
+      keyframes: opt(obj("Keyframes"), "Animated properties: `opacity`, `masks.<id>.*` and `effects.<id>.*` only."),
+      fades: opt(obj("Fades"), "Opacity fades."),
+    },
+  },
+  {
     name: "ShapePath",
     doc: "One path of a shape clip (Batch 65). With `primitive`, the path is generated from it and `d` holds the generated data.",
     types: ["ShapePath"],

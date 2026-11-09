@@ -105,8 +105,8 @@ export function isMaskProp(prop: string): boolean {
   return MASK_PROP_PATTERN.test(prop);
 }
 
-/** Clip kinds that draw a picture: the ones that take masks (spec §21.18). */
-export const MASKABLE_KINDS: readonly string[] = ["video", "image", "text", "solid", "shape", "compound"];
+/** Clip kinds that take masks (spec §21.18): the ones that draw a picture, and adjustment clips (§21.20, Batch 76). */
+export const MASKABLE_KINDS: readonly string[] = ["video", "image", "text", "solid", "shape", "compound", "adjustment"];
 
 /** The clip kinds each new property is valid on (the section properties are valid on any clip with them). */
 const PROP_KINDS: Readonly<Record<string, readonly string[]>> = {

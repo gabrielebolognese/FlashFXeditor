@@ -56,9 +56,11 @@ export function keyable(clip: Clip, section: KeyframeSection): clip is KeyedClip
     case "volume":
       return clip.kind === "audio";
     case "transform":
-    case "opacity":
     case "anchor":
       return isLayerClip(clip);
+    case "opacity":
+      // Adjustment clips (spec §21.20, Batch 76) have an opacity too.
+      return isLayerClip(clip) || clip.kind === "adjustment";
     case "look":
       return clip.kind === "video" || clip.kind === "image" || clip.kind === "solid" || clip.kind === "text";
     default:

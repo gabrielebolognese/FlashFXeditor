@@ -821,7 +821,7 @@ The drop shadow and the outline follow the picture's **alpha**: on a transparent
 
 **Animation.** Every number and color parameter can be keyed: the keyframe prop is `effects.<id>.<param>` (numbers take numbers, colors take `[r, g, b, a]` vectors). Choices (`mode`) and toggles (`repeatEdges`) cannot. The manifest key `keyframes.effectProps` lists the pattern.
 
-**Order.** A clip draws: its content (with crop), its masks, its effects, its transform, opacity and fades, then its track matte and blend mode (§5.11). In a transition the effects of the clip that dominates the frame apply to the transition's picture. A clip used as a track matte keys through its picture without its effects. The color, stylize, key and LUT types are in §5.14 (schema 19).
+**Order.** A clip draws: its content (with crop), its masks, its effects, its transform, opacity and fades, then its track matte and blend mode (§5.11). In a transition the effects of the clip that dominates the frame apply to the transition's picture. A clip used as a track matte keys through its picture without its effects. The color, stylize, key and LUT types are in §5.14 (schema 19), RGB split, pixelate, mirror, wave, glitch, posterize and invert in §5.15 (schema 20).
 
 ```json Clip.solid
 {
@@ -929,6 +929,56 @@ Seven more effect types go in the same `effects` list (§5.13), with the same ru
 ```
 
 Schema 18 projects open unchanged (migration 18 to 19 changes nothing). **Looks** (an effect stack saved by name) live in the editor's own storage, not in the project: applying one writes its effects into the clip, and its LUT files into `luts/`. `fixtures/interop/effects-2` is a complete project: each Effects II type, a green screen keyed with spill suppression and a LUT at intensity 0.5, with an expected frame of each.
+
+### 5.15 Effects III and adjustment clips (manifest keys `effects`, `compositing.adjustment`; schema 20)
+
+Seven more effect types go in the same `effects` list (§5.13), with the same rules: in order, in content px (the clip's own px, scaled with it), a missing parameter takes its default, every number can be keyed (`effects.<id>.<param>`); choices (`side`, `direction`) and the glitch's `seed` cannot. RGB split, pixelate, mirror, wave and glitch read other pixels of the picture: past the clip's box the picture is transparent (a wave pulls transparency in at the edges).
+
+| Type | Parameter | Range | Default | What it does |
+| --- | --- | --- | --- | --- |
+| `rgbSplit` | `distance` | 0 to 500 px | 8 | Red is read this far along the angle, blue as far the other way, green in place; alpha is the largest of the three. |
+| | `angle` | -360 to 360° | 0 | Direction of the split: red is read along it, so the red copy shows moved the other way (0: red to the left and blue to the right; 90: red up, blue down). |
+| `pixelate` | `size` | 1 to 500 px | 16 | Square cells from the box's top-left corner, each the color at its middle. |
+| `mirror` | `side` | `left`, `right`, `top`, `bottom` | `left` | The half that is kept; the other half shows its reflection. |
+| | `center` | 0 to 1 | 0.5 | Where the line is across the box (0: left or top edge). |
+| `wave` | `amplitude` | 0 to 500 px | 20 | How far rows (or columns) move. |
+| | `wavelength` | 2 to 4000 px | 200 | Length of one wave, from the box's top (or left). |
+| | `direction` | `horizontal`, `vertical` | `horizontal` | Horizontal moves each row sideways; vertical moves each column up and down. |
+| | `speed` | -10 to 10 waves/s | 1 | The wave travels this many wavelengths per second of the clip (0: still). |
+| `glitch` | `amount` | 0 to 1 | 0.5 | Share of the bands that move. |
+| | `band` | 2 to 400 px | 24 | Band height, from the box's top. |
+| | `shift` | 0 to 1000 px | 60 | Largest sideways move of a band. |
+| | `split` | 0 to 200 px | 8 | RGB split inside the moved bands (red and blue apart by this). |
+| | `rate` | 0 to 60 /s | 12 | New patterns per second of the clip (0: one pattern). |
+| | `seed` | 0 to 9999, integer | 0 | Picks the patterns; the same seed and time give the same picture. Not keyable. |
+| `posterize` | `levels` | 2 to 64 | 6 | Steps per channel (straight color, rounded to the nearest step). |
+| `invert` | `amount` | 0 to 1 | 1 | Mix toward the inverted color (1 - c per channel, straight color). |
+
+**Time.** A wave's phase and a glitch's pattern follow the frame within the clip (`(frame - start) / fps`), so a frame renders the same wherever it is drawn. The glitch picks its bands with an integer hash: both backends draw the same bands.
+
+**Adjustment clips.** A clip of kind `adjustment` on a video track has no picture of its own. During its range its `effects` apply to the composite of every layer below it in the same sequence (the tracks under it, already blended, with their masks, effects and mattes); its masks (`masks`, in project px over the frame: the box is the frame, x from the left, y from the top) limit where the result shows and its `opacity` (with keys and fades) mixes the result with the unaffected picture. It has no transform, parent, blend mode or matte, cannot be a track matte, and its keys are only `opacity`, `masks.<id>.*` and `effects.<id>.*`. With no enabled effect it changes nothing. Inside a compound clip it adjusts the layers below it in that sequence only. Adjustment clips on hidden or muted tracks are skipped like any clip; with depth sorting (2.5D) the layers between two adjustments are sorted among themselves and the adjustments keep their track order.
+
+```json Clip.adjustment
+{
+  "id": "grade",
+  "trackId": "v3",
+  "kind": "adjustment",
+  "name": "Black and white",
+  "start": 30,
+  "duration": 60,
+  "enabled": true,
+  "effects": [{ "id": "bw", "type": "colorAdjust", "enabled": true, "params": { "saturation": -100 } }],
+  "opacity": 1,
+  "masks": [{ "id": "spot", "shape": { "kind": "ellipse", "x": 140, "y": 460, "w": 800, "h": 1000 }, "mode": "add", "feather": 60, "expansion": 0, "opacity": 1, "inverted": false }],
+  "fades": { "in": 6, "out": 6 }
+}
+```
+
+```json Effect
+{ "id": "hit", "type": "glitch", "enabled": true, "params": { "amount": 0.35, "band": 32, "shift": 120, "split": 12, "rate": 8, "seed": 42 } }
+```
+
+A minimal adjustment clip needs only `id`, `trackId`, `kind`, `start` and `duration`: the name becomes "Adjustment", `effects` an empty list and `opacity` 1. Schema 19 projects open unchanged (migration 19 to 20 changes nothing). `fixtures/interop/effects-3` is a complete project: an adjustment clip turning everything below it black and white inside an ellipse mask (and only during its range), each Effects III type, a glitch whose pattern changes over time and an adjustment with two effects at half opacity, with expected frames.
 
 ## 6. Captions and word timings
 
@@ -1278,7 +1328,7 @@ An effect (Batch 74; color, stylize, keys and LUTs since Batch 75): one step of 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
 | `id` | string (not empty) | yes |  | Unique among the clip's effects: letters, digits, `_` or `-` (keyframe ids are `effects.<id>.<param>`). |
-| `type` | `"gaussianBlur"` | `"directionalBlur"` | `"glow"` | `"dropShadow"` | `"outline"` | `"colorAdjust"` | `"vignette"` | `"sharpen"` | `"grain"` | `"chromaKey"` | `"lumaKey"` | `"lut"` | yes |  | The effect type. |
+| `type` | `"gaussianBlur"` | `"directionalBlur"` | `"glow"` | `"dropShadow"` | `"outline"` | `"colorAdjust"` | `"vignette"` | `"sharpen"` | `"grain"` | `"chromaKey"` | `"lumaKey"` | `"lut"` | `"rgbSplit"` | `"pixelate"` | `"mirror"` | `"wave"` | `"glitch"` | `"posterize"` | `"invert"` | yes |  | The effect type. |
 | `enabled` | boolean | yes | `true` | Off: the effect is kept but not drawn. |
 | `params` | object of number, string, or number[] (1 to 4 items) by id | yes | `{}` | Parameters by name: numbers (toggles are 0 or 1), colors [r, g, b, a] (straight alpha, 0..1), choices (strings) and files (a project path such as `luts/warm.cube`, or "" for none). Only the type's parameters, each in its range. |
 
@@ -1731,7 +1781,7 @@ project.json.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `schemaVersion` | integer (>= 1) | yes | `19` | The schema version; this build writes and reads up to the current one. |
+| `schemaVersion` | integer (>= 1) | yes | `20` | The schema version; this build writes and reads up to the current one. |
 | `id` | string (not empty) | yes |  | Unique id, never changes (uuid v4 recommended). |
 | `name` | string | yes |  | Project name. |
 | `settings` | [Settings](#settings) | yes |  | Frame and time base. |
@@ -1749,7 +1799,7 @@ project.json.
 
 A clip: the `kind` field selects its description.
 
-Told apart by `kind`: `video` is [Clip.video](#clip-video), `audio` is [Clip.audio](#clip-audio), `image` is [Clip.image](#clip-image), `text` is [Clip.text](#clip-text), `solid` is [Clip.solid](#clip-solid), `caption` is [Clip.caption](#clip-caption), `compound` is [Clip.compound](#clip-compound), `shape` is [Clip.shape](#clip-shape), `null` is [Clip.null](#clip-null).
+Told apart by `kind`: `video` is [Clip.video](#clip-video), `audio` is [Clip.audio](#clip-audio), `image` is [Clip.image](#clip-image), `text` is [Clip.text](#clip-text), `solid` is [Clip.solid](#clip-solid), `caption` is [Clip.caption](#clip-caption), `compound` is [Clip.compound](#clip-compound), `shape` is [Clip.shape](#clip-shape), `null` is [Clip.null](#clip-null), `adjustment` is [Clip.adjustment](#clip-adjustment).
 
 #### ClipBase
 
@@ -1759,7 +1809,7 @@ The fields every clip has.
 | --- | --- | --- | --- | --- |
 | `id` | string (not empty) | yes |  | Unique id; the key it is stored under. |
 | `trackId` | string (not empty) | yes |  | The track listing it. |
-| `kind` | `"video"` | `"audio"` | `"image"` | `"text"` | `"solid"` | `"caption"` | `"compound"` | `"shape"` | `"null"` | yes |  | Kind. |
+| `kind` | `"video"` | `"audio"` | `"image"` | `"text"` | `"solid"` | `"caption"` | `"compound"` | `"shape"` | `"null"` | `"adjustment"` | yes |  | Kind. |
 | `name` | string | yes |  | Display name. |
 | `start` | integer (>= 0) | yes |  | First frame on the timeline. Integer frames at the project frame rate. |
 | `duration` | integer (>= 1) | yes |  | Length, at least 1. Integer frames at the project frame rate. |
@@ -2143,6 +2193,35 @@ An invisible controller (Batch 69): never drawn or exported, a parent for other 
 | `size` | [Size](#size) | yes | `{"w":100,"h":100}` | The selection outline: width and height at scale 1, project px. |
 | `transform` | [Transform](#transform) | yes |  | Placement. |
 | `keyframes` | [Keyframes](#keyframes) | no |  | Animated properties, including `transform.position`. |
+
+#### Clip.adjustment
+
+An adjustment clip (Batch 76): no picture of its own; during its range its effects apply to the composite of every layer below it in the same sequence, its masks (in project px) limit the area and its opacity mixes the result with the unaffected picture. No transform, parent, blend mode or matte.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `id` | string (not empty) | yes |  | Unique id; the key it is stored under. |
+| `trackId` | string (not empty) | yes |  | The track listing it. |
+| `kind` | `"adjustment"` | yes |  | Kind. |
+| `name` | string | yes |  | Display name. |
+| `start` | integer (>= 0) | yes |  | First frame on the timeline. Integer frames at the project frame rate. |
+| `duration` | integer (>= 1) | yes |  | Length, at least 1. Integer frames at the project frame rate. |
+| `color` | `"red"` | `"orange"` | `"green"` | `"teal"` | `"blue"` | `"violet"` | `"pink"` | `"grey"` | no |  | Label color. |
+| `linkGroup` | string (not empty) | no |  | Clips sharing it move and trim together. |
+| `group` | string (not empty) | no |  | Clips sharing it select together. |
+| `enabled` | boolean | yes | `true` | Drawn and heard. |
+| `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
+| `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
+| `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
+| `backfaceHidden` | boolean | no | `false` | 2.5D (Batch 70): not drawn while its back faces the viewer. |
+| `blend` | `"normal"` | `"darken"` | `"multiply"` | `"colorBurn"` | `"lighten"` | `"screen"` | `"colorDodge"` | `"add"` | `"overlay"` | `"softLight"` | `"hardLight"` | `"difference"` | `"exclusion"` | no | `"normal"` | Visual clips (Batch 72): how the clip blends with the picture below it (W3C formulas; `add` is linear dodge). |
+| `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
+| `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
+| `masks` | [Mask](#mask)[] | no |  | Visual clips (Batch 73): masks combined in order; absent or empty = the whole clip shows. |
+| `effects` | [Effect](#effect)[] | yes | `[]` | The effect stack applied to the picture below, in order; empty = no change. |
+| `opacity` | number (>= 0, <= 1) | yes | `1` | How much of the adjusted picture shows over the unaffected one. |
+| `keyframes` | [Keyframes](#keyframes) | no |  | Animated properties: `opacity`, `masks.<id>.*` and `effects.<id>.*` only. |
+| `fades` | [Fades](#fades) | no |  | Opacity fades. |
 
 #### ShapePath
 

@@ -1,0 +1,1008 @@
+{
+  "schemaVersion": 20,
+  "id": "7c3f9d52-ae8b-4a47-91f3-8b2d5e0a4f96",
+  "name": "Interop effects-3",
+  "settings": {
+    "width": 360,
+    "height": 640,
+    "fps": {
+      "num": 30,
+      "den": 1
+    },
+    "background": {
+      "r": 0.16,
+      "g": 0.18,
+      "b": 0.24,
+      "a": 1
+    },
+    "sampleRate": 48000
+  },
+  "media": {
+    "video": {
+      "id": "video",
+      "kind": "video",
+      "name": "clip.mp4",
+      "file": {
+        "relPath": "media/clip.mp4"
+      },
+      "durationUs": 2000000,
+      "hasAudio": true,
+      "analysis": {
+        "thumbs": "none",
+        "peaks": "none"
+      },
+      "addedAt": "2026-11-09T12:00:00.000Z",
+      "width": 270,
+      "height": 480,
+      "fps": {
+        "num": 30,
+        "den": 1
+      },
+      "codec": "h264",
+      "audioCodec": "aac",
+      "size": 18761
+    },
+    "chart": {
+      "id": "chart",
+      "kind": "image",
+      "name": "chart.png",
+      "file": {
+        "relPath": "media/chart.png"
+      },
+      "durationUs": 0,
+      "hasAudio": false,
+      "analysis": {
+        "thumbs": "none",
+        "peaks": "none"
+      },
+      "addedAt": "2026-11-09T12:00:00.000Z",
+      "codec": "png",
+      "width": 240,
+      "height": 240,
+      "size": 35741
+    }
+  },
+  "bins": [],
+  "tracks": [
+    {
+      "id": "v1",
+      "kind": "video",
+      "name": "V1",
+      "clipIds": [
+        "backdrop"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v2",
+      "kind": "video",
+      "name": "V2",
+      "clipIds": [
+        "rgb-default",
+        "rgb-extreme",
+        "pixelate-default",
+        "pixelate-extreme",
+        "mirror-default",
+        "mirror-top",
+        "wave-default",
+        "wave-vertical",
+        "glitch-default",
+        "glitch-extreme",
+        "posterize-default",
+        "posterize-3",
+        "invert-default",
+        "invert-half",
+        "subject"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v3",
+      "kind": "video",
+      "name": "V3",
+      "clipIds": [
+        "bw",
+        "two"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    }
+  ],
+  "clips": {
+    "backdrop": {
+      "kind": "solid",
+      "name": "backdrop",
+      "enabled": true,
+      "fill": {
+        "r": 0.42,
+        "g": 0.2,
+        "b": 0.55,
+        "a": 1
+      },
+      "shape": "rect",
+      "size": {
+        "w": 360,
+        "h": 640
+      },
+      "cornerRadius": 0,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "id": "backdrop",
+      "trackId": "v1",
+      "start": 0,
+      "duration": 190
+    },
+    "rgb-default": {
+      "kind": "image",
+      "name": "rgb-default",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "rgb-default",
+      "trackId": "v2",
+      "start": 0,
+      "duration": 10,
+      "mediaId": "chart",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "rgbSplit",
+          "enabled": true,
+          "params": {
+            "distance": 8,
+            "angle": 0
+          }
+        }
+      ]
+    },
+    "rgb-extreme": {
+      "kind": "image",
+      "name": "rgb-extreme",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "rgb-extreme",
+      "trackId": "v2",
+      "start": 10,
+      "duration": 10,
+      "mediaId": "chart",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "rgbSplit",
+          "enabled": true,
+          "params": {
+            "distance": 30,
+            "angle": 45
+          }
+        }
+      ]
+    },
+    "pixelate-default": {
+      "kind": "image",
+      "name": "pixelate-default",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1.5,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "pixelate-default",
+      "trackId": "v2",
+      "start": 20,
+      "duration": 10,
+      "mediaId": "chart",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "pixelate",
+          "enabled": true,
+          "params": {
+            "size": 16
+          }
+        }
+      ]
+    },
+    "pixelate-extreme": {
+      "kind": "image",
+      "name": "pixelate-extreme",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1.5,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "pixelate-extreme",
+      "trackId": "v2",
+      "start": 30,
+      "duration": 10,
+      "mediaId": "chart",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "pixelate",
+          "enabled": true,
+          "params": {
+            "size": 40
+          }
+        }
+      ]
+    },
+    "mirror-default": {
+      "kind": "video",
+      "name": "mirror-default",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "mirror-default",
+      "trackId": "v2",
+      "start": 40,
+      "duration": 10,
+      "mediaId": "video",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "mirror",
+          "enabled": true,
+          "params": {
+            "side": "left",
+            "center": 0.5
+          }
+        }
+      ]
+    },
+    "mirror-top": {
+      "kind": "video",
+      "name": "mirror-top",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "mirror-top",
+      "trackId": "v2",
+      "start": 50,
+      "duration": 10,
+      "mediaId": "video",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "mirror",
+          "enabled": true,
+          "params": {
+            "side": "top",
+            "center": 0.3
+          }
+        }
+      ]
+    },
+    "wave-default": {
+      "kind": "image",
+      "name": "wave-default",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "wave-default",
+      "trackId": "v2",
+      "start": 60,
+      "duration": 10,
+      "mediaId": "chart",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "wave",
+          "enabled": true,
+          "params": {
+            "amplitude": 20,
+            "wavelength": 200,
+            "direction": "horizontal",
+            "speed": 1
+          }
+        }
+      ]
+    },
+    "wave-vertical": {
+      "kind": "image",
+      "name": "wave-vertical",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "wave-vertical",
+      "trackId": "v2",
+      "start": 70,
+      "duration": 10,
+      "mediaId": "chart",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "wave",
+          "enabled": true,
+          "params": {
+            "amplitude": 40,
+            "wavelength": 80,
+            "direction": "vertical",
+            "speed": 0
+          }
+        }
+      ]
+    },
+    "glitch-default": {
+      "kind": "image",
+      "name": "glitch-default",
+      "enabled": true,
+      "in": 0,
+      "out": 666667,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "glitch-default",
+      "trackId": "v2",
+      "start": 80,
+      "duration": 20,
+      "mediaId": "chart",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "glitch",
+          "enabled": true,
+          "params": {
+            "amount": 0.5,
+            "band": 24,
+            "shift": 60,
+            "split": 8,
+            "rate": 12,
+            "seed": 0
+          }
+        }
+      ]
+    },
+    "glitch-extreme": {
+      "kind": "image",
+      "name": "glitch-extreme",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "glitch-extreme",
+      "trackId": "v2",
+      "start": 100,
+      "duration": 10,
+      "mediaId": "chart",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "glitch",
+          "enabled": true,
+          "params": {
+            "amount": 1,
+            "band": 16,
+            "shift": 120,
+            "split": 20,
+            "rate": 0,
+            "seed": 7
+          }
+        }
+      ]
+    },
+    "posterize-default": {
+      "kind": "video",
+      "name": "posterize-default",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "posterize-default",
+      "trackId": "v2",
+      "start": 110,
+      "duration": 10,
+      "mediaId": "video",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "posterize",
+          "enabled": true,
+          "params": {
+            "levels": 6
+          }
+        }
+      ]
+    },
+    "posterize-3": {
+      "kind": "image",
+      "name": "posterize-3",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "posterize-3",
+      "trackId": "v2",
+      "start": 120,
+      "duration": 10,
+      "mediaId": "chart",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "posterize",
+          "enabled": true,
+          "params": {
+            "levels": 3
+          }
+        }
+      ]
+    },
+    "invert-default": {
+      "kind": "image",
+      "name": "invert-default",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "invert-default",
+      "trackId": "v2",
+      "start": 130,
+      "duration": 10,
+      "mediaId": "chart",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "invert",
+          "enabled": true,
+          "params": {
+            "amount": 1
+          }
+        }
+      ]
+    },
+    "invert-half": {
+      "kind": "image",
+      "name": "invert-half",
+      "enabled": true,
+      "in": 0,
+      "out": 333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "invert-half",
+      "trackId": "v2",
+      "start": 140,
+      "duration": 10,
+      "mediaId": "chart",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "invert",
+          "enabled": true,
+          "params": {
+            "amount": 0.5
+          }
+        }
+      ]
+    },
+    "subject": {
+      "kind": "image",
+      "name": "subject",
+      "enabled": true,
+      "in": 0,
+      "out": 1333333,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1.5,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "subject",
+      "trackId": "v2",
+      "start": 150,
+      "duration": 40,
+      "mediaId": "chart",
+      "effects": []
+    },
+    "bw": {
+      "id": "bw",
+      "trackId": "v3",
+      "kind": "adjustment",
+      "name": "Adjustment",
+      "start": 160,
+      "duration": 10,
+      "enabled": true,
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "colorAdjust",
+          "enabled": true,
+          "params": {
+            "brightness": 0,
+            "contrast": 0,
+            "saturation": -100,
+            "exposure": 0,
+            "temperature": 0,
+            "tint": 0,
+            "hue": 0,
+            "vibrance": 0
+          }
+        }
+      ],
+      "opacity": 1,
+      "masks": [
+        {
+          "id": "spot",
+          "shape": {
+            "kind": "ellipse",
+            "x": 60,
+            "y": 160,
+            "w": 240,
+            "h": 320
+          },
+          "mode": "add",
+          "feather": 20,
+          "expansion": 0,
+          "opacity": 1,
+          "inverted": false
+        }
+      ]
+    },
+    "two": {
+      "id": "two",
+      "trackId": "v3",
+      "kind": "adjustment",
+      "name": "Adjustment",
+      "start": 180,
+      "duration": 10,
+      "enabled": true,
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "pixelate",
+          "enabled": true,
+          "params": {
+            "size": 24
+          }
+        },
+        {
+          "id": "fx2",
+          "type": "posterize",
+          "enabled": true,
+          "params": {
+            "levels": 3
+          }
+        }
+      ],
+      "opacity": 0.5
+    }
+  },
+  "markers": [],
+  "captionTracks": {},
+  "textPresetsLocal": [],
+  "sequences": {},
+  "meta": {
+    "createdAt": "2026-11-09T12:00:00.000Z",
+    "modifiedAt": "2026-11-09T12:00:00.000Z",
+    "appVersion": "1.1.0",
+    "generator": {
+      "name": "interop-fixture",
+      "version": "1",
+      "source": "fixtures/interop/effects-3 (Batch 76)"
+    }
+  }
+}

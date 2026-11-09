@@ -12,7 +12,7 @@ import { BLEND_MODES, EFFECT_TYPES, MASK_MODES, CAPTION_HIGHLIGHTS, CLIP_KINDS, 
 /** The `manifestVersion`: changes only when a key changes meaning (new keys do not change it). */
 export const MANIFEST_VERSION = 1;
 /** The last batch that touched the manifest (spec §21.1: each batch sets it to its own number). */
-export const LAST_BATCH = 75;
+export const LAST_BATCH = 76;
 
 /** The flags of the manifest: a batch that adds a capability flips its key here (spec §21.2 table). */
 export const FEATURES = {
@@ -23,7 +23,7 @@ export const FEATURES = {
   mediaFrame: { stroke: true, shadow: true, cornerRadius: true },
   text: { spans: true, counter: true, animators: true, backgroundStroke: true, backgroundShadow: true },
   captions: { perCueStyle: true, wordEmphasis: true, wordsImport: true },
-  compositing: { compound: true, trackMatte: true, masks: true, adjustment: false },
+  compositing: { compound: true, trackMatte: true, masks: true, adjustment: true },
   vector: { shapes: true, trimPaths: true, svgImport: true },
   audio: { fades: true, trackGain: false, pan: false, loudness: false },
   time: { freeze: true, reverse: false, remap: false, frameBlend: false },
@@ -99,7 +99,7 @@ export function buildCapabilities(appVersion: string): Capabilities {
     compositing: { compound: f.compositing.compound, blendModes: [...BLEND_MODES], trackMatte: f.compositing.trackMatte, masks: f.compositing.masks, maskModes: [...MASK_MODES], maskKeyframeProps: [...MASK_KEYFRAME_PROPS], adjustment: f.compositing.adjustment },
     // Shapes (Batch 65): primitives, stroke caps and joins, fill rules and the keyframe props of paths (`<id>`: a path id).
     vector: { ...f.vector, primitives: [...PRIMITIVE_KINDS], caps: [...LINE_CAPS], joins: [...LINE_JOINS], fillRules: [...FILL_RULES], keyframeProps: [...SHAPE_KEYFRAME_PROPS] },
-    // Effects (spec §21.19): every effect type a clip's `effects` can hold (Batch 74: blurs, glow, shadow, outline; Batch 75: color adjust, vignette, sharpen, grain, chroma and luma keys, LUT).
+    // Effects (spec §21.19): every effect type a clip's `effects` can hold (Batch 74: blurs, glow, shadow, outline; Batch 75: color adjust, vignette, sharpen, grain, chroma and luma keys, LUT; Batch 76: RGB split, pixelate, mirror, wave, glitch, posterize, invert).
     effects: [...EFFECT_TYPES],
     audio: { clipGainDb: [MIN_GAIN_DB, MAX_GAIN_DB], ...f.audio },
     time: { speedRange: [MIN_SPEED, MAX_SPEED], ...f.time },

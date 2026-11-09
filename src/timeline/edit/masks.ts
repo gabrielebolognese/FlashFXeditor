@@ -6,6 +6,7 @@ import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import { setKey, withKeys, type Key } from "../../core/document/keyframes.js";
 import { secondsToFrames } from "../../core/document/time.js";
+import { sequenceOfTrack } from "../../core/document/sequences.js";
 import { MASKABLE_KINDS } from "../../core/document/keyframes.js";
 import type { Clip, ClipId, Frame, Keyframes, Mask, MaskMode, Project } from "../../core/document/types.js";
 import { maskKeys, maskProp, maskBase, maskHasField, maskValueAt, maskPointsAt, writeMaskBase, isPropOfMask, MASK_NUMBER_FIELDS, type MaskField, type MaskNumberField } from "../../core/masks/maskEval.js";
@@ -61,6 +62,11 @@ export function maskContentSize(project: Project, clip: Clip): ContentSize | nul
     case "compound": {
       const sequence = project.sequences[clip.sequenceId];
       return sequence ? { w: sequence.size.w, h: sequence.size.h } : null;
+    }
+    case "adjustment": {
+      // Its content box is the frame of the sequence it is in (spec §21.20): masks in project px.
+      const sequence = sequenceOfTrack(project, clip.trackId);
+      return sequence ? { w: sequence.size.w, h: sequence.size.h } : { w: project.settings.width, h: project.settings.height };
     }
     default:
       return null;

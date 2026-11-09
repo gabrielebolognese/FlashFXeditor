@@ -94,7 +94,7 @@ function sectionBody(id: SectionId, context: PropertiesContext): ReactNode {
     case "frame":
       return context.kind === "clips" ? <FrameSection ids={[...context.solidIds, ...context.mediaIds]} /> : null;
     case "opacity":
-      return context.kind === "clips" ? <OpacitySection ids={context.layerIds} /> : null;
+      return context.kind === "clips" ? <OpacitySection ids={context.opacityIds} /> : null;
     case "compositing":
       return context.kind === "clips" ? <CompositingSection ids={context.layerIds} /> : null;
     case "masks":

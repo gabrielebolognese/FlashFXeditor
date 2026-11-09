@@ -70,6 +70,7 @@ export const TOOLBAR_GROUPS: readonly ToolbarGroup[] = [
       { kind: "shapeMenu" },
       { kind: "button", id: "add.image" },
       { kind: "button", id: "add.null" },
+      { kind: "button", id: "add.adjustment" },
     ],
   },
   {

@@ -46,6 +46,8 @@ export type Migration = (raw: JsonObject) => JsonObject;
  * - 17 -> 18 (Batch 74): `ClipBase.effects` (optional; absent = no effects): older projects open unchanged.
  * - 18 -> 19 (Batch 75): the effect types colorAdjust, vignette, sharpen, grain, chromaKey, lumaKey and lut (new values
  *   of an existing field; a LUT's file lives in `luts/`): older projects open unchanged.
+ * - 19 -> 20 (Batch 76): the `adjustment` clip kind and the effect types rgbSplit, pixelate, mirror, wave, glitch, posterize
+ *   and invert (new values of existing fields): older projects open unchanged.
  * - 7 -> 8 (Batch 62): `sequences` (empty) and the `compound` clip kind: older projects open unchanged.
  * - 6 -> 7 (Batch 60): the 30 Penner eases, `bezier` and `spring` on keys, vector (color) key values and the keyframe
  *   properties of spec §21.9 (all new values of existing fields): older projects open unchanged.
@@ -93,6 +95,8 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   17: (raw) => raw,
   // 18 -> 19 (Batch 75): new effect types only: none in an older project.
   18: (raw) => raw,
+  // 19 -> 20 (Batch 76): adjustment clips and new effect types: none in an older project.
+  19: (raw) => raw,
 };
 
 function isObject(value: unknown): value is JsonObject {

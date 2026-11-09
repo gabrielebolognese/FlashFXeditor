@@ -77,7 +77,8 @@ export function removeEffect(project: Project, clipId: ClipId, effectId: string)
     run(draft) {
       const target = draft.clips[clipId] as Draft<EffectClip>;
       target.effects = (target.effects ?? []).filter((e) => e.id !== effectId);
-      if (target.effects.length === 0) delete target.effects;
+      // An adjustment clip keeps its (required) list, empty (spec §21.20).
+      if (target.effects.length === 0 && target.kind !== "adjustment") delete target.effects;
       dropEffectKeys(target, effectId);
     },
   };
@@ -95,7 +96,8 @@ export function removeAllEffects(project: Project, ids: readonly ClipId[]): Comm
     run(draft) {
       for (const { id, effectIds } of work) {
         const clip = draft.clips[id] as Draft<EffectClip>;
-        delete clip.effects;
+        if (clip.kind === "adjustment") clip.effects = [];
+        else delete clip.effects;
         for (const effectId of effectIds) dropEffectKeys(clip, effectId);
       }
     },

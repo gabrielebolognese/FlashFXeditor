@@ -5,10 +5,13 @@
 // ids, and only the Batch 74 types (FlashFX-v2 wires its blur and glow to real render-to-texture passes, as here).
 // Batch 75 adds the per-pixel color, stylize, key and LUT passes (FlashFX-v2 applyColorEffect in
 // src/engine/renderer.ts @ a91c675; their math is core/effects/colorMath.ts and core/effects/lut.ts).
+// Batch 76 adds RGB split, pixelate, mirror, wave, glitch, posterize and invert (FlashFX-v2 applyWarpEffect,
+// applySpatialEffect and applyColorEffect @ a91c675; their math is core/effects/stylize.ts).
 import { EFFECT_DEFS, type EffectParamDef } from "../../core/effects/effectParams.js";
 import { EFFECT_BLOCK, EFFECT_FRAME_SLOT, effectTypeOf, paramOffset } from "../../core/effects/effectEval.js";
 import type { EffectType } from "../../core/document/types.js";
 import { dominantChannel } from "../../core/effects/colorMath.js";
+import { rgbSplitOffset } from "../../core/effects/stylize.js";
 import { lutLibrary } from "./lutLibrary.js";
 
 /** The programs of the effect shader (`code` in its uniform). */
@@ -29,6 +32,16 @@ export const FX_PROGRAM = {
   chromaKey: 14,
   lumaKey: 15,
   lut: 16,
+  // Batch 76.
+  rgbSplit: 17,
+  pixelate: 18,
+  mirror: 19,
+  wave: 20,
+  glitch: 21,
+  posterize: 22,
+  invert: 23,
+  /** An adjustment's input (spec §21.20): the picture below inside the frame's box, transparent past it. */
+  crop: 24,
 } as const;
 export type FxProgram = (typeof FX_PROGRAM)[keyof typeof FX_PROGRAM];
 
@@ -263,6 +276,76 @@ export const EFFECT_REGISTRY: Readonly<Record<EffectType, EffectRenderDef>> = {
       }
     },
   },
+  // Batch 76. a.xy = the red read's offset (stage px); blue reads the other way.
+  rgbSplit: {
+    type: "rgbSplit",
+    params: EFFECT_DEFS.rgbSplit.params,
+    neighbors: true,
+    reach: (data, o) => p(data, o, "rgbSplit", "distance"),
+    passes(writer, data, o, scale) {
+      const u = writer.pass(FX_PROGRAM.rgbSplit, false);
+      const [x, y] = rgbSplitOffset(p(data, o, "rgbSplit", "distance"), p(data, o, "rgbSplit", "angle"), scale);
+      u[FX_SLOT.a] = x;
+      u[FX_SLOT.a + 1] = y;
+    },
+  },
+  // a.x = the cell (stage px).
+  pixelate: {
+    type: "pixelate",
+    params: EFFECT_DEFS.pixelate.params,
+    neighbors: true,
+    reach: () => 0,
+    passes(writer, data, o, scale) {
+      writer.pass(FX_PROGRAM.pixelate, false)[FX_SLOT.a] = Math.max(1, p(data, o, "pixelate", "size")) * scale;
+    },
+  },
+  // a = the kept side (0 left, 1 right, 2 top, 3 bottom), the line (0..1 across the box).
+  mirror: {
+    type: "mirror",
+    params: EFFECT_DEFS.mirror.params,
+    neighbors: true,
+    reach: () => 0,
+    passes(writer, data, o) {
+      const u = writer.pass(FX_PROGRAM.mirror, false);
+      copyParams(u, FX_SLOT.a, data, o, "mirror", ["side", "center"]);
+    },
+  },
+  // a = amplitude, wavelength (stage px), direction (0 horizontal, 1 vertical), phase (waves: speed x seconds).
+  wave: {
+    type: "wave",
+    params: EFFECT_DEFS.wave.params,
+    neighbors: true,
+    reach: (data, o) => p(data, o, "wave", "amplitude"),
+    passes(writer, data, o, scale) {
+      const u = writer.pass(FX_PROGRAM.wave, false);
+      u[FX_SLOT.a] = p(data, o, "wave", "amplitude") * scale;
+      u[FX_SLOT.a + 1] = Math.max(2, p(data, o, "wave", "wavelength")) * scale;
+      u[FX_SLOT.a + 2] = p(data, o, "wave", "direction");
+      // The phase wraps to one wave, so float precision holds over long clips.
+      const phase = p(data, o, "wave", "speed") * (data[o + EFFECT_FRAME_SLOT] as number);
+      u[FX_SLOT.a + 3] = phase - Math.floor(phase);
+    },
+  },
+  // a = amount, band, shift, split (stage px); b = seed, pattern index.
+  glitch: {
+    type: "glitch",
+    params: EFFECT_DEFS.glitch.params,
+    neighbors: true,
+    reach: (data, o) => p(data, o, "glitch", "shift") + p(data, o, "glitch", "split"),
+    passes(writer, data, o, scale) {
+      const u = writer.pass(FX_PROGRAM.glitch, false);
+      u[FX_SLOT.a] = p(data, o, "glitch", "amount");
+      u[FX_SLOT.a + 1] = Math.max(2, p(data, o, "glitch", "band")) * scale;
+      u[FX_SLOT.a + 2] = p(data, o, "glitch", "shift") * scale;
+      u[FX_SLOT.a + 3] = p(data, o, "glitch", "split") * scale;
+      u[FX_SLOT.b] = Math.round(p(data, o, "glitch", "seed"));
+      u[FX_SLOT.b + 1] = data[o + EFFECT_FRAME_SLOT] as number;
+    },
+  },
+  // a.x = levels.
+  posterize: pixelPass("posterize", FX_PROGRAM.posterize, ["levels"]),
+  // a.x = amount.
+  invert: pixelPass("invert", FX_PROGRAM.invert, ["amount"]),
 };
 
 /** Copies `count` floats of the block at `o` (from parameter `name`) into `u` from `slot`. */

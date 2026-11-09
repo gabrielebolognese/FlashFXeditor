@@ -24,7 +24,7 @@ import type { DrawList, MaskFrame } from "../compositor/drawList.js";
 import { IDENTITY, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import type { BackendRenderer } from "./backend.js";
 import { blurRegionInto, DrawRecords, newRecordUniform, pathRegionInto, premultipliedInto, retargetStages, ROLE, setRect, showBlurred, showPath, writePathUniform, type BlurRegion, type DrawRecord, type QuadKind, type Rect } from "./drawRecords.js";
-import { FX_BUFFER, FX_PASS_STRIDE, FX_UNIFORM_BYTES, StageJobs, type StageJob } from "../effects/stageJobs.js";
+import { FX_BUFFER, FX_PASS_STRIDE, FX_UNIFORM_BYTES, StageJobs, type AdjustJob, type StageJob } from "../effects/stageJobs.js";
 import { lutLibrary } from "../effects/lutLibrary.js";
 import { fitWithin, hasAlphaFormat } from "./fitWithin.js";
 import type { GpuDevice } from "./GpuDevice.js";
@@ -115,6 +115,8 @@ interface BackdropTarget {
   texture: GPUTexture;
   view: GPUTextureView;
   used: number;
+  /** Read by an adjustment's effect passes (Batch 76): sampler and view, made on first use. */
+  fxGroup: GPUBindGroup | null;
 }
 
 interface CompositePipelines {
@@ -123,6 +125,8 @@ interface CompositePipelines {
   add: GPURenderPipeline;
   /** The non-hardware modes: the W3C composite with the backdrop, no blending. */
   backdrop: GPURenderPipeline;
+  /** Adjustment clips (spec §21.20, Batch 76): the effect picture mixed with the backdrop, no blending. */
+  adjust: GPURenderPipeline;
 }
 
 /** Blend modes and track mattes (Batch 72), built on the first group: the composite pipelines and the pooled pictures. */
@@ -136,6 +140,8 @@ interface CompositeResources {
   dummyView: GPUTextureView;
   groups: GroupTarget[];
   backdrops: BackdropTarget[];
+  /** Adjustments' composite bind groups (Batch 76), by their effect picture's view. */
+  adjustGroups: WeakMap<GPUTextureView, { backdrop: GPUTextureView; mask: GPUTextureView | null; group: GPUBindGroup }>;
   /** Masks (Batch 73): the coverage pass and the kept coverages. */
   maskPipeline: GPURenderPipeline;
   maskLayout: GPUBindGroupLayout;
@@ -541,7 +547,7 @@ export class WebGpuRenderer implements BackendRenderer {
     this.pathRecords(res, encoder, count);
     this.blurRecords(res, encoder, count);
     // Effects (spec §21.19): kept results picked, the stages to redraw planned, stage records moved to the target's px.
-    const effects = this.records.stageCount > 0 ? this.prepareStages(res, count, target.width, target.height) : null;
+    const effects = this.records.stageCount > 0 || this.records.adjustCount > 0 ? this.prepareStages(res, count, target.width, target.height) : null;
     this.writeUniforms(res, count, pixelsToClipInto(this.toClip, target.width, target.height, IDENTITY));
     if (effects) this.stagePasses(res, encoder, effects, count);
 
@@ -562,6 +568,27 @@ export class WebGpuRenderer implements BackendRenderer {
     for (let index = 0; index < count; index++) {
       const record = this.records.at(index);
       if (record.role !== ROLE.target) continue;
+      if (record.kind === "adjust") {
+        // An adjustment (spec §21.20): end the pass, copy the target, run the effects over the copy, mix the result back over the frame.
+        const job = effects?.jobs.adjustJobs[record.stage - 1];
+        if (!effects || !job?.info || job.count === 0) continue;
+        pass.end();
+        const shared = (res.composite ??= this.buildComposite(res));
+        const backdrop = this.backdropTarget(res, shared, format, target.width, target.height);
+        encoder.copyTextureToTexture({ texture: targetTexture }, { texture: backdrop.texture }, [target.width, target.height]);
+        this.backdropCopies += 1;
+        const picture = this.adjustPasses(res, encoder, effects, job, backdrop);
+        const mask = job.info.mask ? this.coverage(res, encoder, shared, job.info.mask) : null;
+        pass = encoder.beginRenderPass(this.loadDescriptor(attachment));
+        setRect(last, 0, 0, target.width, target.height);
+        this.scissor(pass, record, last);
+        pass.setPipeline(this.compositePipelines(res, shared, format).adjust);
+        this.dynamicOffset[0] = index * LAYER_STRIDE;
+        pass.setBindGroup(0, res.group, this.dynamicOffset, 0, 1);
+        pass.setBindGroup(1, this.adjustBindGroup(res, shared, picture, backdrop, mask));
+        pass.draw(4);
+        continue;
+      }
       if (record.kind !== "composite") {
         this.quad(pass, pipelines, res, index, record, last);
         continue;
@@ -604,7 +631,7 @@ export class WebGpuRenderer implements BackendRenderer {
   /** Draws a quad record (textured, dissolve or solid; a shape is a textured record by now). */
   private quad(pass: GPURenderPassEncoder, pipelines: Pipelines, res: DeviceResources, index: number, record: DrawRecord<GpuTexture>, last: Rect): void {
     this.scissor(pass, record, last);
-    if (record.kind === "path" || record.kind === "composite" || record.kind === "effect" || (record.kind === "textured" && !record.texture0)) return;
+    if (record.kind === "path" || record.kind === "composite" || record.kind === "effect" || record.kind === "adjust" || (record.kind === "textured" && !record.texture0)) return;
     pass.setPipeline(pipelines[record.kind]);
     this.dynamicOffset[0] = index * LAYER_STRIDE;
     pass.setBindGroup(0, res.group, this.dynamicOffset, 0, 1);
@@ -646,6 +673,7 @@ export class WebGpuRenderer implements BackendRenderer {
     }
     if (jobs.passCount > 0) res.device.queue.writeBuffer(fx.buffer, 0, jobs.data.buffer, 0, jobs.passCount * FX_PASS_STRIDE);
     retargetStages(this.records, count, width, height);
+    if (res.composite) this.evictShared(res.composite);
     return fx;
   }
 
@@ -683,25 +711,69 @@ export class WebGpuRenderer implements BackendRenderer {
         if (record.role === ROLE.stage && record.stage === job.stage) this.quad(pass, pipelines, res, index, record, last);
       }
       pass.end();
-      for (let i = job.first; i < job.first + job.count; i++) {
-        const dst = buffer(jobs.dst[i] as number);
-        const src = buffer(jobs.src[i] as number);
-        const origIndex = jobs.orig[i] as number;
-        const orig = origIndex === FX_BUFFER.coverage ? coverage : origIndex === FX_BUFFER.lut ? this.lutGroup(res, fx, jobs.lut[i] as number) : buffer(origIndex).bindGroup;
-        const fxPass = encoder.beginRenderPass({ label: "effect", colorAttachments: [{ view: dst.view, loadOp: "clear", storeOp: "store", clearValue: [0, 0, 0, 0] }] });
-        fxPass.setPipeline(fx.pipeline);
-        fxPass.setViewport(0, 0, width, height, 0, 1);
-        fxPass.setScissorRect(0, 0, width, height);
-        this.dynamicOffset[0] = i * FX_PASS_STRIDE;
-        fxPass.setBindGroup(0, fx.group, this.dynamicOffset, 0, 1);
-        fxPass.setBindGroup(1, src.bindGroup);
-        fxPass.setBindGroup(2, orig ?? src.bindGroup);
-        fxPass.draw(3);
-        fxPass.end();
-        this.effectPasses += 1;
-      }
+      this.fxPasses(res, encoder, fx, job.first, job.count, width, height, (index) => (index === FX_BUFFER.coverage ? coverage : buffer(index).bindGroup));
     }
     this.fxBuffers.fill(null);
+  }
+
+  /** Encodes the effect passes `first` .. `first + count - 1` over a `width` x `height` stage; `group` gives a buffer's bind group (LUTs are looked up here). */
+  private fxPasses(res: DeviceResources, encoder: GPUCommandEncoder, fx: EffectResources, first: number, count: number, width: number, height: number, group: (index: number) => GPUBindGroup | null): void {
+    const jobs = fx.jobs;
+    const buffers = this.fxBuffers;
+    for (let i = first; i < first + count; i++) {
+      const dstIndex = jobs.dst[i] as number;
+      const dst = (buffers[dstIndex] ??= this.blurTexture(res, width, height));
+      const src = group(jobs.src[i] as number);
+      const origIndex = jobs.orig[i] as number;
+      const orig = origIndex === FX_BUFFER.lut ? this.lutGroup(res, fx, jobs.lut[i] as number) : group(origIndex);
+      if (!src) continue;
+      const fxPass = encoder.beginRenderPass({ label: "effect", colorAttachments: [{ view: dst.view, loadOp: "clear", storeOp: "store", clearValue: [0, 0, 0, 0] }] });
+      fxPass.setPipeline(fx.pipeline);
+      fxPass.setViewport(0, 0, width, height, 0, 1);
+      fxPass.setScissorRect(0, 0, width, height);
+      this.dynamicOffset[0] = i * FX_PASS_STRIDE;
+      fxPass.setBindGroup(0, fx.group, this.dynamicOffset, 0, 1);
+      fxPass.setBindGroup(1, src);
+      fxPass.setBindGroup(2, orig ?? src);
+      fxPass.draw(3);
+      fxPass.end();
+      this.effectPasses += 1;
+    }
+  }
+
+  /**
+   * An adjustment's effect passes (spec §21.20, Batch 76) over the copy of the target (`backdrop`, the first
+   * pass's source), into pooled target-size buffers; returns the one holding the result (FX_BUFFER.out).
+   */
+  private adjustPasses(res: DeviceResources, encoder: GPUCommandEncoder, fx: EffectResources, job: AdjustJob, backdrop: BackdropTarget): GpuTexture {
+    const { width, height } = job.info as NonNullable<AdjustJob["info"]>;
+    const buffers = this.fxBuffers;
+    buffers.fill(null);
+    const behind = (backdrop.fxGroup ??= res.device.createBindGroup({ label: "adjust backdrop", layout: res.textureLayout, entries: [{ binding: 0, resource: res.sampler }, { binding: 1, resource: backdrop.view }] }));
+    const buffer = (index: number): GpuTexture => (buffers[index] ??= this.blurTexture(res, width, height));
+    this.fxPasses(res, encoder, fx, job.first, job.count, width, height, (index) => (index === FX_BUFFER.backdrop ? behind : buffer(index).bindGroup));
+    const out = buffer(FX_BUFFER.out);
+    buffers.fill(null);
+    return out;
+  }
+
+  /** An adjustment's composite bind group: its effect picture, the backdrop and its masks' coverage (kept while they stay the same). */
+  private adjustBindGroup(res: DeviceResources, composite: CompositeResources, picture: GpuTexture, backdrop: BackdropTarget, mask: GPUTextureView | null): GPUBindGroup {
+    const kept = composite.adjustGroups.get(picture.view);
+    if (kept && kept.backdrop === backdrop.view && kept.mask === mask) return kept.group;
+    const group = res.device.createBindGroup({
+      label: "adjust composite",
+      layout: composite.layout,
+      entries: [
+        { binding: 0, resource: picture.view },
+        { binding: 1, resource: composite.dummyView },
+        { binding: 2, resource: backdrop.view },
+        { binding: 3, resource: mask ?? composite.dummyView },
+        { binding: 4, resource: composite.dummyView },
+      ],
+    });
+    composite.adjustGroups.set(picture.view, { backdrop: backdrop.view, mask, group });
+    return group;
   }
 
   /** The bind group of LUT `handle`'s atlas (uploaded on first use), or null when the library does not have it. */
@@ -799,6 +871,12 @@ export class WebGpuRenderer implements BackendRenderer {
       entry.matte?.destroy();
       pool.splice(i, 1);
     }
+    this.evictShared(composite);
+    return composite;
+  }
+
+  /** Frees the backdrop copies and mask coverages no draw used for a while. */
+  private evictShared(composite: CompositeResources): void {
     for (let i = composite.backdrops.length - 1; i >= 0; i--) {
       const entry = composite.backdrops[i] as BackdropTarget;
       if (this.draws - entry.used <= BLUR_KEEP_DRAWS) continue;
@@ -806,7 +884,6 @@ export class WebGpuRenderer implements BackendRenderer {
       composite.backdrops.splice(i, 1);
     }
     evictCoverage(composite.coverages, this.draws, BLUR_KEEP_DRAWS, destroyCoverage);
-    return composite;
   }
 
   /**
@@ -874,7 +951,7 @@ export class WebGpuRenderer implements BackendRenderer {
     }
     if (!found) {
       const texture = res.device.createTexture({ label: "backdrop", size: [width, height], format, usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST });
-      found = { format, width, height, texture, view: texture.createView(), used: this.draws };
+      found = { format, width, height, texture, view: texture.createView(), used: this.draws, fxGroup: null };
       composite.backdrops.push(found);
     }
     found.used = this.draws;
@@ -916,7 +993,7 @@ export class WebGpuRenderer implements BackendRenderer {
           fragment: { module: composite.module, entryPoint, targets: [blend ? { format, blend } : { format }] },
           primitive: { topology: "triangle-strip" },
         });
-      modes = { normal: make("normal", "fs", PREMULTIPLIED_BLEND), screen: make("screen", "fs", SCREEN_BLEND), add: make("add", "fs", ADD_BLEND), backdrop: make("backdrop", "fsBackdrop", null) };
+      modes = { normal: make("normal", "fs", PREMULTIPLIED_BLEND), screen: make("screen", "fs", SCREEN_BLEND), add: make("add", "fs", ADD_BLEND), backdrop: make("backdrop", "fsBackdrop", null), adjust: make("adjust", "fsAdjust", null) };
       composite.pipelines.set(format, modes);
     }
     return modes;
@@ -957,6 +1034,7 @@ export class WebGpuRenderer implements BackendRenderer {
       pipelineLayout: device.createPipelineLayout({ label: "composite", bindGroupLayouts: [res.groupLayout, layout] }),
       module,
       pipelines: new Map(),
+      adjustGroups: new WeakMap(),
       dummy,
       dummyView: dummy.createView(),
       groups: [],

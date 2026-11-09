@@ -3,7 +3,8 @@
 // Block layout: EFFECT_BLOCK floats, [type code, then each parameter in EFFECT_DEFS order: a number or a
 // toggle one float, a color four (straight alpha), a choice its option index, a file the handle the caller's
 // resolver gives it (0: none or not loaded; a LUT, Batch 75)]; the last float holds the clip-relative frame for
-// a type whose picture changes every frame (an animated grain). Packing allocates nothing. Pure.
+// a type whose picture changes every frame (an animated grain), the seconds of a moving wave and the pattern
+// index of a glitch (Batch 76, `motionSlot`). Packing allocates nothing. Pure.
 import { sampleKeys, sampleVector, type Key } from "../document/keyframes.js";
 import { EFFECT_TYPES, type Effect, type EffectType, type Frame, type Keyframes } from "../document/types.js";
 import { clampParam, EFFECT_DEFS, effectParam, effectProp, isEffectType, type EffectParamDef } from "./effectParams.js";
@@ -87,11 +88,27 @@ export function effectBlockFloats(clip: { effects?: Effect[] | undefined }): num
 }
 
 /**
+ * What the frame slot of a block holds for a type whose picture moves over time (Batch 76): a moving wave the
+ * seconds into the clip (`rel` / `fps`), a glitch with a rate the index of its pattern (a new one `rate` times
+ * a second, counted from the clip's start); 0 when still. `block` is the packed block at `at`.
+ */
+export function motionSlot(type: EffectType, block: Float32Array, at: number, rel: Frame, fps: number): number {
+  const rate = fps > 0 ? fps : 30;
+  if (type === "wave") return block[at + (OFFSETS.wave.speed as number)] !== 0 ? rel / rate : 0;
+  if (type === "glitch") {
+    const perSecond = block[at + (OFFSETS.glitch.rate as number)] as number;
+    return perSecond > 0 ? Math.floor((Math.max(0, rel) * perSecond) / rate + 1e-9) : 0;
+  }
+  return 0;
+}
+
+/**
  * Packs the clip's enabled effects at `rel` frames into it into `out` (EFFECT_BLOCK floats each, in stack
  * order) and returns the floats written. `out` must hold `effectBlockFloats(clip)`. `files` turns file
- * parameters into handles (0 for every file without it).
+ * parameters into handles (0 for every file without it); `fps` (frames per second of the project) times the
+ * wave and the glitch (Batch 76).
  */
-export function packEffects(clip: { effects?: Effect[] | undefined; keyframes?: Keyframes | undefined }, rel: Frame, out: Float32Array, files?: EffectFileResolver): number {
+export function packEffects(clip: { effects?: Effect[] | undefined; keyframes?: Keyframes | undefined }, rel: Frame, out: Float32Array, files?: EffectFileResolver, fps = 30): number {
   let at = 0;
   const keyed = hasEffectKeys(clip.keyframes);
   for (const effect of clip.effects ?? []) {
@@ -113,6 +130,8 @@ export function packEffects(clip: { effects?: Effect[] | undefined; keyframes?: 
     }
     // An animated grain draws a new pattern each frame: the frame makes its block (and its stage) change.
     if (effect.type === "grain" && out[at + (offsets.animated as number)] === 1) out[at + EFFECT_FRAME_SLOT] = rel;
+    // A moving wave and a glitch with a rate (Batch 76): their time, so a still one keeps its cached stage.
+    else if (effect.type === "wave" || effect.type === "glitch") out[at + EFFECT_FRAME_SLOT] = motionSlot(effect.type, out, at, rel, fps);
     at += EFFECT_BLOCK;
   }
   return at;

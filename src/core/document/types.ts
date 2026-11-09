@@ -1,7 +1,7 @@
 // The persistent document (spec §5.2). Plain JSON only: no classes, Maps, Sets or undefined-valued
 // keys, so a Project can be serialized as-is and diffed by Immer patches.
 
-export const SCHEMA_VERSION = 19;
+export const SCHEMA_VERSION = 20;
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: JsonValue };
@@ -596,9 +596,14 @@ export interface Mask {
 
 /**
  * The effect types (spec §21.19): Batch 74's blurs, glow, shadow and outline; Batch 75's color adjustment,
- * vignette, sharpen, grain, chroma and luma keys and LUT. Later batches add theirs.
+ * vignette, sharpen, grain, chroma and luma keys and LUT; Batch 76's RGB split, pixelate, mirror, wave, glitch,
+ * posterize and invert.
  */
-export const EFFECT_TYPES = ["gaussianBlur", "directionalBlur", "glow", "dropShadow", "outline", "colorAdjust", "vignette", "sharpen", "grain", "chromaKey", "lumaKey", "lut"] as const;
+export const EFFECT_TYPES = [
+  "gaussianBlur", "directionalBlur", "glow", "dropShadow", "outline",
+  "colorAdjust", "vignette", "sharpen", "grain", "chromaKey", "lumaKey", "lut",
+  "rgbSplit", "pixelate", "mirror", "wave", "glitch", "posterize", "invert",
+] as const;
 export type EffectType = (typeof EFFECT_TYPES)[number];
 
 /**
@@ -615,7 +620,7 @@ export interface Effect {
   params: Record<string, number | number[] | string>;
 }
 
-export const CLIP_KINDS = ["video", "audio", "image", "text", "solid", "caption", "compound", "shape", "null"] as const;
+export const CLIP_KINDS = ["video", "audio", "image", "text", "solid", "caption", "compound", "shape", "null", "adjustment"] as const;
 export type ClipKind = (typeof CLIP_KINDS)[number];
 
 export interface ClipBase {
@@ -901,7 +906,21 @@ export interface NullClip extends ClipBase {
   size: { w: number; h: number };
 }
 
-export type Clip = MediaClip | TextClip | SolidClip | CaptionClip | CompoundClip | ShapeClip | NullClip;
+/**
+ * An adjustment clip (spec §21.20, Batch 76) on a video track: during its range its effects apply to the
+ * composite of every layer below it in the same sequence; its masks (in project px over the frame) limit the
+ * area and its opacity (with keys and fades) mixes the result with the unaffected picture. It draws nothing
+ * of its own: no transform, blend mode or matte.
+ */
+export interface AdjustmentClip extends ClipBase {
+  kind: "adjustment";
+  effects: Effect[];
+  opacity: number;
+  keyframes?: Keyframes;
+  fades?: { in: Frame; out: Frame };
+}
+
+export type Clip = MediaClip | TextClip | SolidClip | CaptionClip | CompoundClip | ShapeClip | NullClip | AdjustmentClip;
 
 /** x,y in project pixels relative to project center; scale 1 = native media size; rotation degrees. */
 export interface Transform {

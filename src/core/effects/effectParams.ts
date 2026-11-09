@@ -53,7 +53,7 @@ const unit = (name: string, label: string, value: number) => num(name, label, va
 export const LUT_FOLDER = "luts";
 export const LUT_EXTENSION = ".cube";
 
-/** The Batch 74 types, in the Add menu's order. */
+/** Every type's parameters (Batch 74, 75 and 76), in the Add rows' order. */
 export const EFFECT_DEFS: Readonly<Record<EffectType, EffectTypeDef>> = {
   gaussianBlur: { type: "gaussianBlur", label: "Gaussian blur", params: [px("radius", "Radius", 10, 500), repeatEdges] },
   directionalBlur: { type: "directionalBlur", label: "Directional blur", params: [px("length", "Length", 20, 500), angle(0), repeatEdges] },
@@ -105,6 +105,48 @@ export const EFFECT_DEFS: Readonly<Record<EffectType, EffectTypeDef>> = {
     label: "LUT",
     params: [{ name: "file", label: "File", kind: "file", default: "", folder: LUT_FOLDER, extension: LUT_EXTENSION, keyframeable: false }, unit("intensity", "Intensity", 1)],
   },
+  // Batch 76 (FlashFX-v2 rgbSplit, pixelate, mirror, wave, digitalGlitch, posterize and invert in
+  // src/engine/renderer.ts @ a91c675, with named parameters instead of one slider; the math is core/effects/stylize.ts).
+  // Red read `distance` px towards `angle`, blue as far the other way, green in place.
+  rgbSplit: { type: "rgbSplit", label: "RGB split", params: [px("distance", "Distance", 8, 500), angle(0)] },
+  // Square cells `size` content px wide from the box's top-left corner, each the color at its middle.
+  pixelate: { type: "pixelate", label: "Pixelate", params: [num("size", "Size", 16, 1, 500, "px")] },
+  // The `side` half (from the line at `center` of the box) reflected onto the other.
+  mirror: {
+    type: "mirror",
+    label: "Mirror",
+    params: [{ name: "side", label: "Keep", kind: "choice", default: "left", options: ["left", "right", "top", "bottom"], keyframeable: false }, unit("center", "Center", 0.5)],
+  },
+  // Rows (horizontal) or columns (vertical) moved along a sine `wavelength` px long by up to `amplitude` px,
+  // travelling `speed` waves per second.
+  wave: {
+    type: "wave",
+    label: "Wave",
+    params: [
+      px("amplitude", "Amplitude", 20, 500),
+      num("wavelength", "Wavelength", 200, 2, 4000, "px"),
+      { name: "direction", label: "Direction", kind: "choice", default: "horizontal", options: ["horizontal", "vertical"], keyframeable: false },
+      num("speed", "Speed", 1, -10, 10, "/s", 0.1),
+    ],
+  },
+  // Bands `band` px high, a share `amount` of them moved sideways by up to `shift` px with their red and blue
+  // `split` px apart; a new pattern `rate` times a second (0: still), `seed` picks the pattern.
+  glitch: {
+    type: "glitch",
+    label: "Glitch",
+    params: [
+      unit("amount", "Amount", 0.5),
+      num("band", "Band", 24, 2, 400, "px"),
+      px("shift", "Shift", 60, 1000),
+      px("split", "Split", 8, 200),
+      num("rate", "Rate", 12, 0, 60, "/s"),
+      { name: "seed", label: "Seed", kind: "number", default: 0, min: 0, max: 9999, step: 1, keyframeable: false },
+    ],
+  },
+  // Each channel rounded to `levels` steps.
+  posterize: { type: "posterize", label: "Posterize", params: [num("levels", "Levels", 6, 2, 64)] },
+  // The colors turned over (1 - c), mixed in by `amount`.
+  invert: { type: "invert", label: "Invert", params: [unit("amount", "Amount", 1)] },
 };
 
 const TYPE_SET: ReadonlySet<string> = new Set(EFFECT_TYPES);
@@ -133,8 +175,8 @@ export function isEffectProp(prop: string): boolean {
 /** The prop id of an effect parameter. */
 export const effectProp = (id: string, param: string): string => `effects.${id}.${param}`;
 
-/** Clip kinds that draw a picture: the ones that take effects (spec §21.19). */
-export const EFFECT_KINDS: readonly string[] = ["video", "image", "text", "solid", "shape", "compound"];
+/** Clip kinds that take effects (spec §21.19): the ones that draw a picture, and adjustment clips (§21.20, Batch 76). */
+export const EFFECT_KINDS: readonly string[] = ["video", "image", "text", "solid", "shape", "compound", "adjustment"];
 
 /** The value a definition gives a parameter missing from `params` (a copy for colors). */
 function fallback(def: EffectParamDef): number | number[] | string {

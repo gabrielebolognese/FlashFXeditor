@@ -19,9 +19,14 @@
 // (render/effects/effectPlan.ts) and `showEffect` turns the stage's "effect" record into a textured quad of
 // the result, laid out by the clip's model and projection and drawn with its opacity. Each stage has a
 // signature of what it draws: while it stays the same the backend keeps its last result (P6).
+// An adjustment clip (spec §21.20, Batch 76) is an "adjust" record over its pane's frame (role target only):
+// the backend copies the target drawn so far, runs the clip's effect passes over that copy (a target-sized
+// stage in target px, the frame its box: `AdjustInfo`) and draws the result over the frame mixed with the
+// copy by the clip's opacity times its masks' coverage (mask map in the style's stop colors, MASK_MAP.mask).
+// Never cached: what is below changes from frame to frame.
 import type { GradientFill, RGBA } from "../../core/document/types.js";
 import type { ClipId } from "../../core/document/types.js";
-import type { DrawList, EffectFrame, GroupLayer, Layer, MaskFrame, PathDraw, PathLayer, SolidLayer, UvRect } from "../compositor/drawList.js";
+import type { AdjustLayer, DrawList, EffectFrame, GroupLayer, Layer, MaskFrame, PathDraw, PathLayer, SolidLayer, UvRect } from "../compositor/drawList.js";
 import { stackReach } from "../effects/registry.js";
 import { blendCode, isHardwareBlend } from "../../core/effects/blendModes.js";
 import { matteCode } from "../../core/effects/trackMatte.js";
@@ -31,9 +36,9 @@ import { LAYER_STRIDE, newStyleUniform, packLayer, resetStyleUniform, SHAPE_CODE
 import { affineTimesHomography, homographyTimesAffine, newHomography, type Homography } from "../projection.js";
 import type { Pane, TextureHandle, Viewport } from "./renderer.js";
 
-export type RecordKind = "textured" | "dissolve" | "solid" | "path" | "composite" | "effect";
-/** The kinds drawn with the layer pipelines ("path" records become "textured" before the passes; "composite" has its own). */
-export type QuadKind = Exclude<RecordKind, "path" | "composite" | "effect">;
+export type RecordKind = "textured" | "dissolve" | "solid" | "path" | "composite" | "effect" | "adjust";
+/** The kinds drawn with the layer pipelines ("path" records become "textured" before the passes; "composite" and "adjust" have their own). */
+export type QuadKind = Exclude<RecordKind, "path" | "composite" | "effect" | "adjust">;
 
 /** Where a record draws: the target (0), or a group's picture (spec §21.17): its layers (1) or its matte (2). */
 export const ROLE = { target: 0, layers: 1, matte: 2, stage: 3 } as const;
@@ -91,6 +96,20 @@ export interface StageInfo {
   numberCount: number;
   refs: unknown[];
   refCount: number;
+}
+
+/**
+ * An adjustment of a build (spec §21.20, Batch 76): a stage the size of the target (`width` x `height`, target
+ * px), the pane's frame spanning `rect` in it, `scale` target px per project px, and the clip's packed effects.
+ */
+export interface AdjustInfo {
+  clipId: ClipId;
+  width: number;
+  height: number;
+  scale: number;
+  rect: [number, number, number, number];
+  effects: EffectFrame;
+  mask: MaskFrame | null;
 }
 
 /** What a stage's cached result is kept by (StageInfo's signature, or a copy of it). */
@@ -215,6 +234,11 @@ export class DrawRecords<T extends TextureHandle> {
   /** The effect stages of the last `build` (spec §21.19): stage e is `stages[e - 1]`; the first `stageCount` are current. */
   readonly stages: StageInfo[] = [];
   stageCount = 0;
+  /** The adjustments of the last `build` (spec §21.20): an "adjust" record's `stage` s is `adjusts[s - 1]`; the first `adjustCount` are current. */
+  readonly adjusts: AdjustInfo[] = [];
+  adjustCount = 0;
+  private targetWidth = 0;
+  private targetHeight = 0;
   /** Where the records being added draw (a group's picture while its layers are added). */
   private group = 0;
   private role: number = ROLE.target;
@@ -248,6 +272,9 @@ export class DrawRecords<T extends TextureHandle> {
     this.count = 0;
     this.groupCount = 0;
     this.stageCount = 0;
+    this.adjustCount = 0;
+    this.targetWidth = width;
+    this.targetHeight = height;
     this.group = 0;
     this.role = ROLE.target;
     this.stage = 0;
@@ -452,6 +479,42 @@ export class DrawRecords<T extends TextureHandle> {
 
   private readonly box: [number, number, number, number] = [0, 0, 0, 0];
 
+  /**
+   * An adjustment (spec §21.20, Batch 76): its info (the target-sized stage, the frame's box in it, the view's
+   * scale) and its "adjust" record over the frame with its opacity and the mask map of its masks.
+   */
+  private adjustRecord(layer: AdjustLayer, view: Mat3, scissor: Rect): void {
+    const list = this.list as DrawList;
+    const effects = layer.effects;
+    const scale = Math.sqrt(Math.abs(view[0] * view[3] - view[1] * view[2]));
+    if (!(layer.opacity > 0) || !(scale > 0) || effects.length === 0 || this.targetWidth < 1 || this.targetHeight < 1) return;
+    const index = this.adjustCount + 1;
+    this.adjustCount = index;
+    const info = (this.adjusts[index - 1] ??= { clipId: "", width: 0, height: 0, scale: 1, rect: [0, 0, 0, 0], effects, mask: null });
+    info.clipId = layer.clipId;
+    info.width = this.targetWidth;
+    info.height = this.targetHeight;
+    info.scale = scale;
+    const frame = frameRect(this.adjustBox, view, list.width, list.height);
+    info.rect[0] = frame.x;
+    info.rect[1] = frame.y;
+    info.rect[2] = frame.x + frame.width;
+    info.rect[3] = frame.y + frame.height;
+    info.effects = effects;
+    info.mask = layer.mask;
+    const record = this.nextRecord("adjust", scissor);
+    record.stage = index;
+    const u = record.uniform;
+    multiplyInto(u.transform, view, setMat(u.transform, list.width, 0, 0, list.height, 0, 0));
+    u.opacity = layer.opacity;
+    const maps = u.style.stopColor;
+    maps.fill(0);
+    if (layer.mask && writeMaskMap(maps, MASK_MAP.mask, view, layer.mask)) maps[MASK_MAP.flags] = 1;
+    else info.mask = null;
+  }
+
+  private readonly adjustBox: Rect = { x: 0, y: 0, width: 0, height: 0 };
+
   /** The signature of stage `info` (its records from `first` on): its size, scale, box, effects and mask versions, and every record. */
   private writeSignature(info: StageInfo, first: number): void {
     const stride = LAYER_STRIDE / 4;
@@ -514,6 +577,10 @@ export class DrawRecords<T extends TextureHandle> {
   /** Adds the record of a document layer (its matrix mapped to target px by `view`); layers with a missing or dead texture are skipped. */
   private layerRecord(layer: Layer, view: Mat3, scissor: Rect): void {
     switch (layer.kind) {
+      case "adjust":
+        // Over the target only (an adjustment is never inside a group; a stage never holds one).
+        if (this.group === 0 && this.stage === 0 && this.role === ROLE.target) this.adjustRecord(layer, view, scissor);
+        return;
       case "group": {
         // Groups do not nest (a matte's own blend and matte are not drawn): an inner group draws plainly.
         if (this.group !== 0 || this.stage !== 0) {
@@ -605,7 +672,7 @@ export class DrawRecords<T extends TextureHandle> {
 }
 
 /** Record kinds as numbers (stage signatures). */
-const KIND_CODE: Readonly<Record<RecordKind, number>> = { textured: 1, dissolve: 2, solid: 3, path: 4, composite: 5, effect: 6 };
+const KIND_CODE: Readonly<Record<RecordKind, number>> = { textured: 1, dissolve: 2, solid: 3, path: 4, composite: 5, effect: 6, adjust: 7 };
 
 /** A layer drawn flat (a stage's records: the clip's projection applies to the stage's result). */
 const NO_PERSP: { persp: null } = { persp: null };

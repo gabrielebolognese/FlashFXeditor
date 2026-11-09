@@ -350,7 +350,7 @@ export class LayerTextures {
       if (drawn) list.layers.push(drawn);
       return;
     }
-    if (layer.kind === "solid") {
+    if (layer.kind === "solid" || layer.kind === "adjust") {
       list.layers.push(layer);
       return;
     }
@@ -747,6 +747,11 @@ export class LayerTextures {
     }
     if (layer.kind === "solid") {
       layers.push(layer);
+      return;
+    }
+    if (layer.kind === "adjust") {
+      // An adjustment clip (spec §21.20): its blocks copied (the compositor reuses them for the next frame).
+      layers.push({ kind: "adjust", clipId: layer.clipId, transform: mutableIdentity(), opacity: layer.opacity, persp: null, effects: copyEffectFrame(layer.effects), mask: layer.mask ? copyMaskFrame(layer.mask) : null });
       return;
     }
     if (layer.kind === "text") {

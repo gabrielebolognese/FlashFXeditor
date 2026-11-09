@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { newEffect } from "../../core/effects/effectParams.js";
 import { EFFECT_BLOCK, packEffects } from "../../core/effects/effectEval.js";
 import type { Effect } from "../../core/document/types.js";
-import { FULL_UV, type DrawList, type EffectFrame, type Layer } from "../compositor/drawList.js";
+import { FULL_UV, type DrawList, type EffectFrame, type Layer, type MaskFrame } from "../compositor/drawList.js";
 import { applyToPoint, rectTransform, type Mat3 } from "../mat3.js";
-import { DrawRecords, MAX_STAGE_SIZE, retargetStages, ROLE, sameSignature, stageScale } from "../gpu/drawRecords.js";
+import { DrawRecords, MASK_MAP, MAX_STAGE_SIZE, retargetStages, ROLE, sameSignature, stageScale } from "../gpu/drawRecords.js";
 import type { Pane, TextureHandle } from "../gpu/renderer.js";
-import { EffectPlan, FX_BUFFER } from "./effectPlan.js";
+import { EffectPlan, FX_BUFFER, readsNeighbors } from "./effectPlan.js";
 import { blurTaps, EFFECT_REGISTRY, FX_PROGRAM, FX_SLOT, outlineSteps, stackReach } from "./registry.js";
 import { StageJobs } from "./stageJobs.js";
 import { lutLibrary } from "./lutLibrary.js";
@@ -254,5 +254,75 @@ describe("effect stages in DrawRecords (spec §21.19)", () => {
     expect(sameSignature(a, { ...a, numbers: Float64Array.from([1, 2, 3 + 1e-6]) })).toBe(true);
     expect(sameSignature(a, { ...a, numbers: Float64Array.from([1, 2, 3.1]) })).toBe(false);
     expect(sameSignature(a, { ...a, refs: [{}] })).toBe(false);
+  });
+});
+
+describe("adjustment stages (spec §21.20, Batch 76)", () => {
+  const adjust = (effects: Effect[], opacity = 1, mask: MaskFrame | null = null): Layer => {
+    const { data, length } = packed(effects);
+    return { kind: "adjust", clipId: "adj", transform: rectTransform(0, 0, 1080, 1920), opacity, effects: { clipId: "adj", data, length, version: 1, width: 1080, height: 1920, model: [1, 0, 0, 1, 0, 0], persp: null, opacity }, mask };
+  };
+  const SOLID: Layer = { kind: "solid", color: { r: 1, g: 0, b: 0, a: 1 }, transform: rectTransform(0, 0, 1080, 1920), opacity: 1 };
+
+  it("starts an adjustment's passes from the backdrop; a stack that reads neighbors gets a crop pass first", () => {
+    const plan = new EffectPlan();
+    const color = packed([newEffect("colorAdjust", "a"), newEffect("invert", "b")]);
+    expect(readsNeighbors(color.data, color.length)).toBe(false);
+    expect(plan.build({ width: 540, height: 960, rect: [0, 0, 540, 960], scale: 0.5, data: color.data, length: color.length, masked: false, adjust: true })).toBe(2);
+    expect(plan.src[0]).toBe(FX_BUFFER.backdrop);
+    expect(plan.dst[1]).toBe(FX_BUFFER.out);
+    const wave = packed([newEffect("wave", "a")]);
+    expect(readsNeighbors(wave.data, wave.length)).toBe(true);
+    expect(plan.build({ width: 600, height: 960, rect: [30, 0, 570, 960], scale: 0.5, data: wave.data, length: wave.length, masked: false, adjust: true })).toBe(2);
+    expect(plan.src[0]).toBe(FX_BUFFER.backdrop);
+    expect(plan.uniform(0)[FX_SLOT.size + 2]).toBe(FX_PROGRAM.crop);
+    expect(plan.uniform(0)[FX_SLOT.size + 3]).toBe(1);
+    expect(plan.src[1]).toBe(plan.dst[0]);
+    expect(plan.dst[1]).toBe(FX_BUFFER.out);
+    // Not an adjustment: a clip's stage starts from buffer 0 and needs no crop.
+    expect(plan.build({ width: 600, height: 960, rect: [30, 0, 570, 960], scale: 0.5, data: wave.data, length: wave.length, masked: false })).toBe(1);
+    expect(plan.src[0]).toBe(0);
+  });
+
+  it("an adjustment over the target is one record over the frame with its info; none without effects or opacity", () => {
+    const records = new DrawRecords(usable);
+    const maskFrame: MaskFrame = { clipId: "adj", data: new Float32Array(8), length: 8, version: 3, width: 1080, height: 1920, model: [1, 0, 0, 1, 0, 0], persp: null };
+    // A letterboxed pane: the frame at 0.25 scale, 30 px from the left.
+    const view: Pane = { ...pane(list([SOLID, adjust([newEffect("colorAdjust", "a")], 0.5, maskFrame)]), 0.25), viewport: { transform: [0.25, 0, 0, 0.25, 30, 0], outside: { r: 0, g: 0, b: 0, a: 1 }, border: null } };
+    const count = records.build([view], 330, 480);
+    expect(records.adjustCount).toBe(1);
+    const record = records.at(count - 1);
+    expect([record.kind, record.stage, record.role]).toEqual(["adjust", 1, ROLE.target]);
+    expect(record.uniform.opacity).toBe(0.5);
+    expect([...pt(record.uniform.transform, 0, 0), ...pt(record.uniform.transform, 1, 1)]).toEqual([30, 0, 300, 480]);
+    expect(record.uniform.style.stopColor[MASK_MAP.flags]).toBe(1);
+    const info = records.adjusts[0]!;
+    expect([info.width, info.height, info.scale]).toEqual([330, 480, 0.25]);
+    expect(Array.from(info.rect)).toEqual([30, 0, 300, 480]);
+    expect(info.mask).toBe(maskFrame);
+    // No effects, or no opacity: nothing to draw.
+    records.build([pane(list([SOLID, adjust([])]), 0.25)], 270, 480);
+    expect(records.adjustCount).toBe(0);
+    records.build([pane(list([SOLID, adjust([newEffect("invert", "a")], 0)]), 0.25)], 270, 480);
+    expect(records.adjustCount).toBe(0);
+  });
+
+  it("plans an adjustment's passes on every draw, after the stages", () => {
+    const records = new DrawRecords(usable);
+    const texture = new FakeTexture(200, 100);
+    const blurred = frame([newEffect("gaussianBlur", "a")], [1, 0, 0, 1, 300, 400], 200, 100);
+    const layers = [group(texture, blurred), adjust([newEffect("pixelate", "a"), newEffect("posterize", "b")])];
+    const jobs = new StageJobs<FakeTexture>();
+    const alloc = (current: FakeTexture | null, w: number, h: number) => (current && current.width >= w && current.height >= h ? current : new FakeTexture(w, h));
+    for (const draw of [1, 2]) {
+      const count = records.build([pane(list(layers), 0.5)], 540, 960);
+      jobs.prepare(records, count, draw, alloc);
+      // The blur stage is cached after the first draw; the adjustment (crop, pixelate, posterize) is planned every time.
+      expect(jobs.jobCount).toBe(draw === 1 ? 1 : 0);
+      const job = jobs.adjustJobs[0]!;
+      expect(job.info).toBe(records.adjusts[0]);
+      expect(job.count).toBe(3);
+      expect(job.first).toBe(draw === 1 ? 2 : 0);
+    }
   });
 });

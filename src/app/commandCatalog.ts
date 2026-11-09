@@ -19,6 +19,7 @@ import {
   BookmarkPlus,
   Brackets,
   Crosshair,
+  SlidersHorizontal,
   Navigation,
   Spline,
   Unlink,
@@ -474,6 +475,7 @@ export const COMMANDS: readonly CommandInfo[] = [
   add("add.captionTrack", "Add caption track", { icon: Captions }),
   add("add.solid", "Add solid", { icon: Square, keywords: "color shape" }),
   add("add.null", "Add null", { icon: Crosshair, keywords: "controller parent invisible rig" }),
+  add("add.adjustment", "Add adjustment", { icon: SlidersHorizontal, keywords: "adjustment layer effects below grade look" }),
   add("add.image", "Add image", { icon: ImagePlus, keywords: "picture photo" }),
   // Vector shapes (spec §21.12, Batch 66): the `+ Shape` dropdown's rows.
   add("add.shape.rect", "Add rectangle shape", { icon: RectangleHorizontal, keywords: "vector box square" }),

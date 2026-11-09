@@ -791,6 +791,18 @@ fn fsBackdrop(in: VertexOut) -> @location(0) vec4f {
   let rgb = s.rgb * (1.0 - b.a) + b.rgb * (1.0 - s.a) + s.a * b.a * blended;
   return vec4f(rgb, s.a + b.a - s.a * b.a);
 }
+
+// An adjustment clip (spec §21.20, Batch 76): its effect picture (pictureTex, target px) over the picture below
+// (backdropTex, the target before it), mixed by its opacity times its masks' coverage. No blending.
+@fragment
+fn fsAdjust(in: VertexOut) -> @location(0) vec4f {
+  let p = vec2i(in.position.xy);
+  let b = textureLoad(backdropTex, p, 0);
+  let s = textureLoad(pictureTex, p, 0);
+  var k = layer.params.x;
+  if (layer.stopColor[6].x > 0.5) { k = k * coverage(maskTex, layer.stopColor[0], layer.stopColor[1], layer.stopColor[2], in.position.xy); }
+  return mix(b, s, clamp(k, 0.0, 1.0));
+}
 `;
 
 /**
@@ -1205,6 +1217,70 @@ fn pixelEffect(program: i32, p: vec2f) -> vec4f {
   }
 }
 
+// Batch 76: RGB split, pixelate, mirror, wave, glitch, posterize and invert (core/effects/stylize.ts, line for
+// line). Reads past the stage are transparent (tapSrc); rounding is floor(x + 0.5) on both backends.
+fn glitchShift(p: vec2f) -> f32 {
+  let row = u32(i32(floor((p.y - fx.rect.y) / max(fx.a.y, 0.0001))) + 65536);
+  let key = u32(fx.b.x + 0.5) * 7919u + u32(fx.b.y + 0.5);
+  if (grainHash(row, key, 1u) >= fx.a.x) { return 0.0; }
+  return (grainHash(row, key, 2u) * 2.0 - 1.0) * fx.a.z;
+}
+
+fn stylize(program: i32, p: vec2f) -> vec4f {
+  switch program {
+    case 17: {
+      let r = tapSrc(p + fx.a.xy);
+      let g = tapSrc(p);
+      let b = tapSrc(p - fx.a.xy);
+      return vec4f(r.r, g.g, b.b, max(r.a, max(g.a, b.a)));
+    }
+    case 18: {
+      let cell = max(fx.a.x, 0.0001);
+      return tapSrc(fx.rect.xy + (floor((p - fx.rect.xy) / cell) + vec2f(0.5)) * cell);
+    }
+    case 19: {
+      let side = i32(fx.a.x + 0.5);
+      var q = p;
+      if (side < 2) {
+        let axisAt = fx.rect.x + fx.a.y * (fx.rect.z - fx.rect.x);
+        if (select((p.x < axisAt), (p.x > axisAt), side == 0)) { q.x = 2.0 * axisAt - p.x; }
+      } else {
+        let axisAt = fx.rect.y + fx.a.y * (fx.rect.w - fx.rect.y);
+        if (select((p.y < axisAt), (p.y > axisAt), side == 2)) { q.y = 2.0 * axisAt - p.y; }
+      }
+      return tapSrc(q);
+    }
+    case 20: {
+      let len = max(fx.a.y, 0.0001);
+      var q = p;
+      if (fx.a.z < 0.5) { q.x = p.x + fx.a.x * sin(TAU * (p.y - fx.rect.y) / len - TAU * fx.a.w); }
+      else { q.y = p.y + fx.a.x * sin(TAU * (p.x - fx.rect.x) / len - TAU * fx.a.w); }
+      return tapSrc(q);
+    }
+    case 21: {
+      let du = glitchShift(p);
+      if (du == 0.0) { return tapSrc(p); }
+      let r = tapSrc(p + vec2f(du + fx.a.w, 0.0));
+      let g = tapSrc(p + vec2f(du, 0.0));
+      let b = tapSrc(p + vec2f(du - fx.a.w, 0.0));
+      return vec4f(r.r, g.g, b.b, max(r.a, max(g.a, b.a)));
+    }
+    case 22: {
+      let s = tapSrc(p);
+      if (s.a <= 0.0) { return vec4f(0.0); }
+      let n = max(floor(fx.a.x + 0.5), 2.0) - 1.0;
+      return vec4f(floor(clamp(s.rgb / s.a, vec3f(0.0), vec3f(1.0)) * n + vec3f(0.5)) / n * s.a, s.a);
+    }
+    case 23: {
+      let s = tapSrc(p);
+      if (s.a <= 0.0) { return vec4f(0.0); }
+      let c = s.rgb / s.a;
+      return vec4f((c + (vec3f(1.0) - 2.0 * c) * clamp(fx.a.x, 0.0, 1.0)) * s.a, s.a);
+    }
+    default: { return tapSrc(p); }
+  }
+}
+
 @fragment
 fn fs(@builtin(position) position: vec4f) -> @location(0) vec4f {
   let p = position.xy;
@@ -1229,6 +1305,8 @@ fn fs(@builtin(position) position: vec4f) -> @location(0) vec4f {
     case 8: { return tapSrc(p) * coverage(p); }
     case 9: { return vec4f(dilate(p)); }
     case 10, 11, 12, 13, 14, 15, 16: { return pixelEffect(program, p); }
+    case 17, 18, 19, 20, 21, 22, 23: { return stylize(program, p); }
+    // 24: an adjustment's input (fx.size.w set: transparent past the frame's box).
     default: { return tapSrc(p); }
   }
 }

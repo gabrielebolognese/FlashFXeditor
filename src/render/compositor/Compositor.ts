@@ -79,12 +79,12 @@ import { painterOrder, type DepthSortItem } from "../../core/space/camera3d.js";
 import { facesAway, isDepthTransform, newHomography, projectedCorners, viewingDistance, writeProjection, type Homography } from "../projection.js";
 import { framesToSourceUs, secondsToFrames } from "../../core/document/time.js";
 import { handleTimeUs, TRANSITION_CODE, transitionFx, transitionMix } from "../../core/document/transitions.js";
-import type { CaptionClip, CaptionStyle, CaptionWord, Clip, ClipId, CompoundClip, Crop, Effect, Frame, Keyframes, Mask, MatteMode, MediaClip, MediaId, Project, RGBA, ShadowStyle, ShapeClip, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
+import type { AdjustmentClip, CaptionClip, CaptionStyle, CaptionWord, Clip, ClipId, CompoundClip, Crop, Effect, Frame, Keyframes, Mask, MatteMode, MediaClip, MediaId, Project, RGBA, ShadowStyle, ShapeClip, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
 import { pathFramesAt, type PathFrameScratch } from "./shapeFrames.js";
 import { activeWordIndex, captionPlace, defaultCaptionStyle, effectiveCaptionStyle } from "../../text/captions.js";
 import { activeAnim, animUnit, isPlayable, newUnitState, presence, resetUnitState, typedCount, unitProgress, writeUnitShape, type ActiveAnim, type UnitState } from "../../text/anim.js";
 import { clipInIndex, lastClipStartingBy, trackIndex, type TrackIndex } from "../../timeline/model/queries.js";
-import { multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
+import { IDENTITY, multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import { DEFAULT_TEXT_STYLE, textContent } from "../../text/style.js";
 import type { AtlasUnitKind } from "../text/atlas.js";
 import { layoutStops, layoutUnits } from "../text/animUnits.js";
@@ -104,7 +104,7 @@ import { GLYPH_SLOT, TINT_SLOT, decodeGlyphChars, isKinetic, newKineticScratch, 
 import { counterGlyphs } from "../../text/counter.js";
 import { finestUnit } from "../text/animUnits.js";
 import { isGradientFill } from "../../core/document/fill.js";
-import { HIGHLIGHT_SLOT, MATTE_SLOT, TRANSITION_SLOT, type MaskFrame, type EffectFrame, type CaptionHighlightFrame, type GroupCompositeLayer, type PlainCompositeLayer, type CompoundCompositeLayer, type CaptionWordBoxes, type Composite, type CompositeLayer, type ShapeCompositeLayer, type ShapePathFrame, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextCompositeLayer, type TransitionCompositeLayer } from "./drawList.js";
+import { HIGHLIGHT_SLOT, MATTE_SLOT, TRANSITION_SLOT, type AdjustLayer, type MaskFrame, type EffectFrame, type CaptionHighlightFrame, type GroupCompositeLayer, type PlainCompositeLayer, type CompoundCompositeLayer, type CaptionWordBoxes, type Composite, type CompositeLayer, type ShapeCompositeLayer, type ShapePathFrame, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextCompositeLayer, type TransitionCompositeLayer } from "./drawList.js";
 
 /** How far from the playhead the clips next to it count as cut neighbours (seconds). */
 export const NEIGHBOR_SECONDS = 2;
@@ -353,6 +353,7 @@ export class Compositor {
 
   /** Clips with a blend mode or a track matte (spec §21.17, Batch 72), grouped in the frame. */
   private readonly groupPool: WritableGroupLayer[] = [];
+  private readonly adjustPool: AdjustLayer[] = [];
   /** The live values of the evaluation in progress (passed on to the matte clips' evaluation). */
   private readonly live: LiveMaps = [null, null, null, null, null, null, null, null, null, null];
   /** Masks (spec §21.18, Batch 73): each drawn clip's content box at the frame (noted by the writers). */
@@ -422,6 +423,7 @@ export class Compositor {
     let transitions = 0;
     let compounds = 0;
     let shapes = 0;
+    let adjusts = 0;
     for (const track of doc.tracks) {
       // The caption track's cue (spec §10.5), unless the track is hidden.
       if (track.kind === "caption") {
@@ -498,6 +500,14 @@ export class Compositor {
       }
       // The keyed values at the frame (the clip's own when unkeyed; `animated` is reused per layer).
       const rel = frame - clip.start;
+      if (clip.kind === "adjustment") {
+        // An adjustment clip (spec §21.20): its effects over everything drawn so far. Not in plain compositors (a matte's).
+        if (!this.plain && this.writeAdjust(doc, clip, frame, clamp01(opacities?.get(clip.id) ?? animatedOpacity(clip, rel)) * fadeFactor(clip, frame), adjusts)) {
+          this.depths.push(this.depths[this.depths.length - 1] ?? 0);
+          adjusts += 1;
+        }
+        continue;
+      }
       const transform = this.rig.resolve(clip, transforms?.get(clip.id) ?? animatedTransform(clip, rel, this.animated), this.world);
       const opacity = opacities?.get(clip.id) ?? animatedOpacity(clip, rel);
       if (clip.kind === "video" || clip.kind === "image") {
@@ -605,7 +615,7 @@ export class Compositor {
     const mask = this.maskFrame(clip, frame, first);
     if (this.plain) return false;
     // Effects (spec §21.19): the clip's picture goes through them in its content box (its masks applied first, there).
-    const effects = this.effectFrame(clip, frame, first, opacity);
+    const effects = this.effectFrame(clip, frame, first, opacity, fpsOf(doc));
     const blend = clip.blend ?? "normal";
     const source = clip.matte ? doc.clips[clip.matte.clipId] : undefined;
     // A matte clip that is gone, is the clip itself, draws no picture or is not in this sequence is ignored.
@@ -693,7 +703,7 @@ export class Compositor {
    * its content box, with the clip's `opacity` (1 in a transition: the sides keep theirs): null when it has no
    * enabled effect, drew nothing or is fully transparent. The block keeps its version while its data stays the same.
    */
-  private effectFrame(clip: Clip, frame: Frame, first: number, opacity: number): EffectFrame | null {
+  private effectFrame(clip: Clip, frame: Frame, first: number, opacity: number, fps: number): EffectFrame | null {
     // A live gesture's effects (an Effects section scrub: values at the frame, keys applied) replace the clip's.
     const edited = this.live[9]?.get(clip.id);
     const source: { effects?: Effect[] | undefined; keyframes?: Keyframes | undefined } = edited ? { effects: edited as Effect[] } : clip;
@@ -704,7 +714,7 @@ export class Compositor {
     const need = effectBlockFloats(source);
     if (this.effectScratch.length < need) this.effectScratch = new Float32Array(Math.max(need, this.effectScratch.length * 2));
     const scratch = this.effectScratch;
-    const length = packEffects(source, frame - clip.start, scratch, lutLibrary.handleOf);
+    const length = packEffects(source, frame - clip.start, scratch, lutLibrary.handleOf, fps);
     let out = this.effectStates.get(clip.id);
     if (!out) {
       out = { clipId: clip.id, data: new Float32Array(0), length: 0, version: 0, width: 0, height: 0, model: mutableIdentity(), persp: null, opacity: 1 };
@@ -726,6 +736,33 @@ export class Compositor {
     const lead = layers[first] as CompositeLayer;
     out.persp = lead.kind === "dissolve" ? ((lead.from.clipId === clip.id ? lead.from.persp : lead.to.persp) ?? null) : lead.kind === "group" ? null : (lead.persp ?? null);
     return out;
+  }
+
+  /**
+   * An adjustment clip at the frame (spec §21.20, Batch 76) as an "adjust" layer over the project frame (its
+   * content box: the identity model, the frame size, so its masks and the mask gizmo work in frame px): false
+   * when nothing is below it, it has no enabled effect or it is fully transparent.
+   */
+  private writeAdjust(doc: Project, clip: AdjustmentClip, frame: Frame, opacity: number, index: number): boolean {
+    const { width, height } = doc.settings;
+    this.noteContent(clip.id, IDENTITY, width, height);
+    const layers = this.out.layers;
+    if (layers.length === 0 || !(opacity > 0)) return false;
+    // Masks and effects read the content box and need a layer from `first` on: the adjustment's own, pushed first.
+    const layer = (this.adjustPool[index] ??= newAdjustLayer());
+    const first = layers.length;
+    layers.push(layer);
+    const mask = this.maskFrame(clip, frame, first);
+    const effects = this.effectFrame(clip, frame, first, opacity, fpsOf(doc));
+    if (!effects) {
+      layers.length = first;
+      return false;
+    }
+    layer.clipId = clip.id;
+    layer.opacity = opacity;
+    layer.effects = effects;
+    layer.mask = mask;
+    return true;
   }
 
   /** The content box of `clipId` at the last frame it was drawn (content px -> project px; the canvas mask mode lays its handles out by it), or null. */
@@ -754,7 +791,7 @@ export class Compositor {
     const layers = this.out.layers;
     if (layers.length === first) return;
     const lead = layers[first] as CompositeLayer;
-    const persp = lead.kind === "dissolve" || lead.kind === "group" ? null : this.projection(doc, clip, transform, ...boxOf(lead));
+    const persp = lead.kind === "dissolve" || lead.kind === "group" || lead.kind === "adjust" ? null : this.projection(doc, clip, transform, ...boxOf(lead));
     if (persp === false) {
       layers.length = first;
       return;
@@ -775,21 +812,35 @@ export class Compositor {
     return persp;
   }
 
-  /** Painter's order of the layers' depths (farthest first, equal depths in track order). */
+  /**
+   * Painter's order of the layers' depths (farthest first, equal depths in track order). An adjustment layer
+   * (spec §21.20) stays where it is: the layers between two of them are sorted on their own.
+   */
   private sortByDepth(): void {
     const layers = this.out.layers;
+    let start = 0;
+    for (let i = 0; i <= layers.length; i++) {
+      if (i < layers.length && (layers[i] as CompositeLayer).kind !== "adjust") continue;
+      if (i - start > 1) this.sortRun(start, i);
+      start = i + 1;
+    }
+  }
+
+  /** Painter's order of the layers `start` to `end` (exclusive). */
+  private sortRun(start: number, end: number): void {
+    const layers = this.out.layers;
     const items = this.sortItems;
-    items.length = layers.length;
-    for (let i = 0; i < layers.length; i++) {
-      const item = (items[i] ??= { is3D: true, depth: 0 });
+    items.length = end - start;
+    for (let i = start; i < end; i++) {
+      const item = (items[i - start] ??= { is3D: true, depth: 0 });
       // Camera-space depth: farther is more negative.
       item.depth = -(this.depths[i] ?? 0);
     }
     const order = painterOrder(items);
     const sorted = this.sorted;
     sorted.length = 0;
-    for (const index of order) sorted.push(layers[index] as CompositeLayer);
-    for (let i = 0; i < sorted.length; i++) layers[i] = sorted[i] as CompositeLayer;
+    for (const index of order) sorted.push(layers[start + index] as CompositeLayer);
+    for (let i = 0; i < sorted.length; i++) layers[start + i] = sorted[i] as CompositeLayer;
   }
 
   private newCompoundLayer(): WritableCompoundLayer {
@@ -1392,12 +1443,21 @@ function matteView(doc: Project, clipId: ClipId): Project | null {
   return view;
 }
 
+function newAdjustLayer(): AdjustLayer {
+  return { kind: "adjust", clipId: "", transform: mutableIdentity(), opacity: 1, persp: null, effects: null as unknown as EffectFrame, mask: null };
+}
+
+/** The project's frame rate in frames per second. */
+function fpsOf(doc: Project): number {
+  return doc.settings.fps.num / doc.settings.fps.den;
+}
+
 function newGroupLayer(): WritableGroupLayer {
   return { kind: "group", trackId: "", clipId: "", blend: "normal", mask: null, effects: null, layers: [], matte: null, matteValue: { mode: "alpha", layers: [], mask: null }, child: null };
 }
 
 /** The box a layer lays out (its matrix and the box size it maps): the unit quad, or its content px. */
-function boxOf(layer: Exclude<CompositeLayer, TransitionCompositeLayer | GroupCompositeLayer>): [Mat3, number, number] {
+function boxOf(layer: Exclude<CompositeLayer, TransitionCompositeLayer | GroupCompositeLayer | AdjustLayer>): [Mat3, number, number] {
   switch (layer.kind) {
     case "media":
     case "solid":
