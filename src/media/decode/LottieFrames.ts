@@ -37,6 +37,7 @@ export interface LottieFramesDeps {
 }
 
 interface Wanted {
+  variant: string;
   timeUs: number;
   /** The signed step between the last two different times (0: not playing). */
   step: number;
@@ -45,7 +46,10 @@ interface Wanted {
 export class LottieFrames {
   private readonly edges = new Map<string, number>();
   private readonly poolIds = new Map<string, Map<number, string>>();
+  /** The time and step each clip (or, without a clip id, each variant) asked for: two clips of one variant do not share a playhead. */
   private readonly wanted = new Map<string, Wanted>();
+  /** The time the variant's frame was last asked for, by any clip (what `get` shows). */
+  private readonly lastTime = new Map<string, number>();
   private readonly inFlight = new Map<string, AbortController>();
   /** Every edge a variant has textures at (its pool ids), so `release` finds them. */
   private readonly used = new Map<MediaId, Set<string>>();
@@ -64,6 +68,7 @@ export class LottieFrames {
     for (const controller of this.inFlight.values()) controller.abort(abortError());
     this.inFlight.clear();
     this.wanted.clear();
+    this.lastTime.clear();
     this.source = false;
   }
 
@@ -120,20 +125,21 @@ export class LottieFrames {
    * The pool key of the frame shown at animation time `timeUs` (in a scratch key valid until the next call). As a side
    * effect it notes the time, and while the animation moves it has the next frames rendered.
    */
-  key(variant: string, timeUs: number): TextureKey {
+  key(variant: string, timeUs: number, clipId?: string): TextureKey {
     const time = Math.round(timeUs);
     const edge = this.edgeOf(variant);
     const key = this.scratch;
     key.mediaId = this.poolId(variant, edge);
     key.lod = "full";
     key.timeUs = time;
-    this.note(variant, time, edge);
+    this.lastTime.set(variant, time);
+    this.note(variant, time, edge, clipId === undefined ? variant : `${clipId}|${variant}`);
     return key;
   }
 
-  private note(variant: string, time: number, edge: number): void {
-    let wanted = this.wanted.get(variant);
-    if (!wanted) this.wanted.set(variant, (wanted = { timeUs: time, step: 0 }));
+  private note(variant: string, time: number, edge: number, slot: string): void {
+    let wanted = this.wanted.get(slot);
+    if (!wanted) this.wanted.set(slot, (wanted = { variant, timeUs: time, step: 0 }));
     const durationUs = this.item(variant)?.durationUs ?? 0;
     if (time !== wanted.timeUs) {
       let delta = time - wanted.timeUs;
@@ -159,7 +165,7 @@ export class LottieFrames {
 
   /** The texture of the frame last asked for (null when it is not loaded yet). */
   get(variant: string): TextureHandle | null {
-    const time = this.wanted.get(variant)?.timeUs ?? 0;
+    const time = this.lastTime.get(variant) ?? 0;
     const edge = this.edgeOf(variant);
     this.probe.mediaId = this.poolId(variant, edge);
     this.probe.timeUs = time;
@@ -169,9 +175,11 @@ export class LottieFrames {
   /** Renders the frame last asked for (the first frame when none was) and resolves with its texture; null when it cannot be shown now. */
   async load(variant: string): Promise<TextureHandle | null> {
     if (!this.source) return null;
-    const time = this.wanted.get(variant)?.timeUs ?? 0;
     const edge = this.edgeOf(variant);
-    await this.fetch(variant, edge, [time], "user");
+    // Every clip of the variant needs its own frame, not only the one asked for last.
+    const times = new Set<number>([this.lastTime.get(variant) ?? 0]);
+    for (const wanted of this.wanted.values()) if (wanted.variant === variant) times.add(wanted.timeUs);
+    await this.fetch(variant, edge, [...times], "user");
     return this.get(variant);
   }
 
@@ -259,7 +267,8 @@ export class LottieFrames {
     }
     for (const id of this.used.get(mediaId) ?? []) this.deps.pool.deleteMedia(id);
     this.used.delete(mediaId);
-    for (const map of [this.edges, this.wanted] as Map<string, unknown>[]) for (const variant of [...map.keys()]) if (parseLottieVariant(variant).mediaId === mediaId) map.delete(variant);
+    for (const map of [this.edges, this.lastTime] as Map<string, unknown>[]) for (const variant of [...map.keys()]) if (parseLottieVariant(variant).mediaId === mediaId) map.delete(variant);
+    for (const [slot, wanted] of [...this.wanted]) if (parseLottieVariant(wanted.variant).mediaId === mediaId) this.wanted.delete(slot);
     for (const variant of [...this.poolIds.keys()]) if (parseLottieVariant(variant).mediaId === mediaId) this.poolIds.delete(variant);
     this.deps.workers.request("closeLottie", { mediaId }, { priority: "background" }).catch(() => undefined);
   }

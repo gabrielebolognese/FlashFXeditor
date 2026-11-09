@@ -89,8 +89,8 @@ export class ImageService {
    * looped; a still's one texture), in a scratch key valid until the next call. Null while an
    * animation's frame list is not known yet.
    */
-  frameKey(mediaId: MediaId, timeUs: number): TextureKey | null {
-    if (this.lottie.is(mediaId)) return this.lottie.key(mediaId, timeUs);
+  frameKey(mediaId: MediaId, timeUs: number, clipId?: string): TextureKey | null {
+    if (this.lottie.is(mediaId)) return this.lottie.key(mediaId, timeUs, clipId);
     const item = this.deps.document.getState().media[mediaId];
     const key = this.scratch;
     key.mediaId = mediaId;

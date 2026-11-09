@@ -374,4 +374,11 @@ describe("validateProject compositing (spec §21.17, Batch 72)", () => {
     expect(issues((p) => Object.assign(clip(p, "c1"), { matte: { clipId: "c3", mode: "alpha" } })).join()).toMatch(/draws no picture/);
     expect(issues((p) => Object.assign(clip(p, "c1"), { matte: { clipId: "gone", mode: "alpha" } }))).toEqual([]);
   });
+
+  it("checks what is inside a lottie clip's colorOverrides", () => {
+    const rgba = { r: 1, g: 0, b: 0, a: 1 };
+    const withOverrides = (value: unknown) => issues((p) => Object.assign(clip(p, "c1"), { kind: "lottie", colorOverrides: value })).join();
+    expect(withOverrides([{ from: rgba, to: rgba }])).not.toMatch(/colorOverrides/);
+    for (const bad of [[{}], "x", [{ from: "red", to: 3 }], [{ from: rgba, to: { ...rgba, r: Number.NaN } }]]) expect(withOverrides(bad)).toMatch(/colorOverrides must be a list/);
+  });
 });

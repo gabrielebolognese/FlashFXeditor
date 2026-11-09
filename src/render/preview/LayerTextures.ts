@@ -999,7 +999,7 @@ export class LayerTextures {
     const lod = layer.still ? "full" : this.lodOf(mediaId);
     if (layer.still) {
       if (layer.lottie) this.lottieDetail(layer);
-      key = this.deps.images.frameKey(mediaId, layer.timeUs);
+      key = this.deps.images.frameKey(mediaId, layer.timeUs, layer.lottie ? layer.clipId : undefined);
       texture = key ? this.deps.pool.get(key) : null;
       if (!texture) this.loadImage(mediaId);
       else if (priority === "idle" && !layer.lottie) this.refineVector(layer, texture, this.textScale);

@@ -134,6 +134,12 @@ function timeIssues(clip: MediaClip, label: string): string[] {
   if (clip.loop !== undefined && typeof clip.loop !== "boolean") issues.push(`${label}: loop must be true or false`);
   if (clip.loop !== undefined && clip.kind !== "lottie") issues.push(`${label}: only a lottie clip can loop its animation`);
   if (clip.colorOverrides !== undefined && clip.kind !== "lottie") issues.push(`${label}: only a lottie clip has colorOverrides`);
+  else if (clip.colorOverrides !== undefined) {
+    const overrides = clip.colorOverrides as unknown;
+    if (!Array.isArray(overrides) || !overrides.every((o) => typeof o === "object" && o !== null && isColor((o as { from?: unknown }).from) && isColor((o as { to?: unknown }).to))) {
+      issues.push(`${label}: colorOverrides must be a list of { from, to } RGBA colors`);
+    }
+  }
   if (clip.frameBlend !== undefined) {
     if (typeof clip.frameBlend !== "boolean") issues.push(`${label}: frameBlend must be true or false`);
     else if (clip.frameBlend && clip.kind !== "video") issues.push(`${label}: only a video clip blends frames`);

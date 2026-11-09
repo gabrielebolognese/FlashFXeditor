@@ -118,6 +118,28 @@ describe("LottieFrames (spec §21.23, Batch 79)", () => {
     expect(requests[0]?.params.timesUs?.[0]).toBe(8_000);
   });
 
+  it("two clips of one variant keep their own playheads and both prefetch", async () => {
+    const { frames, requests } = setup();
+    const step = 16_667;
+    // Interleaved per frame, as the preview draws them: clip a plays at 0.., clip b one second later.
+    for (let i = 0; i < 3; i++) {
+      frames.key("l1", i * step, "a");
+      frames.key("l1", 1_000_000 + i * step, "b");
+    }
+    await flush();
+    const asked = requests.filter((r) => r.method === "renderLottie").flatMap((r) => r.params.timesUs ?? []);
+    expect(asked.some((t) => t > 2 * step && t < 1_000_000)).toBe(true);
+    expect(asked.some((t) => t > 1_000_000 + 2 * step)).toBe(true);
+  });
+
+  it("load renders the frame of every clip of the variant", async () => {
+    const { frames, requests } = setup();
+    frames.key("l1", 0, "a");
+    frames.key("l1", 1_000_000, "b");
+    await frames.load("l1");
+    expect(requests[0]?.params.timesUs).toEqual([1_000_000, 0]);
+  });
+
   it("serves exact export frames and waits for them", async () => {
     const { frames, requests } = setup();
     const first = await frames.frame("l1", 123_456, 300);
