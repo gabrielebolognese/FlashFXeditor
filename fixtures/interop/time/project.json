@@ -25,13 +25,21 @@
       "file": {
         "relPath": "media/clip.mp4"
       },
-      "durationUs": 10000000,
+      "durationUs": 2000000,
       "hasAudio": true,
       "analysis": {
         "thumbs": "none",
         "peaks": "none"
       },
-      "addedAt": "2026-11-09T12:00:00.000Z"
+      "addedAt": "2026-11-09T12:00:00.000Z",
+      "width": 270,
+      "height": 480,
+      "fps": {
+        "num": 30,
+        "den": 1
+      },
+      "codec": "h264",
+      "audioCodec": "aac"
     }
   },
   "bins": [],
@@ -84,8 +92,8 @@
       "kind": "video",
       "name": "ramp",
       "enabled": true,
-      "in": 5000000,
-      "out": 7000000,
+      "in": 250000,
+      "out": 1750000,
       "speed": 1,
       "transform": {
         "x": 0,
@@ -117,27 +125,27 @@
       "id": "ramp",
       "trackId": "v1",
       "start": 0,
-      "duration": 60,
+      "duration": 45,
       "mediaId": "src",
       "timeRemap": [
         {
           "frame": 0,
-          "sourceUs": 5000000,
+          "sourceUs": 250000,
           "ease": "easeOut"
         },
         {
-          "frame": 18,
-          "sourceUs": 5880000,
+          "frame": 14,
+          "sourceUs": 910000,
           "ease": "linear"
         },
         {
-          "frame": 42,
-          "sourceUs": 6120000,
+          "frame": 31,
+          "sourceUs": 1090000,
           "ease": "easeIn"
         },
         {
-          "frame": 60,
-          "sourceUs": 7000000,
+          "frame": 45,
+          "sourceUs": 1750000,
           "ease": "linear"
         }
       ]
@@ -146,8 +154,8 @@
       "kind": "video",
       "name": "back",
       "enabled": true,
-      "in": 5000000,
-      "out": 7000000,
+      "in": 250000,
+      "out": 1750000,
       "speed": 1,
       "transform": {
         "x": 0,
@@ -178,8 +186,8 @@
       },
       "id": "back",
       "trackId": "v2",
-      "start": 0,
-      "duration": 60,
+      "start": 45,
+      "duration": 45,
       "mediaId": "src",
       "reverse": true
     },
@@ -187,8 +195,8 @@
       "kind": "video",
       "name": "slow",
       "enabled": true,
-      "in": 5000000,
-      "out": 5500000,
+      "in": 250000,
+      "out": 750000,
       "speed": 0.25,
       "transform": {
         "x": 0,
@@ -219,7 +227,7 @@
       },
       "id": "slow",
       "trackId": "v3",
-      "start": 0,
+      "start": 90,
       "duration": 60,
       "mediaId": "src",
       "frameBlend": true

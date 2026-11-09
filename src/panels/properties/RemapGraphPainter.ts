@@ -82,6 +82,11 @@ export class RemapGraphPainter implements RenderView {
   private readonly unregister: () => void;
   private drag: { index: number; keys: RemapKey[]; pointerId: number } | null = null;
   private hover = -1;
+  /** The canvas size in CSS pixels, kept by a ResizeObserver (no layout read while drawing, §4 P9). */
+  private size = { width: 0, height: 0 };
+  private readonly observer: ResizeObserver | null;
+  /** The playhead offset the last draw showed (null: outside the clip). */
+  private drawnPlayhead: number | null = null;
 
   constructor(
     private readonly scheduler: Pick<FrameScheduler, "register" | "invalidate">,
@@ -90,6 +95,18 @@ export class RemapGraphPainter implements RenderView {
     private readonly dpr: () => number = () => window.devicePixelRatio || 1,
   ) {
     this.unregister = scheduler.register("mediaThumbs", this);
+    const rect = canvas.getBoundingClientRect();
+    this.size = { width: rect.width, height: rect.height };
+    this.observer =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver((entries) => {
+            const box = entries[entries.length - 1]?.contentRect;
+            if (!box) return;
+            this.size = { width: box.width, height: box.height };
+            this.invalidate();
+          });
+    this.observer?.observe(canvas);
     canvas.addEventListener("pointerdown", this.down);
     canvas.addEventListener("pointermove", this.move);
     canvas.addEventListener("pointerup", this.up);
@@ -103,12 +120,17 @@ export class RemapGraphPainter implements RenderView {
     this.scheduler.invalidate("mediaThumbs");
   }
 
+  /** The playhead moved: draw again only when its line moves inside the clip (or enters or leaves it). */
+  invalidatePlayhead(): void {
+    if (this.deps.playhead() !== this.drawnPlayhead) this.invalidate();
+  }
+
   private keys(): RemapKey[] | null {
     return this.drag?.keys ?? this.deps.clip()?.timeRemap ?? null;
   }
 
   private box(keys: readonly RemapKey[], clip: MediaClip): GraphBox {
-    const rect = this.canvas.getBoundingClientRect();
+    const rect = this.size;
     const { minUs, maxUs } = graphRange(keys, this.deps.mediaDurationUs());
     return { width: rect.width, height: rect.height, pad: this.deps.size.pad, duration: Math.max(1, clip.duration), minUs, maxUs };
   }
@@ -200,7 +222,7 @@ export class RemapGraphPainter implements RenderView {
     const clip = this.deps.clip();
     const keys = this.keys();
     const ctx = this.canvas.getContext("2d");
-    const rect = this.canvas.getBoundingClientRect();
+    const rect = this.size;
     if (!ctx || rect.width <= 0 || rect.height <= 0) return;
     const dpr = this.dpr();
     const width = Math.max(1, Math.round(rect.width * dpr));
@@ -222,6 +244,7 @@ export class RemapGraphPainter implements RenderView {
     ctx.lineTo(frameToX(box, box.duration), usToY(box, (keys[keys.length - 1] as RemapKey).sourceUs));
     ctx.stroke();
     const playhead = this.deps.playhead();
+    this.drawnPlayhead = playhead;
     if (playhead !== null) {
       ctx.strokeStyle = colors.playhead;
       ctx.beginPath();
@@ -251,6 +274,7 @@ export class RemapGraphPainter implements RenderView {
 
   dispose(): void {
     this.unregister();
+    this.observer?.disconnect();
     this.canvas.removeEventListener("pointerdown", this.down);
     this.canvas.removeEventListener("pointermove", this.move);
     this.canvas.removeEventListener("pointerup", this.up);

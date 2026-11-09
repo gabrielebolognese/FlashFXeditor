@@ -73,7 +73,7 @@ function RemapGraph({ clipId }: { clipId: ClipId }) {
       },
       size: { key: themeBridge.theme.space[3], pad: themeBridge.theme.space[3] },
     });
-    const stops = [documentStore.subscribe(() => painter.invalidate()), sessionStore.state.subscribe(() => painter.invalidate())];
+    const stops = [documentStore.subscribe(() => painter.invalidate()), sessionStore.state.subscribe(() => painter.invalidatePlayhead())];
     return () => {
       for (const stop of stops) stop();
       painter.dispose();
