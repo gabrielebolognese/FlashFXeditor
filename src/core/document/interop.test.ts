@@ -221,6 +221,19 @@ describe("docs/INTEROP.md (spec §21.4)", () => {
     }
   });
 
+  it("names every key of the manifest and describes the full fixture and the audit (Batch 82)", () => {
+    const names = new Set<string>();
+    const walk = (node: unknown) => {
+      if (node && typeof node === "object" && !Array.isArray(node)) for (const [key, value] of Object.entries(node)) {
+        names.add(key);
+        walk(value);
+      }
+    };
+    walk(JSON.parse(readText("capabilities.json")));
+    expect([...names].filter((name) => !doc.includes(name))).toEqual([]);
+    for (const word of ["fixtures/interop/full", "capabilityAudit", "every", "test:render"]) expect(doc).toContain(word);
+  });
+
   it("mentions every command and the manifest keys of this batch", () => {
     for (const word of ["validate", "info", "schema", "capabilities", "fallbackOf", "generatorMeta", "headTrim"]) expect(doc).toContain(word);
   });

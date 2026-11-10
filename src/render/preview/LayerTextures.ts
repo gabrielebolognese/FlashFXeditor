@@ -394,7 +394,7 @@ export class LayerTextures {
 
   /** A compound clip: its sequence resolved by its own resolver, drawn into its texture (unchanged: kept), shown as one layer. */
   private resolveCompound(pane: 0 | 1, layer: CompoundCompositeLayer, priority: FramePriority): TextureLayer | null {
-    // TODO(batch 74): effects run on the compound target here (masks apply through the group path).
+    // A compound clip's effects and masks run on its group layer (the Compositor's `group()`), not here.
     const targets = this.deps.compounds;
     if (!targets) return null;
     const scale = this.renderScale * layer.scale;

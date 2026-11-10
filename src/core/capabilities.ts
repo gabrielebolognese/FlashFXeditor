@@ -12,7 +12,7 @@ import { BLEND_MODES, EFFECT_TYPES, FADE_CURVES, MASK_MODES, CAPTION_HIGHLIGHTS,
 /** The `manifestVersion`: changes only when a key changes meaning (new keys do not change it). */
 export const MANIFEST_VERSION = 1;
 /** The last batch that touched the manifest (spec §21.1: each batch sets it to its own number). */
-export const LAST_BATCH = 81;
+export const LAST_BATCH = 82;
 
 /** The flags of the manifest: a batch that adds a capability flips its key here (spec §21.2 table). */
 export const FEATURES = {

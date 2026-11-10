@@ -60,3 +60,14 @@ From the pending manual checks of Batches 10, 45 and 46 (steps in their `docs/PR
 - P12 startup on a mid-range machine with `npm run build` + `npm run preview`;
 - the SVG cursors (trim, roll, slip, slide, stretch, razor, rotate) on macOS and at device pixel ratio 2;
 - the text caret and the IME candidate window during inline text editing.
+
+## After v1.2.0
+
+What v1.2.0 leaves out (the follow-ups of Batches 69-81 that no later batch took; the known issues are in `docs/PROGRESS.md`). Each line names the batch that left it.
+
+1. **Measurements on an unloaded machine with a normal GPU** (Batches 70, 72-80, 82): 2.5D and shape layers, two screen layers, 20 masked layers, two blurs, the Effects II stack, an adjustment clip with two effects, Lottie playback and scrub, the Template form, audio meters, reverse 4K on proxy, and the full interop fixture (export 2.12x real time against P14's 2x).
+2. **Effects and compositing:** cache an adjustment's passes while nothing below it changes (76); mask coverage at the shown scale (73); mask handles on 2.5D clips (73); exact frame blending below clip opacity 1 (78); groups that nest (72); take a track matte along when making a compound (72); list missing LUTs in the export preflight (75); glitch looks as starter Looks (76).
+3. **Time and audio:** keys editable on the timeline clip with snapping to markers (78); project loudness target and an Export tab loudness row (77); clip pan on scrub grains (77); audio crossfade curve choice (71).
+4. **Templates and Lottie:** drag a template card onto the timeline, rename templates and categories, Expose as parameter on more fields, font and media pickers (80); gradient color overrides for Lottie (79).
+5. **Export:** the GIF size estimate in the queue card, a destination folder picker for PNG sequences and stems, ZIP64 and deflate for the project zip, remove the empty folder of a cancelled PNG sequence, proxies for alpha videos (81).
+6. **Engine:** the interleaved undo/redo property of `fuzz.test.ts` (seed 9001); the exact-decode stall of H.264 with B-frames and a long key interval in `cli render` (71, 74); parented text at its world scale and the path-drag live channel (69, 70).

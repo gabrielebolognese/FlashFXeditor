@@ -11,7 +11,7 @@ import styles from "./PresetsTab.module.css";
 // The Templates section of the Presets tab (spec §21.24, Batch 80): the compound templates saved from any project
 // (global store, mirrored in the library folder). A card inserts its template at the playhead on a double-click,
 // Enter or Space (one undo step; its media and fonts are copied into the project). Dragging a card
-// onto the timeline is not supported (the media copy is asynchronous): TODO(batch 82).
+// onto the timeline is not supported (the media copy is asynchronous; docs/BACKLOG.md).
 
 export function CompoundTemplates() {
   const templates = useStoreSelector(compoundTemplateStore.list, (list) => list);

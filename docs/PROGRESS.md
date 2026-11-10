@@ -1,9 +1,21 @@
 # Progress
 
-last_completed_batch: 81
+last_completed_batch: 82
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
+
+## Known issues (v1.2.0)
+What release 1.2.0 adds to the known issues below (those of 1.1.0 stay true unless noted). Next steps are in `docs/BACKLOG.md` ("After v1.2.0").
+- Playback figures of Batches 70-80 (effects, masks, 2.5D, Lottie, adjustment clips, templates) were taken on a loaded development machine (rAF 15-58 fps, the GPU shared with other headless Chrome runs); none was re-measured on an unloaded machine with a normal GPU.
+- The full interop fixture exports at 2.12x real time (90.9 s of video in 192.5 s through `cli render`, 14 fps; P14 asks for under 2x on a mid-range GPU): it holds about 25 sequences of effects, masks, blends and mattes, and this machine's hardware H.264 encoder tops out near 58 fps for plain 1080x1920 (Batch 43).
+- A project has one caption track: the full fixture keeps the captions part's track and drops the caption tracks of the basic and styles parts.
+- Groups do not nest: a clip with a blend mode or matte inside a compound that has one itself draws plainly inside the outer group (Batch 72).
+- A 1080x1920 H.264 made with ffmpeg defaults (B-frames, keyint 250, moov at the end) can stall the exact decode in `cli render` ("No progress for 60 s"); re-encoding with `-g 30 -bf 0 -movflags +faststart` renders (Batch 74).
+- The interleaved undo/redo property of `fuzz.test.ts` (seed 9001 with a shifted random stream) loses later caption clips after undo-all and redo-all (Batch 71).
+- A LUT file named by a project but missing from `luts/` draws nothing in export (a console warning only; Batch 75).
+- Proxies are not made for alpha videos; a WebM alpha export is VP9 only; the project zip has no ZIP64 and no deflate (Batch 81).
+- Template cards cannot be dragged onto the timeline (double-click, Enter or Space insert them; Batch 80).
 
 ## Known issues (v1.1.0)
 What release 1.1.0 does not do, or does not do well. Next steps for each are in `docs/BACKLOG.md` (items by number), the decisions behind them under Global deviations, and every batch entry lists its own pending manual checks with steps.
@@ -7608,3 +7620,28 @@ Why each dependency exists (Batch rule 8).
   5. Link a media file from outside the project (import with Link), Collect: the Media tab shows it in media/ and the project folder opens from a copy elsewhere with nothing missing; Zip the project: the zip opens in Windows Explorer.
 - review: accepted (2026-11-10, independent review). `npm run check`: typecheck, lint, 3610 unit tests (372 files) and the build pass; the perf project fails only `fuzz.perf.test.ts` on time (76.1 s against 60 s, timeline edit code untouched by this batch, the environmental miss of Batches 74-80). Acceptance: transparent WebM covered by the builder's browser check (SSIM 0.998/0.999 through the real encoder, muxer and alpha decoder) plus manual check 1; PNG numbering and alpha by `frames.test.ts`/`png.test.ts` and the CLI color type 6 render; GIF job estimate within 20 % in `frames.test.ts`; stems by `stems.test.ts` (linear graph, every clip in exactly one stem) plus manual check 4; collect/zip by unit tests plus manual check 5. Reviewer check: a zip written by `ZipWriter` (UTF-8 names with an accent, a 9 MB file read as a Blob in 4 MB pieces) expands with `Expand-Archive` and lists through the Explorer shell namespace (`Shell.Application`). No ProRes or other formats built; no color or size literals (lint); export work stays in export.worker; the commands are registered in the CommandRegistry; no new TODOs. Notes (not defects): the Export tab's per-pixel GIF estimate (0.03 dithered) is about 57 % above the measured `alpha` fixture GIF (0.019 bytes per pixel, dithered), so only the job's own estimate holds the 20 % bound; picking GIF in Custom keeps the project frame rate (the 15 fps default comes only from the GIF preset); no §4 timing was recorded for the new export paths (PNG, GIF, transparent WebM); manual check 4 compares with Export audio, which only nulls when the project has no loudness target; the `review request:` line sits between manual checks 4 and 5.
 - docs: exporting-video.md, whats-new.md, README.md, keyboard-shortcuts.md in docs/user-guide/ (2026-11-10)
+
+### Batch 82: v1.2 close-out: full interop fixture, capability audit, documentation, release
+- status: done
+- date: 2026-11-10
+- notes:
+  - Built in auto mode. `fixtures/interop/full/` is not drawn by hand: `src/core/document/fullFixture.ts` joins the other fixtures one after the other (23 parts, 2726 frames at 1080x1920 / 30 fps, ids prefixed per part, migrated to schema 24 first). Parts of another size or rate (the 360x640 effects, masks, compositing, time, audio, templates and transitions parts, the 800-wide text and rig parts, the 60 fps Lottie part) become compound clips of their own sequences, scaled to fit; same-size parts are merged as they are. Media are copied once per distinct file (content hash) into `media/`; image sequences keep their folder.
+  - `everyPart.ts` adds the part `every` (96 frames), built from the model constants: all 38 non-parametric easing curves, the `normal` blend, all 21 text animations, all 7 caption highlight modes with all 4 cue animations (the cues join the captions part's track), a two-stop and a linear gradient solid, per-corner radii, a line solid, a text with a gradient fill, shadow, a `line` background with stroke and shadow and a per-line animation, a radial text fill, a beveled join, equal-power and linear fades, a freeze frame, and a template with a media and a font parameter.
+  - Writer: `WRITE_FULL_FIXTURE=1 npx vitest run src/core/document/fullFixture.test.ts` (project.json, media, fonts, `frames.txt`); the test also checks the committed project against the build, strict validity and that every media file exists. Expected frames: 28 PNGs in `expected/` (one per part, five for `every`), rendered by `cli render` on WebGPU. `npm run cli -- validate fixtures/interop/full` passes (one deliberate stand-in); `npm run test:render` passes all 23 fixtures on both backends (full: SSIM 1.0000 against expected and between backends).
+  - Capability audit: `src/core/capabilityAudit.ts` (rules by manifest path: a fixture predicate, a list of fields the values must appear under, or a test file) and `capabilityAudit.test.ts`: every true flag and every list value passes against all fixtures, and the full fixture alone satisfies every fixture-based rule; an invented key, an unused list value, a missing test file and removed evidence each fail. Keys a project file cannot show (CLI, export, reload, repair, media extensions) name the test that covers them.
+  - Fixes found by the fixture: none in the engine; the merge needed reference-aware id prefixing (clip ids can equal enum words such as `hold` or `nonzero`).
+  - INTEROP.md section 7.3 (the full fixture and the audit) and a doc test that every manifest key name appears in the document; README for 1.2.0; `appVersion` 1.2.0 (package.json, lock file, `capabilities.json`), `LAST_BATCH` 82. The three remaining `TODO(batch` comments in `src/` are resolved (two were obsolete: a compound clip's effects, masks, blend and matte run on its group; one is a BACKLOG item), so `src/` has none.
+  - Perf pass: the full fixture exports through `cli render` at 2.12x real time (see Known issues (v1.2.0)); P14's other budgets (500 clips on 8 tracks, 4K60 proxy scrubbing) were met in Batches 44-45 and the code they exercise was not changed here.
+- deviations:
+  - The full fixture is a join of the other fixtures plus the `every` part, not one hand-built scene, and it holds one caption track (the project limit): the basic and styles caption tracks are left out (their features stay in their own fixtures, which the audit also reads).
+  - Export at 2.12x real time against P14's 2x (an effect-heavy 90 s project; recorded, not tuned).
+  - Opening and playing the full fixture in the app was not measured with the Profiler (no free GPU session; the machine was shared): pending manual check 1.
+  - The user guide is extended by the docs step of the runner (no `docs:` line is written here).
+  - The tag `v1.2.0` is made on this batch's progress commit.
+- follow-ups:
+  - [from Batch 82 -> Backlog] See `docs/BACKLOG.md` "After v1.2.0" (the open follow-ups of Batches 69-81).
+- design gaps:
+  - None: no UI was added.
+- pending manual checks:
+  1. Open `fixtures/interop/full` in the app (Open project), play it through at 60 fps and check zero React commits in the Profiler during playback and scrubbing (P1), and the open time against P14.
+  2. Export the full fixture from the Export tab with the Reels preset on a machine with a normal GPU and note the time against 2x real time.

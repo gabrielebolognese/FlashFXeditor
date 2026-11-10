@@ -2,12 +2,15 @@
 
 A browser video editor for short vertical videos (Instagram Reels, TikTok, YouTube Shorts). It runs as a
 static site in desktop Chrome or Edge: projects are folders on your own disk, media never leaves the
-computer, and there is no server. Version 1.1.0: 1.0.0 with a library of about 300 fonts, the preset bar above the
-preview, and caption styles per cue.
+computer, and there is no server. Version 1.2.0: 1.1.0 with an interoperability contract for other tools (a capability manifest, a strict
+validator, a headless `render` and `compare`), and a much larger toolbox: 2.5D layers, parenting and motion paths,
+vector shapes, masks, blend modes and mattes, effects, adjustment clips, templates, Lottie clips, time remap, audio
+mixing, and export to WebM with alpha, PNG sequences, GIF and stems.
 
 - User guide: [`docs/user-guide/`](docs/user-guide/README.md)
 - Architecture (one page): [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - Specification: [`docs/EDITOR_SPEC.md`](docs/EDITOR_SPEC.md); build plan and history: [`docs/BATCHES.md`](docs/BATCHES.md), [`docs/PROGRESS.md`](docs/PROGRESS.md) (with the known issues of this release); open work: [`docs/BACKLOG.md`](docs/BACKLOG.md)
+- Writing projects from another tool: [`docs/INTEROP.md`](docs/INTEROP.md), with the conformance fixtures in `fixtures/interop/` (`full` uses every capability; `npm run test:render` renders them on both backends, `npm test` audits the manifest against them)
 - Design system: [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md)
 - The common path in one minute (import, cut, compact, title, subtitle, export), recorded on the 1.0.0 build: [`docs/release/v1.0.0-common-path.webm`](docs/release/v1.0.0-common-path.webm)
 

@@ -1,8 +1,8 @@
 {
   "manifestVersion": 1,
   "app": "shorts-editor",
-  "appVersion": "1.1.0",
-  "lastBatch": 81,
+  "appVersion": "1.2.0",
+  "lastBatch": 82,
   "schemaVersion": 24,
   "project": {
     "file": "project.json",
