@@ -101,6 +101,8 @@ export interface WorkerDecodeStats {
   ringHits: number;
   /** Waits that ended with one more chunk fed (decoders holding frames longer than the content needs). */
   stalls: number;
+  /** Waits that ended with the ring's frames given back (decoders out of output pictures, e.g. H.264 with B-frames). */
+  starved: number;
   indexParsed: number;
   indexFromCache: number;
   idleCloses: number;

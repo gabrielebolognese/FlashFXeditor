@@ -85,13 +85,13 @@ function frameFiles(files: readonly File[]): SampleSource {
 
 const keyOf = (mediaId: string, lod: Lod) => `${mediaId}|${lod}`;
 /** Session counters summed into the worker stats (closed sessions included). */
-const SUMMED = ["seeks", "decoded", "dropped", "ringHits", "stalls"] as const;
+const SUMMED = ["seeks", "decoded", "dropped", "ringHits", "stalls", "starved"] as const;
 
 export class DecodeSessions<F extends DecodedFrame = VideoFrame> {
   private readonly entries = new Map<string, Entry<F>>();
   /** Opens under way; `close` marks those of its media. */
   private readonly opening = new Set<{ mediaId: string; lod: Lod; closed: boolean }>();
-  private readonly closedStats = { seeks: 0, decoded: 0, dropped: 0, ringHits: 0, stalls: 0 };
+  private readonly closedStats = { seeks: 0, decoded: 0, dropped: 0, ringHits: 0, stalls: 0, starved: 0 };
   private indexParsed = 0;
   private indexFromCache = 0;
   private idleCloses = 0;

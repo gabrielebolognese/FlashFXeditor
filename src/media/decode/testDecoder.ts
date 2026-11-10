@@ -1,10 +1,17 @@
 // Test-only fakes of WebCodecs decoding: frames that count how many are open, and a decoder that
-// reorders like a B-frame decoder, can be stepped by hand, drop frames, fail, take time per frame or
-// decode open-GOP leading pictures with wrong references. Not imported by app code.
+// reorders like a B-frame decoder, can be stepped by hand, drop frames, fail, take time per frame,
+// decode open-GOP leading pictures with wrong references or run out of output pictures. Not imported
+// by app code.
 import type { ChunkInit, DecodedFrame, DecoderCallbacks, DecoderLike } from "./VideoDecodeSession.js";
 
 /** Frames created and not closed yet. */
 export const frameCounter = { open: 0 };
+
+/** A decoder output picture, shared by a frame and its clones: free again once all of them are closed. */
+interface Picture {
+  refs: number;
+  free(): void;
+}
 
 export class FakeFrame implements DecodedFrame {
   private closed = false;
@@ -13,17 +20,20 @@ export class FakeFrame implements DecodedFrame {
     readonly timestamp: number,
     /** Decoded without the references it needs (a leading picture fed without the GOP before it). */
     readonly corrupt = false,
+    private readonly picture?: Picture,
   ) {
     frameCounter.open += 1;
   }
   clone(): this {
     if (this.closed) throw new Error("clone of a closed frame");
-    return new FakeFrame(this.timestamp, this.corrupt) as this;
+    if (this.picture) this.picture.refs += 1;
+    return new FakeFrame(this.timestamp, this.corrupt, this.picture) as this;
   }
   close(): void {
     if (this.closed) return;
     this.closed = true;
     frameCounter.open -= 1;
+    if (this.picture && --this.picture.refs === 0) this.picture.free();
   }
   get isClosed(): boolean {
     return this.closed;
@@ -50,6 +60,12 @@ export interface FakeOptions {
    */
   references?: ReadonlyMap<number, number>;
   decodeOrder?: readonly number[];
+  /**
+   * Output pictures (a hardware decoder's pool): one is in use from its decode, through the reorder hold,
+   * until its frame and every clone are closed. With all in use the decoder takes no chunk: they wait in
+   * its queue (Chrome's H.264 decoder with B-frames, Batch 74).
+   */
+  pictures?: number;
 }
 
 interface Decoded {
@@ -68,6 +84,8 @@ export class FakeDecoder implements DecoderLike {
   /** Decode index of the last chunk fed, and of the chunk the current unbroken run started at. */
   private lastFedAt = -2;
   private runFrom = -1;
+  /** Output pictures in use (`pictures`). */
+  private inUse = 0;
   readonly fed: ChunkInit[] = [];
   outputs = 0;
   maxQueue = 0;
@@ -102,7 +120,13 @@ export class FakeDecoder implements DecoderLike {
     if (this.options.auto !== false) this.schedule();
   }
 
-  step(): void {
+  /** Whether every output picture is in use (the next chunk waits). */
+  get starved(): boolean {
+    return this.options.pictures !== undefined && this.inUse >= this.options.pictures;
+  }
+
+  step(force = false): void {
+    if (this.starved && !force) return;
     const entry = this.queue.shift();
     if (!entry) return;
     this.callbacks.dequeue();
@@ -115,6 +139,7 @@ export class FakeDecoder implements DecoderLike {
     const decoded = () => {
       // Pictures before a sync sample in decode order are shown before it.
       if (chunk.type === "key") while (this.buffer.length > 0) this.emit();
+      this.inUse += 1;
       this.buffer.push({ timestamp: chunk.timestamp, corrupt });
       while (this.buffer.length > (this.options.reorder ?? 0)) this.emit();
     };
@@ -131,7 +156,7 @@ export class FakeDecoder implements DecoderLike {
 
   async flush(): Promise<void> {
     this.flushes += 1;
-    while (this.queue.length > 0) this.step();
+    while (this.queue.length > 0) this.step(true);
     for (const [timer, decoded] of [...this.delayed]) {
       clearTimeout(timer);
       this.delayed.delete(timer);
@@ -154,6 +179,7 @@ export class FakeDecoder implements DecoderLike {
 
   private clear(): void {
     this.queue = [];
+    this.inUse -= this.buffer.length;
     this.buffer = [];
     for (const timer of this.delayed.keys()) clearTimeout(timer);
     this.delayed.clear();
@@ -176,7 +202,7 @@ export class FakeDecoder implements DecoderLike {
     this.scheduled = true;
     queueMicrotask(() => {
       this.scheduled = false;
-      if (this.state !== "configured") return;
+      if (this.state !== "configured" || this.starved) return;
       this.step();
       if (this.queue.length > 0) this.schedule();
     });
@@ -186,8 +212,19 @@ export class FakeDecoder implements DecoderLike {
     // Stable: of two copies of one timestamp (fed in two runs), the earlier comes out first.
     this.buffer.sort((a, b) => a.timestamp - b.timestamp);
     const { timestamp, corrupt } = this.buffer.shift() as Decoded;
-    if (this.options.drop?.has(timestamp)) return;
+    if (this.options.drop?.has(timestamp)) {
+      this.inUse -= 1;
+      return;
+    }
     this.outputs += 1;
-    this.callbacks.output(new FakeFrame(timestamp, corrupt));
+    const picture: Picture = {
+      refs: 1,
+      free: () => {
+        this.inUse -= 1;
+        // A picture back: chunks waiting in the queue go on.
+        if (this.queue.length > 0 && this.options.auto !== false && this.state === "configured") this.schedule();
+      },
+    };
+    this.callbacks.output(new FakeFrame(timestamp, corrupt, picture));
   }
 }

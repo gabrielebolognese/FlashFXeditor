@@ -15,9 +15,14 @@
 //   next request seeks elsewhere; a prefetch feeds ahead through its range. A decoder that holds frames
 //   longer than the content needs (no output for STALL_MS since it last got a chunk or gave a frame,
 //   with nothing left in its queue) gets one more chunk each time, for the session.
+// - A decoder that stops taking chunks (no output for STARVED_MS with chunks still in its queue) is out
+//   of output pictures: the ring's frames go back to it, and from then on the ring keeps two fewer
+//   frames than it held then (down to MIN_RING_SIZE), for the session. B-frame streams need it: their decoder keeps more
+//   reference pictures, and with a full ring Chrome's hardware H.264 decoder stopped for good 8 frames
+//   into a long GOP (x264 defaults, Batch 74), which hung exports.
 // - Backpressure: at most MAX_IN_FLIGHT chunks fed and not yet output, and the decoder's
 //   `decodeQueueSize` kept below MAX_DECODE_QUEUE.
-// - The last RING_SIZE outputs stay in a ring, so short backward steps need no seek. Frame requests
+// - The last RING_SIZE outputs (fewer after a starved decoder) stay in a ring, so short backward steps need no seek. Frame requests
 //   get clones; ring frames are closed when they leave the ring or when the decoder closes (P13).
 //   Prefetches (playback windows) take their frames out of the ring instead: a hardware decoder
 //   whose pictures stay referenced has to allocate new ones on the GPU thread, which made 4K60
@@ -39,6 +44,8 @@ export const MAX_IN_FLIGHT = 8;
 export const MAX_DECODE_QUEUE = 4;
 /** Recent frames kept for backward steps (spec §9.3). */
 export const RING_SIZE = 8;
+/** The fewest frames the ring keeps after starved decoders. */
+export const MIN_RING_SIZE = 2;
 /** A scrub that must decode at least this many frames past its keyframe gets the keyframe first. */
 export const APPROXIMATE_MIN_FRAMES = 4;
 /** While scrubs wait, the newest decoded frame is sent as an approximate one this often. */
@@ -47,6 +54,8 @@ export const APPROXIMATE_INTERVAL_MS = 33;
 export const APPROXIMATE_WAIT_MS = 16;
 /** No output for this long since the decoder last got a chunk, its queue empty: hold fewer frames and feed one more chunk. */
 export const STALL_MS = 100;
+/** No output for this long with chunks still in the decoder's queue: it is out of output pictures, give the ring's frames back. */
+export const STARVED_MS = 400;
 
 /** The video cannot be decoded in this browser (frame requests of such a video fail with it). */
 export class UnsupportedCodecError extends Error {
@@ -106,6 +115,8 @@ export interface SessionStats {
   dropped: number;
   ringHits: number;
   stalls: number;
+  /** Times the decoder ran out of output pictures and got the ring's frames back. */
+  starved: number;
 }
 
 interface JobBase {
@@ -165,6 +176,14 @@ export class VideoDecodeSession<F extends DecodedFrame = VideoFrame> {
   private lastApproximateAt = -Infinity;
   /** Extra in-flight chunks allowed after stalls (decoders that hold more frames); kept for the session. */
   private extraInFlight = 0;
+  /** Frames the ring keeps: RING_SIZE, lowered for the session each time the decoder starves (see the header). */
+  private ringLimit = RING_SIZE;
+  /**
+   * The frame the running job waits for: never the one pushed out of a full ring. The flush at the end
+   * of the track hands out every frame the decoder holds at once, and more of them can come after the
+   * target than the ring keeps.
+   */
+  private targetUs = Number.NaN;
   private readonly ring: RingEntry<F>[] = [];
   private readonly jobs: Job<F>[] = [];
   private current: Job<F> | null = null;
@@ -176,7 +195,7 @@ export class VideoDecodeSession<F extends DecodedFrame = VideoFrame> {
   private everDecoded = false;
   private wakers: ((woken: boolean) => void)[] = [];
   private nextOrder = 0;
-  readonly stats: SessionStats = { seeks: 0, decoded: 0, dropped: 0, ringHits: 0, stalls: 0 };
+  readonly stats: SessionStats = { seeks: 0, decoded: 0, dropped: 0, ringHits: 0, stalls: 0, starved: 0 };
 
   constructor(
     readonly index: SampleIndex,
@@ -349,6 +368,7 @@ export class VideoDecodeSession<F extends DecodedFrame = VideoFrame> {
   private async decodeTo(d: number, job: Job<F>): Promise<RingEntry<F> | null> {
     const { index } = this;
     const timeUs = index.timesUs[d] as number;
+    this.targetUs = timeUs;
     const key = keyFor(index, d);
     if (!this.canContinue(d, key, timeUs)) this.seek(key);
     const approximate = job.kind === "frame" && job.priority === "scrub" ? job.onApproximate : undefined;
@@ -387,11 +407,20 @@ export class VideoDecodeSession<F extends DecodedFrame = VideoFrame> {
         continue;
       }
       const woken = await this.waitForChange(job.signal, approximate ? APPROXIMATE_WAIT_MS : STALL_MS);
-      if (!woken && this.now() - this.lastProgressAt >= STALL_MS && this.decoder && this.decoder.decodeQueueSize === 0 && this.pending.size > 0) {
-        // The decoder waits for more input than we allow, or for its output frames back: give both.
-        this.stats.stalls += 1;
-        this.extraInFlight += 1;
-        for (const entry of this.ring.splice(0)) this.release(entry);
+      const idleMs = this.now() - this.lastProgressAt;
+      if (!woken && this.decoder && this.pending.size > 0 && idleMs >= STALL_MS) {
+        if (this.decoder.decodeQueueSize === 0) {
+          // The decoder waits for more input than we allow, or for its output frames back: give both.
+          this.stats.stalls += 1;
+          this.extraInFlight += 1;
+          for (const entry of this.ring.splice(0)) this.release(entry);
+        } else if (idleMs >= STARVED_MS && this.ring.length > 0) {
+          // Chunks wait in its queue and nothing comes out: it is out of output pictures (see the header).
+          this.stats.starved += 1;
+          this.ringLimit = Math.max(MIN_RING_SIZE, Math.min(this.ringLimit, this.ring.length) - 2);
+          for (const entry of this.ring.splice(0)) this.release(entry);
+          this.lastProgressAt = this.now();
+        }
       }
     }
   }
@@ -551,7 +580,10 @@ export class VideoDecodeSession<F extends DecodedFrame = VideoFrame> {
     const existing = this.ring.findIndex((entry) => entry.frame.timestamp === timestamp);
     if (existing !== -1) this.release(this.ring.splice(existing, 1)[0] as RingEntry<F>);
     this.ring.push({ frame, delivered: false });
-    while (this.ring.length > RING_SIZE) this.release(this.ring.shift() as RingEntry<F>);
+    while (this.ring.length > this.ringLimit) {
+      const oldest = this.ring[0]?.frame.timestamp === this.targetUs ? 1 : 0;
+      this.release(this.ring.splice(oldest, 1)[0] as RingEntry<F>);
+    }
     this.wake();
   }
 

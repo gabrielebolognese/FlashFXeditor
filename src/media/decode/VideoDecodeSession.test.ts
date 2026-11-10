@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createSampleIndex, type SampleIndex } from "../demux/sampleIndex.js";
 import { FakeDecoder, FakeFrame, frameCounter, type FakeOptions } from "./testDecoder.js";
-import { APPROXIMATE_INTERVAL_MS, MAX_DECODE_QUEUE, MAX_IN_FLIGHT, RING_SIZE, STALL_MS, VideoDecodeSession } from "./VideoDecodeSession.js";
+import { APPROXIMATE_INTERVAL_MS, MAX_DECODE_QUEUE, MAX_IN_FLIGHT, MIN_RING_SIZE, RING_SIZE, STALL_MS, STARVED_MS, VideoDecodeSession } from "./VideoDecodeSession.js";
 
 const DUR = 1000; // ticks of a 30000 timescale: 33,333 us
 const TIMESCALE = 30000;
@@ -521,5 +521,57 @@ describe("VideoDecodeSession", () => {
     await vi.advanceTimersByTimeAsync(STALL_MS);
     expect(await next).toBe(us(1));
     expect(session.stats.stalls).toBe(holds);
+  });
+
+  it("gives the ring back to a decoder out of output pictures, and keeps fewer frames from then on", async () => {
+    vi.useFakeTimers();
+    // One long GOP and a decoder that holds 2 frames for reordering with 10 output pictures: a full ring
+    // of 8 leaves it none, so the chunks wait in its queue (Chrome's H.264 decoder on x264's defaults,
+    // which hung exports 8 frames into the GOP).
+    const { session, decoder, shown } = setup(linearIndex(150, 150), { reorder: 2, pictures: RING_SIZE + 2 });
+    const far = shown(60);
+    await vi.advanceTimersByTimeAsync(STARVED_MS * 3);
+    expect(await far).toBe(us(60));
+    expect(session.stats.starved).toBe(1);
+    // The reorder hold costs its two usual stalls (one more chunk fed each).
+    expect(session.stats.stalls).toBe(2);
+    // A ring of 6 leaves the decoder room: the frames after it come with no new rescue.
+    for (let position = 61; position < 90; position++) {
+      const next = shown(position);
+      await vi.advanceTimersByTimeAsync(STALL_MS);
+      expect(await next).toBe(us(position));
+    }
+    expect(session.stats.starved).toBe(1);
+    expect(session.openFrames).toBeLessThanOrEqual(RING_SIZE - 2);
+    expect(decoder().starved).toBe(false);
+  });
+
+  it("keeps the target when the flush at the end of the track hands out more frames after it than the ring holds", async () => {
+    vi.useFakeTimers();
+    // A decoder that holds every frame until the flush: its burst brings 14 frames after the target, and
+    // the ring keeps 8 (a wrong frame 233 in an x264 render, Batch 74 follow-up).
+    const { decoder, shown } = setup(linearIndex(30, 30), { reorder: 40 });
+    const result = shown(15);
+    await vi.advanceTimersByTimeAsync(STALL_MS * 40);
+    expect(await result).toBe(us(15));
+    expect(decoder().flushes).toBe(1);
+  });
+
+  it("keeps two frames fewer than the ring held when the decoder starved, at least MIN_RING_SIZE", async () => {
+    vi.useFakeTimers();
+    // 5 output pictures with a reorder hold of 2: the decoder starves with 3 frames in the ring, long
+    // before the ring is full, so the ring drops to its floor at once.
+    const { session, shown } = setup(linearIndex(150, 150), { reorder: 2, pictures: MIN_RING_SIZE + 3 });
+    const far = shown(80);
+    await vi.advanceTimersByTimeAsync(STARVED_MS * 3);
+    expect(await far).toBe(us(80));
+    expect(session.stats.starved).toBe(1);
+    for (let position = 81; position < 100; position++) {
+      const next = shown(position);
+      await vi.advanceTimersByTimeAsync(STALL_MS);
+      expect(await next).toBe(us(position));
+    }
+    expect(session.stats.starved).toBe(1);
+    expect(session.openFrames).toBeLessThanOrEqual(MIN_RING_SIZE);
   });
 });

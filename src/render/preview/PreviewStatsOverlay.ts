@@ -97,7 +97,7 @@ export class PreviewStatsOverlay implements RenderView {
     const w = this.worker;
     const recovery = gpu.restores > 0 ? ` (last ${Math.round(gpu.lastRecoveryMs)} ms)` : "";
     const decode = w
-      ? `decoders ${w.liveDecoders}/${w.sessions} · seeks ${w.seeks} · decoded ${w.decoded} · dropped ${w.dropped} · ring hits ${w.ringHits} · stalls ${w.stalls} · index cached ${w.indexFromCache} parsed ${w.indexParsed}`
+      ? `decoders ${w.liveDecoders}/${w.sessions} · seeks ${w.seeks} · decoded ${w.decoded} · dropped ${w.dropped} · ring hits ${w.ringHits} · stalls ${w.stalls} · starved ${w.starved} · index cached ${w.indexFromCache} parsed ${w.indexParsed}`
       : "decode worker not started";
     this.element.textContent = [
       `GPU ${gpu.state} · ${gpu.backend === "webgl2" ? "WebGL2" : "WebGPU"} · device ${gpu.generation} · restores ${gpu.restores}${recovery}`,

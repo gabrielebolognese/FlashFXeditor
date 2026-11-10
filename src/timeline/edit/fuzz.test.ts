@@ -4,12 +4,13 @@
 // clip kinds, speed and crop ranges), and the whole run undoes back to the original document exactly
 // and redoes to the final one. Follow-ups of Batches 34-42 have their own suites.
 import { describe, expect, it } from "vitest";
+import { renameMedia } from "../../core/commands/mediaCommands.js";
 import { setFrameRate } from "../../core/commands/projectCommands.js";
 import { convertProjectFrames, isLossless } from "../../core/document/fpsConvert.js";
 import { keyframeIssues, scalar } from "../../core/document/keyframes.js";
 import { createProject } from "../../core/document/project.js";
 import { usPerFrame } from "../../core/document/time.js";
-import { isFreeze, isMediaClip, type CaptionClip, type Clip, type Project, type Rational } from "../../core/document/types.js";
+import { isFreeze, isMediaClip, type CaptionClip, type Clip, type MediaId, type Project, type Rational } from "../../core/document/types.js";
 import { validateProject } from "../../core/document/validate.js";
 import { projectFromTemplate, sanitizeTemplate, templateFromProject } from "../../project/templates.js";
 import { isClipLocked, linkGroupOf } from "../model/queries.js";
@@ -21,6 +22,7 @@ import {
   documentChecks,
   FUZZ_AREAS,
   FUZZ_OPS,
+  firstDifference,
   fuzzRun,
   linkOffsets,
   makeFuzzStore,
@@ -366,13 +368,71 @@ describe("word emphasis (Batch 59)", { timeout: 30_000 }, () => {
   });
 });
 
+/** The operations with `shift` extra random draws before the first one: the same seed on a shifted stream. */
+function shiftedOps(shift: number): FuzzOp[] {
+  let pending = shift;
+  return FUZZ_OPS.map((candidate) => ({
+    ...candidate,
+    run: (store, rng, ctx) => {
+      for (; pending > 0; pending--) rng.next();
+      return candidate.run(store, rng, ctx);
+    },
+  }));
+}
+
 describe("mixed operations with undo and redo", { timeout: 30_000 }, () => {
+  // fuzzRun also checks every single undo and redo against the document recorded at that point.
   for (const seed of [9001, 9002]) {
     it(`interleaved undo and redo keep every invariant and undo back to the original (seed ${seed})`, () => {
       const result = property({ seed, steps: 800, undo: 0.12, redo: 0.08 });
       expect(validateProject(result.final)).toEqual([]);
     });
   }
+
+  // Batches 59 and 71 saw seed 9001 "lose" a nudge or caption clips once the stream shifted by a draw. The
+  // cause was the old round trip, which redid until the redo list was empty: a run that ends right after an
+  // undo then redid past the final document. The engine was exact; these streams stay as regressions.
+  for (const shift of [1, 2, 3]) {
+    it(`stay exact when the random stream shifts (seed 9001, ${shift} extra draws)`, () => {
+      property({ seed: 9001, steps: 800, undo: 0.12, redo: 0.08, ops: shiftedOps(shift) });
+    });
+  }
+
+  it("fail at the step where the document no longer matches its history", () => {
+    let renames = 0;
+    // A change with no undo step (amend), about one operation in 20: undoing past it can no longer give back
+    // the recorded document. The undo chance is high so the run surely undoes past one.
+    const total = FUZZ_OPS.reduce((sum, candidate) => sum + (candidate.weight ?? 1), 0);
+    const amendName: FuzzOp = {
+      name: "rename media without an undo step",
+      area: "media",
+      weight: total / 19,
+      run: (store) => {
+        const media = Object.keys(store.getState().media)[0] as MediaId | undefined;
+        if (!media) return false;
+        store.amend(renameMedia(media, `Renamed ${++renames}`));
+        return true;
+      },
+    };
+    expect(() => fuzzRun({ seed: 9001, steps: 400, undo: 0.3, redo: 0.1, ops: [...FUZZ_OPS, amendName] })).toThrow(
+      /(undo|redo): (the document differs from the one recorded at this point: document\.media\.|did nothing with)/,
+    );
+    expect(renames).toBeGreaterThan(0);
+  });
+});
+
+describe("firstDifference", () => {
+  it("is null for equal documents, whatever the key order", () => {
+    expect(firstDifference({ a: 1, b: { c: [1, { d: null }] } }, { b: { c: [1, { d: null }] }, a: 1 })).toBeNull();
+  });
+
+  it("names the first path that differs", () => {
+    expect(firstDifference({ clips: { c1: { x: 10 } } }, { clips: { c1: { x: 0 } } })).toBe("document.clips.c1.x: 10 vs 0");
+    expect(firstDifference({ list: [1, 2] }, { list: [1, 2, 3] })).toBe("document.list[2]: missing vs 3");
+    expect(firstDifference({ a: undefined }, {})).toBe("document.a: undefined vs missing");
+    expect(firstDifference({ a: [1] }, { a: { 0: 1 } })).toBe('document.a: [1] vs {"0":1}');
+    expect(firstDifference(Number.NaN, Number.NaN)).toBeNull();
+  });
 });
 
 describe("random documents", () => {

@@ -2447,10 +2447,35 @@ export interface FuzzRunResult extends FuzzStore {
   names: Map<string, number>;
 }
 
+const shown = (value: unknown): string => (value === undefined ? "undefined" : (JSON.stringify(value) ?? String(value)).slice(0, 80));
+
+/**
+ * Where two JSON-like values first differ (a path such as `clips.c12.transform.x: 10 vs 0`), or null when
+ * they are equal. Key order does not count; a key holding undefined differs from a missing key.
+ */
+export function firstDifference(a: unknown, b: unknown, path = "document"): string | null {
+  if (Object.is(a, b)) return null;
+  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null || Array.isArray(a) !== Array.isArray(b)) {
+    return `${path}: ${shown(a)} vs ${shown(b)}`;
+  }
+  const left = a as Record<string, unknown>;
+  const right = b as Record<string, unknown>;
+  for (const key of new Set([...Object.keys(left), ...Object.keys(right)])) {
+    const at = Array.isArray(a) ? `${path}[${key}]` : `${path}.${key}`;
+    const side = (value: Record<string, unknown>) => (Object.hasOwn(value, key) ? shown(value[key]) : "missing");
+    if (Object.hasOwn(left, key) !== Object.hasOwn(right, key)) return `${at}: ${side(left)} vs ${side(right)}`;
+    const inner = firstDifference(left[key], right[key], at);
+    if (inner !== null) return inner;
+  }
+  return null;
+}
+
 /**
  * Runs `steps` random operations (and undos / redos) on a fuzz store, checking `documentChecks` (and
- * `check`) after each; dispatch validates every step. Throws on the first failure with the seed, the
- * step and the operation.
+ * `check`) after each; dispatch validates every step. Every undo and redo must give back exactly the
+ * document recorded at that point of the history (a model of the undo and redo lists kept beside the
+ * store), so a wrong inverse patch fails at the step that made it, not only in the final round trip.
+ * Throws on the first failure with the seed, the step and the operation.
  */
 export function fuzzRun(options: FuzzRunOptions): FuzzRunResult {
   const rng = random(options.seed);
@@ -2468,14 +2493,28 @@ export function fuzzRun(options: FuzzRunOptions): FuzzRunResult {
   const initial = documentChecks(null, store.getState(), "start");
   if (initial.length > 0) fail(0, "start", initial.join("\n"));
   let changed = 0;
+  // The history model of an interleaved run: `done` ends with the current document, `undone` holds the
+  // documents redo brings back. Runs without undos keep none (a long run would hold every document).
+  const modelled = Boolean(options.undo || options.redo);
+  const done: Project[] = [store.getState()];
+  const undone: Project[] = [];
+  const replay = (step: number, kind: "undo" | "redo", moved: boolean): void => {
+    const [from, to] = kind === "undo" ? [done, undone] : [undone, done];
+    const recorded = kind === "undo" ? done.length - 1 : undone.length;
+    if (moved !== recorded > 0) fail(step, kind, moved ? "went past the recorded history" : `did nothing with ${recorded} recorded steps`);
+    if (!moved) return;
+    to.push(from.pop() as Project);
+    const difference = firstDifference(store.getState(), done.at(-1));
+    if (difference !== null) fail(step, kind, `the document differs from the one recorded at this point: ${difference}`);
+  };
   for (let step = 1; step <= options.steps; step++) {
     const roll = rng.next();
     if (options.undo && roll < options.undo) {
-      store.undo();
+      replay(step, "undo", store.undo());
       continue;
     }
     if (options.redo && roll < (options.undo ?? 0) + options.redo) {
-      store.redo();
+      replay(step, "redo", store.redo());
       continue;
     }
     let pool = ops;
@@ -2496,6 +2535,10 @@ export function fuzzRun(options: FuzzRunOptions): FuzzRunResult {
     const after = store.getState();
     if (after === before) continue;
     changed++;
+    if (modelled) {
+      done.push(after);
+      undone.length = 0;
+    }
     const issues = [...documentChecks(before, after, chosen.name), ...(options.check?.(before, after, chosen) ?? [])];
     if (issues.length > 0) fail(step, chosen.name, issues.join("\n"));
   }
