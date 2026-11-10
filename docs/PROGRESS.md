@@ -7638,6 +7638,7 @@ Why each dependency exists (Batch rule 8).
   - Opening and playing the full fixture in the app was not measured with the Profiler (no free GPU session; the machine was shared): pending manual check 1.
   - The user guide is extended by the docs step of the runner (no `docs:` line is written here).
   - The tag `v1.2.0` is made on this batch's progress commit.
+- docs: whats-new.md, README.md, settings.md in docs/user-guide/ (2026-11-10)
 - follow-ups:
   - [from Batch 82 -> Backlog] See `docs/BACKLOG.md` "After v1.2.0" (the open follow-ups of Batches 69-81).
 - design gaps:

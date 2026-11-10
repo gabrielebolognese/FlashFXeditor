@@ -2,6 +2,14 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+## Batch 82: Shorts Editor 1.2.0
+This release adds no new controls. **Settings** > **About** now shows version 1.2.0. The editor was checked against one large test project that uses every kind of clip, effect, transition, mask, blend mode, caption style and template. That project (about 90 seconds of effect-heavy video) exports in a little over twice its length on the test machine. Known limits of 1.2 are listed in [Troubleshooting](troubleshooting.md#known-limitations).
+
+> **Video placeholder: What's new in Batch 82**
+> - File: `videos/whats-new/batch-82.mp4` (not recorded yet)
+> - Length: about 20 seconds
+> - Shows: open **Settings** > **About** and point at **Version** (1.2.0).
+
 ## Batch 81: Export WebM, PNG sequences, GIF, stems and project zip
 The **Settings** section of the **Export** tab gets a **Format** row: **MP4**, **WebM**, **PNG sequence** and **GIF**. WebM can be **Transparent**. New presets **Overlay**, **GIF** and **PNG**. **Extras** gets **Export stems** (one WAV per audio track), **Collect** (copy linked media into the project) and **Zip**. See [Export WebM, a PNG sequence or a GIF](exporting-video.md#export-webm-a-png-sequence-or-a-gif).
 
