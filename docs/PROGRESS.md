@@ -7645,3 +7645,4 @@ Why each dependency exists (Batch rule 8).
 - pending manual checks:
   1. Open `fixtures/interop/full` in the app (Open project), play it through at 60 fps and check zero React commits in the Profiler during playback and scrubbing (P1), and the open time against P14.
   2. Export the full fixture from the Export tab with the Reels preset on a machine with a normal GPU and note the time against 2x real time.
+- review request: README.md capabilities.json docs/BACKLOG.md docs/INTEROP.md docs/PROGRESS.md package-lock.json package.json src/core/capabilities.ts src/core/capabilityAudit.test.ts src/core/capabilityAudit.ts src/core/document/everyPart.ts src/core/document/fullFixture.test.ts src/core/document/fullFixture.ts src/core/document/interop.test.ts src/panels/media/CompoundTemplates.tsx src/render/compositor/Compositor.ts src/render/preview/LayerTextures.ts fixtures/interop/full/ (project.json, expected/, media/, fonts/, frames.txt)
