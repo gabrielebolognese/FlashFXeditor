@@ -7,8 +7,8 @@
 import { makeCaptionClip, makeCompoundClip, makeMedia, makeMediaClip, makeShapeClip, makeSolidClip, makeTextClip } from "./fixtures.js";
 import { createProject, emptyTrack } from "./project.js";
 import { frameToUs } from "./time.js";
-import { CAPTION_HIGHLIGHTS, CUE_ANIM_KINDS, EASE_IDS, TEXT_ANIM_IDS } from "./types.js";
-import type { Clip, Project, RGBA, Sequence, Track } from "./types.js";
+import { CAPTION_HIGHLIGHTS, CUE_ANIM_KINDS, EASE_IDS, TEXT_ANIM_IDS, TEXT_BACKGROUND_MODES } from "./types.js";
+import type { Clip, Mask, Project, RGBA, Sequence, Track } from "./types.js";
 
 export const EVERY_DURATION = 96;
 export const EVERY_ASSETS_FROM = "basic";
@@ -105,14 +105,69 @@ export function buildEveryPart(): Project {
       words: [{ text: "mode", start: 0, end: 5 }, { text: mode, start: 5, end: 11 }],
     });
     const kind = CUE_ANIM_KINDS[i % CUE_ANIM_KINDS.length]!;
-    add({ ...cue, styleOverride: { ...(i === 0 && { text: { background: { enabled: true, mode: "line" } } }), highlight: { mode }, anim: { in: { kind, frames: 3 }, out: { kind: CUE_ANIM_KINDS[(i + 1) % CUE_ANIM_KINDS.length]!, frames: 2 } } } });
+    // The first cues take one box mode each (a caption's own style shows the box modes).
+    const box = TEXT_BACKGROUND_MODES[i];
+    add({ ...cue, styleOverride: { ...(box && { text: { background: { enabled: true, mode: box } } }), highlight: { mode }, anim: { in: { kind, frames: 3 }, out: { kind: CUE_ANIM_KINDS[(i + 1) % CUE_ANIM_KINDS.length]!, frames: 2 } } } });
   });
+
+  // Every keyframable property no other part keys. The clips sit outside the picture (x = OFF), so the expected
+  // frames of the full fixture do not change: the audit reads the project file, not the render.
+  const OFF = 3000;
+  const key = (frame: number, value: unknown, ease = "linear") => ({ frame, value, ease });
+  const pair = (from: unknown, to: unknown, last = 23) => [key(0, from), key(last, to)];
+  const mask: Mask = { id: "km", shape: { kind: "rect", x: 0, y: 0, w: 40, h: 40, radius: 4 }, mode: "add", feather: 0, expansion: 0, opacity: 1, inverted: false };
+  add({
+    ...makeSolidClip({ id: "key-solid", trackId: "keys-solid", start: 0, duration: 24 }),
+    size: { w: 40, h: 40 }, transform: T({ x: OFF }), masks: [mask],
+    keyframes: {
+      "transform.scale": pair(1, 2), "transform.scaleY": pair(1, 0.5),
+      "masks.km.x": pair(0, 4), "masks.km.y": pair(0, 4), "masks.km.w": pair(40, 30), "masks.km.h": pair(40, 30),
+      "masks.km.radius": pair(4, 12), "masks.km.feather": pair(0, 6), "masks.km.expansion": pair(0, 2), "masks.km.opacity": pair(1, 0.5),
+    },
+  } as Clip);
+  {
+    const clip = makeTextClip({ id: "key-text", trackId: "keys-text", start: 0, duration: 30, value: "0" });
+    add({
+      ...clip,
+      style: { ...clip.style, background: { enabled: true, color: { r: 0, g: 0, b: 0, a: 1 }, paddingX: 4, paddingY: 4, radius: 0, mode: "word" } },
+      transform: T({ x: OFF }),
+      counter: { from: 0, to: 100, decimals: 0, prefix: "", suffix: "", separator: "", ease: "linear" },
+      animators: [{
+        id: "ka", unit: "char",
+        selector: { start: 0, end: 1, offset: 0, shape: "square", ease: 0, order: "forward", seed: 1 },
+        props: { x: 10, y: 10, scale: 1.2, rotation: 5, opacity: 0.5, blur: 2, tracking: 1, fill: rgba(1, 0.5, 0.2) },
+      }],
+      keyframes: {
+        "text.counter.value": pair(0, 100, 29),
+        "animators.ka.selector.start": pair(0, 0.5, 29),
+        ...Object.fromEntries((["x", "y", "scale", "rotation", "opacity", "blur", "tracking"] as const).map((name) => [`animators.ka.props.${name}`, pair(0, 1, 29)])),
+        "animators.ka.props.fill": pair([1, 0.5, 0.2, 1], [0.2, 0.5, 1, 1], 29),
+      },
+    } as Clip);
+  }
+  add(makeShapeClip({
+    id: "key-shape", trackId: "keys-shape", start: 0, duration: 24, size: { w: 200, h: 160 }, transform: T({ x: OFF }),
+    paths: [{
+      id: "kp", d: "M20 130 L100 30 L180 130", fill: rgba(0.4, 0.9, 0.6), fillRule: "nonzero",
+      stroke: { width: 8, color: rgba(1, 1, 1), align: "center", cap: "round", join: "round", miterLimit: 4 },
+      trim: { start: 0, end: 1, offset: 0 },
+    }],
+  }));
+  project.clips["key-shape"] = {
+    ...project.clips["key-shape"]!,
+    keyframes: {
+      "paths.kp.trim.start": pair(0, 0.5), "paths.kp.trim.offset": pair(0, 0.25), "paths.kp.stroke.width": pair(8, 16),
+      "paths.kp.stroke.color": pair([1, 1, 1, 1], [0.2, 0.2, 0.2, 1]), "paths.kp.fill": pair([0.4, 0.9, 0.6, 1], [0.9, 0.4, 0.6, 1]),
+    },
+  } as Clip;
 
   // An equal-power fade on a tone (a file of the basic fixture).
   project.media.tone = { ...makeMedia("tone", "audio", 500_000), name: "tone.wav", file: { relPath: "media/tone.wav" }, hasAudio: true };
   add({ ...makeMediaClip(project, { id: "fade-clip", trackId: "audio", start: 0, duration: 15, mediaId: "tone", kind: "audio" }), fades: { in: 5, out: 5, curve: "equalPower" }, out: 500_000 });
 
   add({ ...makeMediaClip(project, { id: "fade-linear", trackId: "audio", start: 20, duration: 15, mediaId: "tone", kind: "audio" }), fades: { in: 5, out: 5, curve: "linear" }, out: 500_000 });
+  // Gain and pan keys (the clip's volume is inaudible at the full fixture's expected frames, which are pictures).
+  add({ ...makeMediaClip(project, { id: "fade-keys", trackId: "audio", start: 40, duration: 15, mediaId: "tone", kind: "audio" }), out: 500_000, keyframes: { "volume.gainDb": [key(0, -6), key(14, 0)], "volume.pan": [key(0, -1), key(14, 1)] } } as Clip);
 
   // A freeze frame (speed 0) of a video file of the basic fixture.
   project.media.clip = { ...makeMedia("clip", "video", 2_000_000), name: "clip.mp4", file: { relPath: "media/clip.mp4" }, width: 270, height: 480, fps: { num: 30, den: 1 }, codec: "h264", audioCodec: "aac", hasAudio: true, size: 18761 };

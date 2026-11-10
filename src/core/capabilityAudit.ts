@@ -8,13 +8,19 @@ import type { Capabilities } from "./capabilities.js";
 
 type Json = any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
+/** The top-level maps keyed by id. */
+const ID_MAPS: ReadonlySet<string> = new Set(["clips", "media", "sequences", "captionTracks"]);
+
 /** What the fixtures hold, indexed once. */
 export class Corpus {
   readonly projects: Json[];
   /** Every object key anywhere in a project. */
   readonly keys = new Set<string>();
-  /** The strings that appear under each key (`ease` -> linear, easeIn ...). */
-  readonly values = new Map<string, Set<string>>();
+  /**
+   * The strings at each path, with array indexes dropped and the ids of the top-level maps (`clips`, `media`,
+   * `sequences`, `captionTracks`) written `*`: `clips.*.animIn.id` -> fade, pop ...
+   */
+  readonly paths = new Map<string, Set<string>>();
   /** The property paths of every clip's `keyframes`. */
   readonly keyframeProps = new Set<string>();
   readonly clips: Json[] = [];
@@ -30,24 +36,26 @@ export class Corpus {
     }
   }
 
-  private walk(node: Json, key: string): void {
+  private walk(node: Json, path: string): void {
     if (typeof node === "string") {
-      let set = this.values.get(key);
-      if (!set) this.values.set(key, (set = new Set()));
+      let set = this.paths.get(path);
+      if (!set) this.paths.set(path, (set = new Set()));
       set.add(node);
     } else if (Array.isArray(node)) {
-      for (const item of node) this.walk(item, key);
+      for (const item of node) this.walk(item, path);
     } else if (node && typeof node === "object") {
+      const idMap = ID_MAPS.has(path);
       for (const [k, v] of Object.entries(node)) {
         this.keys.add(k);
-        this.walk(v, k);
+        this.walk(v, path === "" ? k : `${path}.${idMap ? "*" : k}`);
       }
     }
   }
 
-  /** Whether some string under one of `fields` is `value`. */
-  has(value: string, ...fields: string[]): boolean {
-    return fields.some((field) => this.values.get(field)?.has(value));
+  /** Whether `value` is the string at some path matching one of `patterns` (the list's own fields, not any field of that name). */
+  has(value: string, ...patterns: RegExp[]): boolean {
+    for (const [path, set] of this.paths) if (set.has(value) && patterns.some((pattern) => pattern.test(path))) return true;
+    return false;
   }
 
   /** Whether some clip of one of `kinds` (any when none) satisfies `test`. */
@@ -63,14 +71,18 @@ export type Rule =
   | { test: string }
   /** A flag: the corpus uses it. */
   | { fixture: (corpus: Corpus) => boolean }
-  /** A list: each value appears under one of these fields. */
-  | { values: readonly string[] }
+  /** A list: each value is the string at a path that matches (`Corpus.paths`): the list's own fields only. */
+  | { at: RegExp }
   /** A list of keyframe property paths (`<id>` stands for any id): each is keyed on some clip. */
   | { keyframes: true };
 
 const anyKey = (...keys: string[]): Rule => ({ fixture: (c) => keys.some((key) => c.keys.has(key)) });
-const kind = (value: string): Rule => ({ fixture: (c) => c.has(value, "kind") });
-const ease = (value: string): Rule => ({ fixture: (c) => c.has(value, "ease") });
+const CLIP_KIND = /^clips\.\*\.kind$/;
+const KEY_EASE = /^clips\.\*\.keyframes\..+\.ease$/;
+const kind = (value: string): Rule => ({ fixture: (c) => c.has(value, CLIP_KIND) });
+const ease = (value: string): Rule => ({ fixture: (c) => c.has(value, KEY_EASE) });
+/** Where a caption's own style lives: a track's style and a cue's override. */
+const captionPath = (tail: string) => new RegExp(String.raw`^(?:clips\.\*\.styleOverride|captionTracks\.\*\.style)\.${tail}$`);
 const keyed = (clip: Json, field: string) => clip[field] !== undefined;
 
 /** The rules, by manifest path (`a.b`). */
@@ -88,19 +100,19 @@ export const RULES: Record<string, Rule> = {
   "media.imageSequence": anyKey("sequence"),
   "media.lottie": kind("lottie"),
   "media.lottieFormats": { test: "src/media/mediaKinds.test.ts" },
-  trackKinds: { values: ["kind"] },
-  clipKinds: { values: ["kind"] },
+  trackKinds: { at: /^(?:sequences\.\*\.)?tracks\.kind$/ },
+  clipKinds: { at: CLIP_KIND },
   "transform.rotation3d": anyKey("rotationX", "rotationY"),
   "transform.parenting": anyKey("parentId"),
-  "transform.motionPaths": anyKey("path"),
+  "transform.motionPaths": { fixture: (c) => c.keyframeProps.has("transform.position") },
   "transform.autoOrient": anyKey("autoOrient"),
-  "keyframes.props": { test: "src/core/document/keyframes.test.ts" },
-  "keyframes.eases": { values: ["ease"] },
+  "keyframes.props": { keyframes: true },
+  "keyframes.eases": { at: KEY_EASE },
   "keyframes.bezier": ease("bezier"),
   "keyframes.spring": ease("spring"),
   "keyframes.vectorValues": { fixture: (c) => c.clips.some((clip) => Object.values<Json[]>(clip.keyframes ?? {}).some((keys) => keys.some((key) => Array.isArray(key.value)))) },
   "keyframes.effectProps": { keyframes: true },
-  "solid.shapes": { values: ["shape"] },
+  "solid.shapes": { at: /^clips\.\*\.shape$/ },
   "solid.fills": { fixture: (c) => c.clip((clip) => typeof clip.fill?.r === "number", "solid") && c.clip((clip) => clip.fill?.from !== undefined, "solid") && c.clip((clip) => clip.fill?.type === "linear", "solid") && c.clip((clip) => clip.fill?.type === "radial", "solid") },
   "solid.stroke": { fixture: (c) => c.clip((clip) => keyed(clip, "stroke"), "solid") },
   "solid.shadow": { fixture: (c) => c.clip((clip) => keyed(clip, "shadow"), "solid") },
@@ -111,39 +123,39 @@ export const RULES: Record<string, Rule> = {
   "text.fills": { fixture: (c) => c.clip((clip) => typeof clip.style?.fill?.r === "number", "text") && c.clip((clip) => clip.style?.fill?.from !== undefined, "text") && c.clip((clip) => clip.style?.fill?.type === "linear", "text") && c.clip((clip) => clip.style?.fill?.type === "radial", "text") },
   "text.stroke": { fixture: (c) => c.clip((clip) => clip.style?.stroke?.enabled === true, "text") },
   "text.shadow": { fixture: (c) => c.clip((clip) => clip.style?.shadow?.enabled === true, "text") },
-  "text.background.modes": { values: ["mode"] },
+  "text.background.modes": { at: /^clips\.\*\.style\.background\.mode$/ },
   "text.background.stroke": { fixture: (c) => c.clip((clip) => clip.style?.background?.stroke?.enabled === true, "text") },
   "text.background.shadow": { fixture: (c) => c.clip((clip) => clip.style?.background?.shadow?.enabled === true, "text") },
-  "text.anims": { values: ["id"] },
-  "text.animUnits": { values: ["unit", "perUnit"] },
+  "text.anims": { at: /^clips\.\*\.(?:animIn|animOut|animLoop)\.id$/ },
+  "text.animUnits": { at: /^clips\.\*\.(?:animators\.unit|(?:animIn|animOut|animLoop)\.perUnit)$/ },
   "text.spans": anyKey("spans"),
   "text.counter": anyKey("counter"),
   "text.animators": anyKey("animators"),
-  "text.animatorKeyframeProps": { test: "src/timeline/edit/animators.test.ts" },
-  "captions.highlightModes": { values: ["mode"] },
+  "text.animatorKeyframeProps": { keyframes: true },
+  "captions.highlightModes": { at: captionPath(String.raw`highlight\.mode`) },
   "captions.perCueStyle": anyKey("styleOverride"),
   "captions.wordEmphasis": anyKey("emphasis"),
-  "captions.cueAnims": { values: ["kind"] },
-  "captions.boxModes": { values: ["mode"] },
+  "captions.cueAnims": { at: captionPath(String.raw`anim\.(?:in|out)\.kind`) },
+  "captions.boxModes": { at: captionPath(String.raw`text\.background\.mode`) },
   "captions.wordsImport": { test: "src/text/wordsImport.test.ts" },
-  transitions: { values: ["kind"] },
+  transitions: { at: /^clips\.\*\.transition(?:In|Out)\.kind$/ },
   "compositing.compound": kind("compound"),
-  "compositing.blendModes": { values: ["blend"] },
+  "compositing.blendModes": { at: /^clips\.\*\.blend$/ },
   "compositing.trackMatte": anyKey("matte"),
   "compositing.masks": anyKey("masks"),
-  "compositing.maskModes": { values: ["mode"] },
-  "compositing.maskKeyframeProps": { test: "src/core/masks/maskEval.test.ts" },
+  "compositing.maskModes": { at: /^clips\.\*\.masks\.mode$/ },
+  "compositing.maskKeyframeProps": { keyframes: true },
   "compositing.adjustment": kind("adjustment"),
   "vector.shapes": kind("shape"),
   "vector.trimPaths": anyKey("trim"),
   "vector.svgImport": { test: "src/core/shapes/svgImport.test.ts" },
-  "vector.primitives": { values: ["kind", "primitive"] },
-  "vector.caps": { values: ["cap"] },
-  "vector.joins": { values: ["join"] },
-  "vector.fillRules": { values: ["fillRule"] },
-  "vector.keyframeProps": { test: "src/core/document/interop.test.ts" },
-  effects: { values: ["type"] },
-  "audio.fadeCurves": { values: ["curve"] },
+  "vector.primitives": { at: /^clips\.\*\.paths\.primitive\.kind$/ },
+  "vector.caps": { at: /^clips\.\*\.paths\.stroke\.cap$/ },
+  "vector.joins": { at: /^clips\.\*\.paths\.stroke\.join$/ },
+  "vector.fillRules": { at: /^clips\.\*\.paths\.fillRule$/ },
+  "vector.keyframeProps": { keyframes: true },
+  effects: { at: /^clips\.\*\.effects\.type$/ },
+  "audio.fadeCurves": { at: /^clips\.\*\.fades\.curve$/ },
   "audio.fades": { fixture: (c) => c.clip((clip) => (clip.fades?.in ?? 0) > 0 || (clip.fades?.out ?? 0) > 0, "audio", "video") },
   "audio.trackGain": { fixture: (c) => c.projects.some((p) => [...(p.tracks ?? []), ...Object.values<Json>(p.sequences ?? {}).flatMap((s) => s.tracks)].some((t: Json) => t.gainDb !== undefined)) },
   "audio.pan": { fixture: (c) => c.clip((clip) => clip.volume?.pan !== undefined) },
@@ -154,7 +166,7 @@ export const RULES: Record<string, Rule> = {
   "time.remap": anyKey("timeRemap"),
   "time.frameBlend": anyKey("frameBlend"),
   templates: { fixture: (c) => c.projects.some((p) => Object.values<Json>(p.sequences ?? {}).some((s) => (s.params ?? []).length > 0)) },
-  templateParamKinds: { values: ["kind"] },
+  templateParamKinds: { at: /^sequences\.\*\.params\.kind$/ },
   "export.containers": { test: "src/export/presets.test.ts" },
   "export.videoCodecs": { test: "src/export/codecs.test.ts" },
   "export.alpha": { test: "src/export/webm/WebmMuxer.test.ts" },
@@ -221,8 +233,8 @@ export function auditCapabilities(manifest: Capabilities, corpus: Corpus, fileEx
       if (!fileExists(rule.test)) problems.push(`${leaf.path}: its test ${rule.test} is missing`);
     } else if ("fixture" in rule) {
       if (!rule.fixture(corpus)) problems.push(`${leaf.path}: no fixture field uses it`);
-    } else if ("values" in rule) {
-      for (const item of leaf.items ?? []) if (!corpus.has(item, ...rule.values)) problems.push(`${leaf.path}: no fixture uses "${item}"`);
+    } else if ("at" in rule) {
+      for (const item of leaf.items ?? []) if (!corpus.has(item, rule.at)) problems.push(`${leaf.path}: no fixture uses "${item}"`);
     } else {
       for (const item of leaf.items ?? []) {
         const source = item.split(".").map((part) => (/^<.+>$/.test(part) ? "[^.]+" : part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))).join("\\.");

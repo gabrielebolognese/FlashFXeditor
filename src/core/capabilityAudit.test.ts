@@ -25,6 +25,44 @@ describe("capability audit (Batch 82)", () => {
     expect(problems).toEqual([]);
   });
 
+  it("answers every list and keyframe rule from a project file: only what a project cannot show has a test rule", () => {
+    const tested = Object.entries(RULES).filter(([, rule]) => "test" in rule).map(([path]) => path).sort();
+    expect(tested).toEqual([
+      "audio.beatMarkers", "captions.wordsImport", "cli.compare", "cli.fill", "cli.info", "cli.normalize", "cli.render", "cli.validate",
+      "export.alpha", "export.containers", "export.gif", "export.imageSequence", "export.stems", "export.videoCodecs",
+      "interop.externalReload", "interop.openLink", "interop.repairOnOpen", "media.animatedImage.alpha", "media.animatedImage.formats",
+      "media.audio", "media.image", "media.lottieFormats", "media.video", "vector.svgImport",
+    ]);
+  });
+
+  it("a keyframe property no clip keys fails, and motion paths need transform.position keys", () => {
+    const stripped = all.map((name) => {
+      const project = structuredClone(readProject(name)) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+      for (const clip of Object.values<any>(project.clips ?? {})) { // eslint-disable-line @typescript-eslint/no-explicit-any
+        for (const prop of ["transform.position", "transform.scale", "masks.km.feather", "paths.kp.trim.start", "animators.ka.props.blur"]) delete clip.keyframes?.[prop];
+      }
+      return project;
+    });
+    const problems = auditCapabilities(manifest, new Corpus(stripped), fileExists);
+    expect(problems).toContain("transform.motionPaths: no fixture field uses it");
+    expect(problems).toContain('keyframes.props: no clip keys "transform.scale"');
+    expect(problems).toContain('compositing.maskKeyframeProps: no clip keys "masks.<id>.feather"');
+    expect(problems).toContain('vector.keyframeProps: no clip keys "paths.<id>.trim.start"');
+    expect(problems).toContain('text.animatorKeyframeProps: no clip keys "animators.<id>.props.blur"');
+  });
+
+  it("a list value shown only under another list's field does not count", () => {
+    // A text clip, a mask called "fade" and no template, caption or transition: the values of other lists must not satisfy these.
+    const project = { clips: { a: { kind: "text", masks: [{ id: "fade", mode: "block" }], effects: [{ id: "t", type: "text" }] } }, tracks: [{ kind: "video" }] };
+    const problems = auditCapabilities(manifest, new Corpus([project]), fileExists);
+    expect(problems).toContain('templateParamKinds: no fixture uses "text"');
+    expect(problems).toContain('text.anims: no fixture uses "fade"');
+    expect(problems).toContain('transitions: no fixture uses "dipToBlack"');
+    expect(problems).toContain('captions.boxModes: no fixture uses "block"');
+    expect(problems).toContain('text.background.modes: no fixture uses "block"');
+    expect(problems).toContain('compositing.maskModes: no fixture uses "add"');
+  });
+
   it("a key announced without evidence fails", () => {
     const loose = structuredClone(manifest) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
     loose.invented = { feature: true };

@@ -1485,6 +1485,48 @@
       "height": "M"
     },
     {
+      "id": "every-keys-solid",
+      "kind": "video",
+      "name": "keys-solid",
+      "clipIds": [
+        "every-key-solid"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "every-keys-text",
+      "kind": "video",
+      "name": "keys-text",
+      "clipIds": [
+        "every-key-text"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "every-keys-shape",
+      "kind": "video",
+      "name": "keys-shape",
+      "clipIds": [
+        "every-key-shape"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
       "id": "every-freeze",
       "kind": "video",
       "name": "freeze",
@@ -1639,7 +1681,8 @@
       "name": "audio",
       "clipIds": [
         "every-fade-clip",
-        "every-fade-linear"
+        "every-fade-linear",
+        "every-fade-keys"
       ],
       "locked": false,
       "muted": false,
@@ -8092,6 +8135,12 @@
         }
       ],
       "styleOverride": {
+        "text": {
+          "background": {
+            "enabled": true,
+            "mode": "block"
+          }
+        },
         "highlight": {
           "mode": "color"
         },
@@ -8129,6 +8178,12 @@
         }
       ],
       "styleOverride": {
+        "text": {
+          "background": {
+            "enabled": true,
+            "mode": "word"
+          }
+        },
         "highlight": {
           "mode": "background"
         },
@@ -8292,6 +8347,575 @@
         }
       }
     },
+    "every-key-solid": {
+      "kind": "solid",
+      "name": "key-solid",
+      "enabled": true,
+      "fill": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "shape": "rect",
+      "size": {
+        "w": 40,
+        "h": 40
+      },
+      "cornerRadius": 0,
+      "transform": {
+        "x": 3000,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "id": "every-key-solid",
+      "trackId": "every-keys-solid",
+      "start": 400,
+      "duration": 24,
+      "masks": [
+        {
+          "id": "km",
+          "shape": {
+            "kind": "rect",
+            "x": 0,
+            "y": 0,
+            "w": 40,
+            "h": 40,
+            "radius": 4
+          },
+          "mode": "add",
+          "feather": 0,
+          "expansion": 0,
+          "opacity": 1,
+          "inverted": false
+        }
+      ],
+      "keyframes": {
+        "transform.scale": [
+          {
+            "frame": 0,
+            "value": 1,
+            "ease": "linear"
+          },
+          {
+            "frame": 23,
+            "value": 2,
+            "ease": "linear"
+          }
+        ],
+        "transform.scaleY": [
+          {
+            "frame": 0,
+            "value": 1,
+            "ease": "linear"
+          },
+          {
+            "frame": 23,
+            "value": 0.5,
+            "ease": "linear"
+          }
+        ],
+        "masks.km.x": [
+          {
+            "frame": 0,
+            "value": 0,
+            "ease": "linear"
+          },
+          {
+            "frame": 23,
+            "value": 4,
+            "ease": "linear"
+          }
+        ],
+        "masks.km.y": [
+          {
+            "frame": 0,
+            "value": 0,
+            "ease": "linear"
+          },
+          {
+            "frame": 23,
+            "value": 4,
+            "ease": "linear"
+          }
+        ],
+        "masks.km.w": [
+          {
+            "frame": 0,
+            "value": 40,
+            "ease": "linear"
+          },
+          {
+            "frame": 23,
+            "value": 30,
+            "ease": "linear"
+          }
+        ],
+        "masks.km.h": [
+          {
+            "frame": 0,
+            "value": 40,
+            "ease": "linear"
+          },
+          {
+            "frame": 23,
+            "value": 30,
+            "ease": "linear"
+          }
+        ],
+        "masks.km.radius": [
+          {
+            "frame": 0,
+            "value": 4,
+            "ease": "linear"
+          },
+          {
+            "frame": 23,
+            "value": 12,
+            "ease": "linear"
+          }
+        ],
+        "masks.km.feather": [
+          {
+            "frame": 0,
+            "value": 0,
+            "ease": "linear"
+          },
+          {
+            "frame": 23,
+            "value": 6,
+            "ease": "linear"
+          }
+        ],
+        "masks.km.expansion": [
+          {
+            "frame": 0,
+            "value": 0,
+            "ease": "linear"
+          },
+          {
+            "frame": 23,
+            "value": 2,
+            "ease": "linear"
+          }
+        ],
+        "masks.km.opacity": [
+          {
+            "frame": 0,
+            "value": 1,
+            "ease": "linear"
+          },
+          {
+            "frame": 23,
+            "value": 0.5,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    "every-key-text": {
+      "kind": "text",
+      "name": "key-text",
+      "enabled": true,
+      "text": {
+        "value": "0",
+        "box": {
+          "mode": "auto",
+          "width": 900
+        }
+      },
+      "style": {
+        "fontFamily": "Inter",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 96,
+        "fill": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": false,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": true,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          },
+          "paddingX": 4,
+          "paddingY": 4,
+          "radius": 0,
+          "mode": "word"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 3000,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "every-key-text",
+      "trackId": "every-keys-text",
+      "start": 400,
+      "duration": 30,
+      "counter": {
+        "from": 0,
+        "to": 100,
+        "decimals": 0,
+        "prefix": "",
+        "suffix": "",
+        "separator": "",
+        "ease": "linear"
+      },
+      "animators": [
+        {
+          "id": "ka",
+          "unit": "char",
+          "selector": {
+            "start": 0,
+            "end": 1,
+            "offset": 0,
+            "shape": "square",
+            "ease": 0,
+            "order": "forward",
+            "seed": 1
+          },
+          "props": {
+            "x": 10,
+            "y": 10,
+            "scale": 1.2,
+            "rotation": 5,
+            "opacity": 0.5,
+            "blur": 2,
+            "tracking": 1,
+            "fill": {
+              "r": 1,
+              "g": 0.5,
+              "b": 0.2,
+              "a": 1
+            }
+          }
+        }
+      ],
+      "keyframes": {
+        "text.counter.value": [
+          {
+            "frame": 0,
+            "value": 0,
+            "ease": "linear"
+          },
+          {
+            "frame": 29,
+            "value": 100,
+            "ease": "linear"
+          }
+        ],
+        "animators.ka.selector.start": [
+          {
+            "frame": 0,
+            "value": 0,
+            "ease": "linear"
+          },
+          {
+            "frame": 29,
+            "value": 0.5,
+            "ease": "linear"
+          }
+        ],
+        "animators.ka.props.x": [
+          {
+            "frame": 0,
+            "value": 0,
+            "ease": "linear"
+          },
+          {
+            "frame": 29,
+            "value": 1,
+            "ease": "linear"
+          }
+        ],
+        "animators.ka.props.y": [
+          {
+            "frame": 0,
+            "value": 0,
+            "ease": "linear"
+          },
+          {
+            "frame": 29,
+            "value": 1,
+            "ease": "linear"
+          }
+        ],
+        "animators.ka.props.scale": [
+          {
+            "frame": 0,
+            "value": 0,
+            "ease": "linear"
+          },
+          {
+            "frame": 29,
+            "value": 1,
+            "ease": "linear"
+          }
+        ],
+        "animators.ka.props.rotation": [
+          {
+            "frame": 0,
+            "value": 0,
+            "ease": "linear"
+          },
+          {
+            "frame": 29,
+            "value": 1,
+            "ease": "linear"
+          }
+        ],
+        "animators.ka.props.opacity": [
+          {
+            "frame": 0,
+            "value": 0,
+            "ease": "linear"
+          },
+          {
+            "frame": 29,
+            "value": 1,
+            "ease": "linear"
+          }
+        ],
+        "animators.ka.props.blur": [
+          {
+            "frame": 0,
+            "value": 0,
+            "ease": "linear"
+          },
+          {
+            "frame": 29,
+            "value": 1,
+            "ease": "linear"
+          }
+        ],
+        "animators.ka.props.tracking": [
+          {
+            "frame": 0,
+            "value": 0,
+            "ease": "linear"
+          },
+          {
+            "frame": 29,
+            "value": 1,
+            "ease": "linear"
+          }
+        ],
+        "animators.ka.props.fill": [
+          {
+            "frame": 0,
+            "value": [
+              1,
+              0.5,
+              0.2,
+              1
+            ],
+            "ease": "linear"
+          },
+          {
+            "frame": 29,
+            "value": [
+              0.2,
+              0.5,
+              1,
+              1
+            ],
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    "every-key-shape": {
+      "kind": "shape",
+      "name": "key-shape",
+      "enabled": true,
+      "size": {
+        "w": 200,
+        "h": 160
+      },
+      "paths": [
+        {
+          "id": "kp",
+          "d": "M20 130 L100 30 L180 130",
+          "fill": {
+            "r": 0.4,
+            "g": 0.9,
+            "b": 0.6,
+            "a": 1
+          },
+          "fillRule": "nonzero",
+          "stroke": {
+            "width": 8,
+            "color": {
+              "r": 1,
+              "g": 1,
+              "b": 1,
+              "a": 1
+            },
+            "align": "center",
+            "cap": "round",
+            "join": "round",
+            "miterLimit": 4
+          },
+          "trim": {
+            "start": 0,
+            "end": 1,
+            "offset": 0
+          }
+        }
+      ],
+      "transform": {
+        "x": 3000,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "id": "every-key-shape",
+      "trackId": "every-keys-shape",
+      "start": 400,
+      "duration": 24,
+      "keyframes": {
+        "paths.kp.trim.start": [
+          {
+            "frame": 0,
+            "value": 0,
+            "ease": "linear"
+          },
+          {
+            "frame": 23,
+            "value": 0.5,
+            "ease": "linear"
+          }
+        ],
+        "paths.kp.trim.offset": [
+          {
+            "frame": 0,
+            "value": 0,
+            "ease": "linear"
+          },
+          {
+            "frame": 23,
+            "value": 0.25,
+            "ease": "linear"
+          }
+        ],
+        "paths.kp.stroke.width": [
+          {
+            "frame": 0,
+            "value": 8,
+            "ease": "linear"
+          },
+          {
+            "frame": 23,
+            "value": 16,
+            "ease": "linear"
+          }
+        ],
+        "paths.kp.stroke.color": [
+          {
+            "frame": 0,
+            "value": [
+              1,
+              1,
+              1,
+              1
+            ],
+            "ease": "linear"
+          },
+          {
+            "frame": 23,
+            "value": [
+              0.2,
+              0.2,
+              0.2,
+              1
+            ],
+            "ease": "linear"
+          }
+        ],
+        "paths.kp.fill": [
+          {
+            "frame": 0,
+            "value": [
+              0.4,
+              0.9,
+              0.6,
+              1
+            ],
+            "ease": "linear"
+          },
+          {
+            "frame": 23,
+            "value": [
+              0.9,
+              0.4,
+              0.6,
+              1
+            ],
+            "ease": "linear"
+          }
+        ]
+      }
+    },
     "every-fade-clip": {
       "kind": "audio",
       "name": "fade-clip",
@@ -8373,6 +8997,72 @@
       "start": 420,
       "duration": 15,
       "mediaId": "every-tone"
+    },
+    "every-fade-keys": {
+      "kind": "audio",
+      "name": "fade-keys",
+      "enabled": true,
+      "in": 0,
+      "out": 500000,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "every-fade-keys",
+      "trackId": "every-audio",
+      "start": 440,
+      "duration": 15,
+      "mediaId": "every-tone",
+      "keyframes": {
+        "volume.gainDb": [
+          {
+            "frame": 0,
+            "value": -6,
+            "ease": "linear"
+          },
+          {
+            "frame": 14,
+            "value": 0,
+            "ease": "linear"
+          }
+        ],
+        "volume.pan": [
+          {
+            "frame": 0,
+            "value": -1,
+            "ease": "linear"
+          },
+          {
+            "frame": 14,
+            "value": 1,
+            "ease": "linear"
+          }
+        ]
+      }
     },
     "every-freeze": {
       "kind": "video",
