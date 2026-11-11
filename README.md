@@ -64,8 +64,8 @@ The package is named `shorts-editor`, version 1.2.0 (project schema 24).
 - These browser APIs, checked at startup (a missing one shows a full-screen list of what is missing; there is no degraded mode):
   - a GPU renderer: WebGPU, or WebGL2 where WebGPU is not available (hardware acceleration on);
   - WebCodecs: `VideoDecoder`, `VideoEncoder`, `AudioDecoder`, `AudioEncoder`, `VideoFrame`, `ImageDecoder`;
-  - File System Access: `showDirectoryPicker`, `showSaveFilePicker`;
-  - Web Audio, module Web Workers, `OffscreenCanvas`.
+  - File System Access: `showDirectoryPicker`, `showSaveFilePicker`.
+- Also used, but not part of the startup check: Web Audio, module Web Workers and `OffscreenCanvas`.
 - Optional: Local Font Access (`queryLocalFonts`) for system fonts in titles.
 
 ### Download
