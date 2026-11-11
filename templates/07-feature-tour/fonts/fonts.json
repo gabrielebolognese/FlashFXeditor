@@ -1,0 +1,202 @@
+{
+  "version": 2,
+  "faces": [
+    {
+      "family": "Bebas Neue",
+      "style": "400",
+      "weight": 400,
+      "italic": false,
+      "postscriptName": "bebas-neue-latin-400-normal",
+      "source": "library",
+      "unicodeRange": "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD",
+      "origin": "bebas-neue/bebas-neue-latin-400-normal.woff2",
+      "file": "bebas-neue-latin-400-normal.woff2"
+    },
+    {
+      "family": "Bebas Neue",
+      "style": "400",
+      "weight": 400,
+      "italic": false,
+      "postscriptName": "bebas-neue-latin-ext-400-normal",
+      "source": "library",
+      "unicodeRange": "U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF",
+      "origin": "bebas-neue/bebas-neue-latin-ext-400-normal.woff2",
+      "file": "bebas-neue-latin-ext-400-normal.woff2"
+    },
+    {
+      "family": "Inter",
+      "style": "Variable",
+      "weight": 100,
+      "weightRange": [
+        100,
+        900
+      ],
+      "italic": false,
+      "postscriptName": "inter-latin-wght-normal",
+      "source": "library",
+      "unicodeRange": "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD",
+      "origin": "inter/inter-latin-wght-normal.woff2",
+      "file": "inter-latin-wght-normal.woff2"
+    },
+    {
+      "family": "Inter",
+      "style": "Variable",
+      "weight": 100,
+      "weightRange": [
+        100,
+        900
+      ],
+      "italic": false,
+      "postscriptName": "inter-latin-ext-wght-normal",
+      "source": "library",
+      "unicodeRange": "U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF",
+      "origin": "inter/inter-latin-ext-wght-normal.woff2",
+      "file": "inter-latin-ext-wght-normal.woff2"
+    },
+    {
+      "family": "Anton",
+      "style": "400",
+      "weight": 400,
+      "italic": false,
+      "postscriptName": "anton-latin-400-normal",
+      "source": "library",
+      "unicodeRange": "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD",
+      "origin": "anton/anton-latin-400-normal.woff2",
+      "file": "anton-latin-400-normal.woff2"
+    },
+    {
+      "family": "Anton",
+      "style": "400",
+      "weight": 400,
+      "italic": false,
+      "postscriptName": "anton-latin-ext-400-normal",
+      "source": "library",
+      "unicodeRange": "U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF",
+      "origin": "anton/anton-latin-ext-400-normal.woff2",
+      "file": "anton-latin-ext-400-normal.woff2"
+    },
+    {
+      "family": "Montserrat",
+      "style": "Variable",
+      "weight": 100,
+      "weightRange": [
+        100,
+        900
+      ],
+      "italic": false,
+      "postscriptName": "montserrat-latin-wght-normal",
+      "source": "library",
+      "unicodeRange": "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD",
+      "origin": "montserrat/montserrat-latin-wght-normal.woff2",
+      "file": "montserrat-latin-wght-normal.woff2"
+    },
+    {
+      "family": "Montserrat",
+      "style": "Variable",
+      "weight": 100,
+      "weightRange": [
+        100,
+        900
+      ],
+      "italic": false,
+      "postscriptName": "montserrat-latin-ext-wght-normal",
+      "source": "library",
+      "unicodeRange": "U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF",
+      "origin": "montserrat/montserrat-latin-ext-wght-normal.woff2",
+      "file": "montserrat-latin-ext-wght-normal.woff2"
+    },
+    {
+      "family": "JetBrains Mono",
+      "style": "Variable",
+      "weight": 100,
+      "weightRange": [
+        100,
+        800
+      ],
+      "italic": false,
+      "postscriptName": "jetbrains-mono-latin-wght-normal",
+      "source": "library",
+      "unicodeRange": "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD",
+      "origin": "jetbrains-mono/jetbrains-mono-latin-wght-normal.woff2",
+      "file": "jetbrains-mono-latin-wght-normal.woff2"
+    },
+    {
+      "family": "JetBrains Mono",
+      "style": "Variable",
+      "weight": 100,
+      "weightRange": [
+        100,
+        800
+      ],
+      "italic": false,
+      "postscriptName": "jetbrains-mono-latin-ext-wght-normal",
+      "source": "library",
+      "unicodeRange": "U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF",
+      "origin": "jetbrains-mono/jetbrains-mono-latin-ext-wght-normal.woff2",
+      "file": "jetbrains-mono-latin-ext-wght-normal.woff2"
+    },
+    {
+      "family": "Archivo Black",
+      "style": "400",
+      "weight": 400,
+      "italic": false,
+      "postscriptName": "archivo-black-latin-400-normal",
+      "source": "library",
+      "unicodeRange": "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD",
+      "origin": "archivo-black/archivo-black-latin-400-normal.woff2",
+      "file": "archivo-black-latin-400-normal.woff2"
+    },
+    {
+      "family": "Archivo Black",
+      "style": "400",
+      "weight": 400,
+      "italic": false,
+      "postscriptName": "archivo-black-latin-ext-400-normal",
+      "source": "library",
+      "unicodeRange": "U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF",
+      "origin": "archivo-black/archivo-black-latin-ext-400-normal.woff2",
+      "file": "archivo-black-latin-ext-400-normal.woff2"
+    },
+    {
+      "family": "Permanent Marker",
+      "style": "400",
+      "weight": 400,
+      "italic": false,
+      "postscriptName": "permanent-marker-latin-400-normal",
+      "source": "library",
+      "unicodeRange": "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD",
+      "origin": "permanent-marker/permanent-marker-latin-400-normal.woff2",
+      "file": "permanent-marker-latin-400-normal.woff2"
+    },
+    {
+      "family": "Playfair Display",
+      "style": "Variable",
+      "weight": 400,
+      "weightRange": [
+        400,
+        900
+      ],
+      "italic": true,
+      "postscriptName": "playfair-display-latin-wght-italic",
+      "source": "library",
+      "unicodeRange": "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD",
+      "origin": "playfair-display/playfair-display-latin-wght-italic.woff2",
+      "file": "playfair-display-latin-wght-italic.woff2"
+    },
+    {
+      "family": "Playfair Display",
+      "style": "Variable",
+      "weight": 400,
+      "weightRange": [
+        400,
+        900
+      ],
+      "italic": true,
+      "postscriptName": "playfair-display-latin-ext-wght-italic",
+      "source": "library",
+      "unicodeRange": "U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF",
+      "origin": "playfair-display/playfair-display-latin-ext-wght-italic.woff2",
+      "file": "playfair-display-latin-ext-wght-italic.woff2"
+    }
+  ]
+}

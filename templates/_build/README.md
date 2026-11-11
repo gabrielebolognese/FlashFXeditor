@@ -6,7 +6,7 @@ Work files go to `templates/_build/work/` (ignored by git); `TPL_WORK` and `TPL_
 2. `python -I synth_audio.py work/gen/audio`: the music beds (with `beats.json`) and the sound effects.
 3. `python -I synth_video.py work/gen`: motion graphics, frame counters, stickers, overlays and the format test files.
 4. `python -I make_tts.py . work/tts` (Windows): every narration line with the SAPI voices, plus word timings (`.json`) for the captions.
-5. `python -I t1_montage.py work/out` ... `t6_torture.py work/out`: each writes `work/out/<template>/`, runs `normalize --write` and `validate` with `dist-cli/project-cli.mjs` and prints the result (a report lands in `work/out/<template>.report.json`).
+5. `python -I t1_montage.py work/out` ... `t6_torture.py work/out`, and `t7_tour.py` (it reuses the other templates' media from `templates/` and the fixtures' Lottie and SVG files, makes its own alpha WebM files, PNG sequences, green screen clip, LUT and tones, speaks its narration, and copies the result to `templates/07-feature-tour`): each writes `work/out/<template>/`, runs `normalize --write` and `validate` with `dist-cli/project-cli.mjs` and prints the result (a report lands in `work/out/<template>.report.json`).
 6. `python -I package.py work <stage>`: copies the folders with their `CREDITS.md`, this folder, the README and `.gitignore` into `<stage>/templates/`.
 
 `tplkit.py` is the project builder: media (probed with ffprobe), tracks, clips with the document rules checked as they are added (no overlaps, in/out within the media, transitions on abutting clips), keyframes, captions from TTS word timings, markers, text presets and the save step.

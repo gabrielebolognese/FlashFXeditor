@@ -1,6 +1,6 @@
 # Templates
 
-Six ready-made projects that push the Shorts Editor to its limits. Each folder is a complete project (`project.json`, `media/`, `fonts/`, a `CREDITS.md`) written to the interop contract (`docs/INTEROP.md`, schema 4) and checked with the editor's own strict validator (`npm run cli -- validate templates/<name>`: 0 errors).
+Seven ready-made projects: six that push the Shorts Editor to its limits, and a tour of every v1.2 feature. Each folder is a complete project (`project.json`, `media/`, `fonts/`, a `CREDITS.md`) written to the interop contract (`docs/INTEROP.md`, schema 4; the tour schema 24) and checked with the editor's own strict validator (`npm run cli -- validate templates/<name>`: 0 errors).
 
 | Template | Format | Length | Clips | Tracks | Media | Fonts | Size |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -10,6 +10,7 @@ Six ready-made projects that push the Shorts Editor to its limits. Each folder i
 | [`04-overlay-stack`](04-overlay-stack/) | Square 1080x1080, 29.97 fps | 5:58 | 387 | 29 video, 8 audio | 142 | 2 | 135 MB |
 | [`05-podcast-audio-lab`](05-podcast-audio-lab/) | 4:5 1080x1350, 25 fps | 9:58 | 672 | 9 video, 8 audio, captions | 61 | 3 | 27 MB |
 | [`06-format-torture`](06-format-torture/) | 4K 3840x2160, 23.976 fps | 5:00 | 551 | 20 video, 8 audio, captions | 61 | 3 | 60 MB |
+| [`07-feature-tour`](07-feature-tour/) | Vertical 1080x1920, 30 fps | 11:25 | 772 | 34 video, 4 audio, captions | 70 | 8 | 56 MB |
 
 ## Opening a template
 
@@ -60,6 +61,12 @@ Expected: Some media are meant to fail: ProRes cannot be decoded in a browser, H
 
 Markers: A. Video containers and codecs; B. Frame rates side by side; C. Speed 0.25x to 4x, freeze frames; D. Image formats; E. Audio formats and levels; F. Edge clips; G. Stand-ins (fallbackOf); End of the cue storm; Last marker.
 
+### 07-feature-tour: Every v1.2 feature, about 30 seconds each
+
+An intro, 22 chapters and an export outro, one per v1.2 feature (Batches 58 to 81), each narrated (Windows text-to-speech) with word-timed captions that cycle through every highlight mode: shape, frame and box styles; keyframe eases (Penner, bezier, spring, hold); keys on colors, sizes, corners, strokes, shadows, crop and text; captions v2 (progressive, reveal, emphasis words, per-word colors, cue animations, a box per word, a per-cue font and position); compound clips (instances, offsets, nesting); alpha WebM and PNG sequences; vector shapes, trim paths, primitives and imported SVG icons; styled spans; counters and range selectors; the nine new text presets; parenting, nulls and a motion path with auto-orient; 2.5D cards and a depth-sorted carousel over a tilted video floor; all 13 transitions; all 13 blend modes, alpha and luma mattes; masks (add, subtract, intersect, invert, path morph); all 19 effects; adjustment clips; the audio mixer (track gain and pan, keyed clip pan, the three fade curves, a teal Beat marker on every beat, the -14 LUFS loudness target); time remap, reverse and frame blending; Lottie clips with color overrides; a template with all six parameter kinds and five instances. `CHAPTERS.md` lists the chapter times.
+
+Markers: Shorts Editor 1.2; 01 Shape, frame and box styles; 02 Keyframes v2: eases; 03 Keyframes v2: key everything; 04 Captions v2; 05 Compound clips; ...; 19 Audio v2 (plus 59 Beat markers); ...; 22 Templates; Export v2.
+
 ## Media and licenses
 
 - Archival WW2 film, maps and photos: public domain works (US National Archives, US Army and Navy films, the Why We Fight series and others) and a few CC BY-SA maps, from Wikimedia Commons.
@@ -73,3 +80,5 @@ Markers: A. Video containers and codecs; B. Frame rates side by side; C. Speed 0
 `_build/` holds the scripts that made the templates (Python 3 with numpy and Pillow, ffmpeg, and Windows for the voices); see `_build/README.md`. They download the outside media again, synthesize the rest, write each `project.json` with `tplkit.py`, then run the editor's CLI: `normalize --write` (media headers, fonts) and `validate`.
 
 Note: `normalize` (Batch 55) merges a gradient `fill` (`{from, to}`) field by field into the default color fill and so produces an invalid file; `tplkit.py` parks gradient fills during `normalize` and puts them back before `validate`.
+
+Note (v1.2.0): `normalize` still breaks gradient fills, now also the gradients with stops, and it resets the `transform` of every compound clip to the identity (`src/core/document/normalize.ts` leaves `compound` out of the clip kinds that keep a transform). `t7_tour.py` parks both during `normalize` and puts them back before `validate`.
