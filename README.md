@@ -1,36 +1,83 @@
-# Shorts Editor
+# FlashFXeditor (Shorts Editor)
 
-A browser video editor for short vertical videos (Instagram Reels, TikTok, YouTube Shorts). It runs as a
-static site in desktop Chrome or Edge: projects are folders on your own disk, media never leaves the
-computer, and there is no server. Version 1.2.0: 1.1.0 with an interoperability contract for other tools (a capability manifest, a strict
-validator, a headless `render` and `compare`), and a much larger toolbox: 2.5D layers, parenting and motion paths,
-vector shapes, masks, blend modes and mattes, effects, adjustment clips, templates, Lottie clips, time remap, audio
-mixing, and export to WebM with alpha, PNG sequences, GIF and stems.
+Shorts Editor is a browser video editor for short vertical videos (Instagram Reels, TikTok, YouTube Shorts; 9:16 by default, with other frame sizes and rates supported). It runs as a static site in desktop Chrome or Edge: projects are folders on your own disk, media never leaves the computer, and there is no server. It is for creators who want a local-first timeline editor, and for developers of other tools who want to write projects that the editor opens, validates and renders: the repository also ships a Node command line with a capability manifest, a strict validator and a headless renderer.
 
-- User guide: [`docs/user-guide/`](docs/user-guide/README.md)
-- Architecture (one page): [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-- Specification: [`docs/EDITOR_SPEC.md`](docs/EDITOR_SPEC.md); build plan and history: [`docs/BATCHES.md`](docs/BATCHES.md), [`docs/PROGRESS.md`](docs/PROGRESS.md) (with the known issues of this release); open work: [`docs/BACKLOG.md`](docs/BACKLOG.md)
-- Denoise and automatic color correction from another app (CLI and HTTP): [`docs/denoise_color_endpoint.md`](docs/denoise_color_endpoint.md)
-- Writing projects from another tool: [`docs/INTEROP.md`](docs/INTEROP.md), with the conformance fixtures in `fixtures/interop/` (`full` uses every capability; `npm run test:render` renders them on both backends, `npm test` audits the manifest against them)
-- Design system: [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md)
-- The common path in one minute (import, cut, compact, title, subtitle, export), recorded on the 1.0.0 build: [`docs/release/v1.0.0-common-path.webm`](docs/release/v1.0.0-common-path.webm)
+The package is named `shorts-editor`, version 1.2.0 (project schema 24).
 
-## Browser requirements
+## Features
 
-- Desktop Chromium: Chrome or Edge, current stable. Windows is the main platform; macOS and Linux work
-  where the APIs below do. The layout needs at least 1600x900 and is designed for 1920x1080 and up.
+**Editing and timeline**
+- Multi-track timeline with video, audio and caption tracks, drawn on canvas; select, razor, hand, slip, slide and rate stretch tools.
+- Split, ripple delete, ripple trim to playhead, extend edit, close gaps, lift and extract an in/out range, nudge, duplicate, paste insert and paste attributes.
+- Snapping, markers, in/out points, links and groups, and compound clips (nested sequences) that can be opened and closed.
+- Undo and redo for every document change; a command palette and remappable keyboard shortcuts.
+- Remove silence, freeze frame and punch zoom at the playhead.
+
+**Clips and compositing**
+- Clip kinds: video, audio, image, Lottie (`.json`, `.lottie`), text, solid, caption, compound, vector shape, null and adjustment.
+- Transform with crop, 2.5D rotation and depth, parenting, and motion paths with auto-orient.
+- Keyframes on transform, opacity, volume, crop, size, corner radius, fill, stroke, shadow and text properties, with a wide set of eases.
+- 13 blend modes, alpha and luma track mattes, masks (add, subtract, intersect, with feather and path keyframes), adjustment clips.
+- 21 effects: Gaussian and directional blur, glow, drop shadow, outline, color adjust, vignette, sharpen, grain, chroma key, luma key, LUT, RGB split, pixelate, mirror, wave, glitch, posterize, invert, denoise and color correct.
+- 13 transitions: cross dissolve, dip to black, dip to white, slide, push, wipe, iris, zoom in, zoom out, whip, blur dissolve, glitch and flash.
+- Vector shapes with primitives (rectangle, ellipse, polygon, star, arrow, arc, line), trim paths and SVG import.
+
+**Text and captions**
+- Titles with color and gradient fills, stroke, shadow, line, block and word boxes, styled spans, counters and range animators.
+- 21 text animations by character, word or line; text presets and a preset bar with thumbnails.
+- Captions with word timing, seven highlight modes, per-cue style overrides, emphasis words and cue animations; SRT and VTT support.
+- Optional local transcription with Whisper models (transformers.js on ONNX Runtime, in a worker); the models are downloaded from huggingface.co on first use.
+- A bundled font library of 330 families (about 32 MB, each file loaded only when it is shown or used), plus your own fonts and, where the browser allows it, installed system fonts.
+
+**Media and time**
+- Imports MP4, MOV, M4V and WebM video; MP3, M4A, AAC, WAV and Ogg audio; PNG, JPEG, WebP, GIF and SVG images, including animated GIF and WebP, alpha video and image sequences.
+- Proxies, thumbnails and waveforms generated in workers; bins, search, offline media and relinking.
+- Speed from 0.25x to 4x, freeze, reverse, time remap and frame blending.
+
+**Audio**
+- Clip and track gain (-60 to +12 dB), pan, fades with linear, equal power and exponential curves, a loudness target, beat markers, audio scrubbing and meters.
+
+**Templates**
+- A compound clip can become a template with text, color, number, media, font and toggle parameters; each instance has its own values.
+- Seven ready-made projects in `templates/`: montage, kinetic typography, documentary, overlay stack, podcast, format edge cases and a tour of every 1.2 feature.
+
+**Export**
+- MP4, WebM (optionally transparent), PNG sequence and GIF; H.264, HEVC, AV1 and VP9 video codecs through WebCodecs.
+- Export presets and a queue, audio stems (one WAV per audio track), collect linked media, and project zip.
+
+**Projects**
+- A project is a plain folder with `project.json`, autosave, crash recovery and the last 20 saves in `history/`.
+- Watched project folders, an inbox for projects written by other tools, and `/?open=<path>` links.
+
+**Interoperability and command line**
+- `capabilities.json`: a manifest of everything the editor supports, generated from the code.
+- CLI commands to validate, inspect, normalize, render and compare projects, fill template parameters, print the JSON Schema of `project.json`, and measure and apply denoise and color correction (also over local HTTP).
+- Conformance fixtures in `fixtures/interop/`, rendered on both GPU backends by `npm run test:render`.
+
+## Getting started
+
+### Prerequisites
+
+- Node.js 22.12 or newer (`engines` in `package.json`) and npm.
+- Desktop Chromium: Chrome or Edge, current stable. Windows is the main platform; macOS and Linux work where the APIs below do. The layout needs at least 1600x900 and is designed for 1920x1080 and up.
 - A secure context: `https://` or `http://localhost`.
-- These APIs, checked at startup (a missing one shows a full-screen list of what is missing; there is
-  no degraded mode):
+- These browser APIs, checked at startup (a missing one shows a full-screen list of what is missing; there is no degraded mode):
   - a GPU renderer: WebGPU, or WebGL2 where WebGPU is not available (hardware acceleration on);
   - WebCodecs: `VideoDecoder`, `VideoEncoder`, `AudioDecoder`, `AudioEncoder`, `VideoFrame`, `ImageDecoder`;
   - File System Access: `showDirectoryPicker`, `showSaveFilePicker`;
   - Web Audio, module Web Workers, `OffscreenCanvas`.
 - Optional: Local Font Access (`queryLocalFonts`) for system fonts in titles.
 
-## Setup
+### Download
 
-Requires Node 22.12 or newer.
+```bash
+git clone https://github.com/gabrielebolognese/FlashFXeditor.git
+cd FlashFXeditor
+```
+
+The repository is large (about 350 MB): it includes the font library, the template projects with their media, and the interop fixtures. `git clone --depth 1` skips the history.
+
+### Install and run
 
 ```bash
 npm ci
@@ -39,6 +86,42 @@ npm run dev
 
 The dev server prints its address (http://localhost:5173 by default). Open it in Chrome or Edge.
 
+### Configuration
+
+None is required. The editor reads no environment variables; `.env.example` holds only a commented placeholder. The headless renderer of the CLI looks for an installed Chrome, Chromium or Edge and accepts `CHROME_PATH` to point at one.
+
+## Build and deploy
+
+```bash
+npm ci && npm run build && npm run preview
+```
+
+`npm run build` writes a static site to `dist/`; `npm run preview` serves it (http://localhost:4173). Any static file host can serve `dist/`:
+
+- **Headers:** none beyond the standard ones. The app is not cross-origin isolated and does not need `Cross-Origin-Opener-Policy` / `Cross-Origin-Embedder-Policy`: nothing uses `SharedArrayBuffer`, and transcription runs ONNX Runtime on WebGPU or single-threaded WebAssembly. Setting COEP `require-corp` would also require CORP headers on the model downloads, so leave it off.
+- **HTTPS:** WebGPU, WebCodecs and the File System Access API need a secure context.
+- **MIME types:** `.js` as `text/javascript` (the workers are module workers), `.wasm` as `application/wasm`, `.woff2` as `font/woff2`, `.txt` as `text/plain`.
+- **Caching:** files under `assets/` have content hashes and can be cached forever (`immutable`); serve `index.html` with `no-cache` so a new release is picked up.
+- **Path:** the build expects the site root of an origin. For a sub-path, build with `npx vite build --base=/sub/path/`.
+- **Network:** everything the editor needs ships in `dist/`, the font library included (`fonts/library/`). Only the optional Whisper transcription models are downloaded from huggingface.co on first use, then kept in the browser's cache. A Content-Security-Policy, if you add one, must allow `wasm-unsafe-eval` and those downloads.
+- **Licenses of bundled code and fonts:** `dist/licenses.txt` lists every bundled package and font with its license (Settings > About > View licenses); each library font's full license text is in `fonts/library/LICENSES/`.
+
+The command line is built separately: `npm run build:cli` bundles it for Node into `dist-cli/project-cli.mjs`.
+
+## Usage
+
+### In the browser
+
+1. Open the editor and choose **New project** (pick an empty folder, a frame size and a frame rate) or **Open project** (pick an existing project folder, for example `templates/03-ww2-documentary`).
+2. Import media (`Ctrl+I`, or drop files on the Media panel), add clips to the timeline, cut and arrange them, add titles (`T`) and subtitles (`Shift+T`).
+3. Export with `Ctrl+E`.
+
+Inside the editor, `?` lists the shortcuts with your own keys, and `Ctrl+P` or `F1` finds any command by name. The full instructions are in the [user guide](docs/user-guide/README.md).
+
+Opening a template writes `cache/`, `history/` and `session.json` into its folder (ignored by git) and saves your edits into its `project.json`; `git checkout -- templates/<name>/project.json` restores it. See [`templates/README.md`](templates/README.md).
+
+### npm scripts
+
 | Command | What it does |
 | --- | --- |
 | `npm run dev` | Vite dev server |
@@ -46,42 +129,40 @@ The dev server prints its address (http://localhost:5173 by default). Open it in
 | `npm run preview` | Serves the production build (http://localhost:4173) |
 | `npm run typecheck` | Type check without emitting |
 | `npm run lint` | ESLint (with the color-literal rule) and the CSS color and token checks |
-| `npm test` | Vitest: the unit tests, then the timing tests one file at a time |
+| `npm test` | Vitest: the unit tests, then the timing tests |
+| `npm run test:watch` | Vitest in watch mode |
 | `npm run check` | typecheck + lint + test + build |
+| `npm run build:cli` | Bundles the project CLI into `dist-cli/project-cli.mjs` |
+| `npm run cli -- <command>` | Rebuilds the CLI when its sources changed, then runs it |
+| `npm run capabilities` | Rewrites `capabilities.json` from the code |
+| `npm run test:render` | Renders the interop fixtures on WebGPU and WebGL2 and compares the frames (needs a GPU, Chrome and a built `dist/`) |
+| `npm run docs:interop` | Rewrites the field reference of `docs/INTEROP.md` |
 | `npm run docs:shortcuts` | Rewrites the shortcuts section of this README from the keymap |
-| `node scripts/fonts/fetch-library.mjs` | Downloads the font library again (the only step that needs the network; its output is committed, see below) |
+| `npm run clean` | Removes `dist/` |
+| `node scripts/fonts/fetch-library.mjs` | Downloads the font library again (its output is committed, so this is only needed to update it) |
 
-## Production build and hosting
+### Project CLI
 
-```bash
-npm ci && npm run build && npm run preview
-```
+Run with `npm run cli -- <command>` or, after `npm run build:cli`, `node dist-cli/project-cli.mjs <command>`.
 
-`dist/` is a static site; any static file host serves it:
+| Command | What it does |
+| --- | --- |
+| `capabilities [--write]` | Prints the capability manifest (`--write` writes `capabilities.json`) |
+| `validate <dir> [--json]` | Strict check of a project folder; exit 0 valid, 1 invalid, 2 usage error |
+| `info <dir> [--json]` | Duration, tracks, clips by kind, stand-ins, media and what their headers say |
+| `normalize <dir> [--write]` | Completes a sparse project (migration, defaults, media headers, library fonts) |
+| `schema` | Prints the JSON Schema of `project.json` |
+| `fill <dir> <values.json>` | Sets the template parameters of compound instances and writes `project.json` |
+| `render <dir> --out <file> [--format mp4\|webm\|png\|gif] [--transparent] [--range <from>:<to>] [--preset <id>] [--backend webgpu\|webgl2]` | Headless render with the editor's own compositor and encoders |
+| `render <dir> --frames <f1,f2,...> --png <outdir>` | Renders single frames to PNG |
+| `compare <a> <b> [--ssim <min>] [--psnr <min>] [--region x,y,w,h] [--diff <dir>] [--json]` | Compares two videos or PNG folders frame by frame |
+| `enhance <dir> [--preset <id>] [--only denoise\|color] [--dry-run] [--json]` | Measures the video and image clips and writes denoise and color correct effects into `project.json` |
+| `enhance-presets` | Prints the enhance presets as JSON |
+| `enhance-server [--port <n>] [--host <name>]` | The same over local HTTP: `GET /health`, `GET /presets`, `POST /enhance` (default port 5320) |
 
-- **Headers:** none beyond the standard ones. The app is not cross-origin isolated and does not need
-  `Cross-Origin-Opener-Policy` / `Cross-Origin-Embedder-Policy`: nothing uses `SharedArrayBuffer`, and
-  transcription runs ONNX Runtime on WebGPU or single-threaded WebAssembly. Setting COEP
-  `require-corp` would also require CORP headers on the model downloads, so leave it off.
-- **HTTPS:** WebGPU, WebCodecs and the File System Access API need a secure context.
-- **MIME types:** `.js` as `text/javascript` (the workers are module workers), `.wasm` as
-  `application/wasm`, `.woff2` as `font/woff2`, `.txt` as `text/plain`.
-- **Caching:** files under `assets/` have content hashes and can be cached forever (`immutable`); serve
-  `index.html` with `no-cache` so a new release is picked up.
-- **Path:** the build expects the site root of an origin. For a sub-path, build with
-  `npx vite build --base=/sub/path/`.
-- **Network:** everything the editor needs ships in `dist/`, the font library included
-  (`fonts/library/`: 330 families, about 32 MB, each file loaded only when it is shown or used). Only
-  the optional Whisper transcription models are downloaded from huggingface.co on first use, then kept
-  in the browser's cache. A
-  Content-Security-Policy, if you add one, must allow `wasm-unsafe-eval` and those downloads.
-- **Licenses:** `dist/licenses.txt` lists every bundled package and font with its license
-  (Settings > About > View licenses); each library font's full license text is in
-  `fonts/library/LICENSES/`, and Settings > About > Font licenses lists them with their designers.
+### Project folder layout
 
-## Project folder layout
-
-A project is a folder you pick (spec §9.7, §15). The editor writes:
+A project is a folder you pick. The editor writes:
 
 ```
 <project>/
@@ -99,13 +180,13 @@ A project is a folder you pick (spec §9.7, §15). The editor writes:
 
 Deleting `cache/` only costs regeneration (Settings > General > Clear cache does it for the open project).
 
-## Source layout
+## Project structure
 
 ```
 src/
   app/        React shell, controllers wiring the stores to the views, the command catalog
   core/       document types, validation and time math; commands and undo; stores; frame scheduler;
-              keyboard (keymap, focus scopes); theme bridge
+              keyboard (keymap, focus scopes); theme bridge; the capability manifest
   media/      byte access, MP4 and WebM demux, decode, probes, proxies, analysis, the workers
   render/     GPU (WebGPU and WebGL2 renderers), compositor, text rasterizer, preview view
   playback/   playback engine
@@ -118,25 +199,46 @@ src/
   ui/         shared React controls
   styles/     tokens.css (design tokens: the only place for color literals) and base styles
 scripts/      lint checks, the license list plugin, the README shortcut generator, the batch runner,
+              cli/ (the project CLI and headless renderer), fixtures/ (fixture generators),
               fonts/ (the font library's list, families.json, and its downloader)
 public/fonts/library/   the font library: one folder per family (woff2, latin and latin-ext), LICENSES/,
                         catalog.json
+templates/    seven ready-made projects with their media, and _build/ (the Python scripts that made them)
+fixtures/interop/       conformance projects for the interop contract, with expected frames
+docs/         specification, architecture, interop contract, progress log and the user guide
+capabilities.json       the generated capability manifest
 ```
 
-## Font library
+### Font library
 
-`public/fonts/library/` is checked in, so a fresh clone builds and runs with no network. It is made by
-`node scripts/fonts/fetch-library.mjs` from `scripts/fonts/families.json` (the hand-curated families,
-their looks and tags): Google Fonts families through Fontsource, kept only under the SIL Open Font
-License, Apache 2.0 or the Ubuntu Font Licence. A rerun fetches the versions `catalog.json` records
-(`--update` takes the latest) and reproduces the folder; it prints the total size (cap 40 MB).
+`public/fonts/library/` is checked in, so a fresh clone builds and runs with no network. It is made by `node scripts/fonts/fetch-library.mjs` from `scripts/fonts/families.json` (the hand-curated families, their looks and tags): Google Fonts families through Fontsource, kept only under the SIL Open Font License, Apache 2.0 or the Ubuntu Font Licence. A rerun fetches the versions `catalog.json` records (`--update` takes the latest) and reproduces the folder; it prints the total size (cap 40 MB).
 
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) explains how these fit together.
+## Tech stack
+
+- TypeScript (strict, ES2022, ESM), Vite, Vitest with jsdom, ESLint.
+- React 18 for the panel chrome only; the timeline, preview, compositor and audio engine are framework-free. CSS Modules on the design tokens of `src/styles/tokens.css`; `lucide-react` icons.
+- Rendering on WebGPU (WGSL) with a WebGL2 backend behind the same interface; WebCodecs for decode and encode; Web Audio; module Web Workers; File System Access API.
+- Runtime libraries: Immer (commands and undo), mp4box (MP4/MOV demux), mp4-muxer and gifenc (export), idb-keyval (settings and folder handles), `@lottiefiles/dotlottie-web` (Lottie clips), `@huggingface/transformers` (optional local transcription). WebM is read by the app's own EBML demuxer.
+
+## Further documentation
+
+- User guide: [`docs/user-guide/`](docs/user-guide/README.md), with [What's new](docs/user-guide/whats-new.md) and [Troubleshooting](docs/user-guide/troubleshooting.md)
+- Architecture (one page): [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- Specification: [`docs/EDITOR_SPEC.md`](docs/EDITOR_SPEC.md)
+- Build plan and history: [`docs/BATCHES.md`](docs/BATCHES.md), [`docs/PLAN_V1_2.md`](docs/PLAN_V1_2.md), [`docs/PROGRESS.md`](docs/PROGRESS.md) (with the known issues of each release); open work: [`docs/BACKLOG.md`](docs/BACKLOG.md)
+- Writing projects from another tool: [`docs/INTEROP.md`](docs/INTEROP.md)
+- Denoise and automatic color correction from another app (CLI and HTTP): [`docs/denoise_color_endpoint.md`](docs/denoise_color_endpoint.md)
+- Templates: [`templates/README.md`](templates/README.md); rebuilding them: [`templates/_build/README.md`](templates/_build/README.md)
+- Design system: [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md)
+- The common path in one minute (import, cut, compact, title, subtitle, export), recorded on the 1.0.0 build: [`docs/release/v1.0.0-common-path.webm`](docs/release/v1.0.0-common-path.webm)
+
+## Status
+
+Version 1.2.0, a personal project in active development. It was built in numbered batches (82 completed, tracked in `docs/PROGRESS.md`); the CLI's `enhance` commands are marked v1.3 in the source. Desktop Chrome and Edge only: no Firefox, Safari or mobile, by design. Known limits are listed in `docs/PROGRESS.md` and in the user guide's Troubleshooting page; among them, a project has one caption track, HDR video is shown and exported in standard colors, `.mkv` files are refused, and MP3, AAC, WAV and Ogg files over 45 minutes cannot be imported. The tutorial videos referenced in the user guide are not recorded yet. This repository links no hosted instance and contains no license file.
 
 ## Keyboard shortcuts
 
-The default keys (spec §18). Every key can be changed in Settings > Shortcuts; inside the editor,
-`?` opens this list with your own keys, and `Ctrl+P` (`⌘P`) or `F1` finds any command by name.
+The default keys. Every key can be changed in Settings > Shortcuts; inside the editor, `?` opens this list with your own keys, and `Ctrl+P` (`⌘P`) or `F1` finds any command by name.
 
 <!-- shortcuts:start (generated from src/core/keyboard/keymap.ts by npm run docs:shortcuts) -->
 
