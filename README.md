@@ -10,6 +10,7 @@ mixing, and export to WebM with alpha, PNG sequences, GIF and stems.
 - User guide: [`docs/user-guide/`](docs/user-guide/README.md)
 - Architecture (one page): [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - Specification: [`docs/EDITOR_SPEC.md`](docs/EDITOR_SPEC.md); build plan and history: [`docs/BATCHES.md`](docs/BATCHES.md), [`docs/PROGRESS.md`](docs/PROGRESS.md) (with the known issues of this release); open work: [`docs/BACKLOG.md`](docs/BACKLOG.md)
+- Denoise and automatic color correction from another app (CLI and HTTP): [`docs/denoise_color_endpoint.md`](docs/denoise_color_endpoint.md)
 - Writing projects from another tool: [`docs/INTEROP.md`](docs/INTEROP.md), with the conformance fixtures in `fixtures/interop/` (`full` uses every capability; `npm run test:render` renders them on both backends, `npm test` audits the manifest against them)
 - Design system: [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md)
 - The common path in one minute (import, cut, compact, title, subtitle, export), recorded on the 1.0.0 build: [`docs/release/v1.0.0-common-path.webm`](docs/release/v1.0.0-common-path.webm)

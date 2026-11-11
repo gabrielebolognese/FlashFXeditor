@@ -11,6 +11,8 @@ Every JSON block in this file tagged `json <Type>` is checked by a test with the
 3. Check it: `npm run cli -- validate <folder>` (exit 0 valid, 1 invalid, 2 usage error; `--json` prints `{ ok, schemaVersion, errors: [{ path, message }], warnings: [{ path, message }], standIns }`). It checks every field against the table, the document invariants (section 5) and the files.
 4. Open it in the editor: from the start screen (Open project), or with a link (section 7.1).
 
+Measured denoise and color correction for the clips of a folder, matched across the clips: `npm run cli -- enhance <folder>` or the HTTP endpoint `enhance-server` ([`denoise_color_endpoint.md`](denoise_color_endpoint.md)). It writes the `denoise` and `colorCorrect` effects of the field reference.
+
 Use a copy of the editor at an accepted `batch-NN: review` commit for this, not the working folder of the editor, which can be in the middle of a change.
 
 Other commands: `npm run cli -- info <folder>` (duration, tracks, clips by kind, stand-ins, missing media and, for each media file, the facts its header gives), `npm run cli -- schema` (a JSON Schema, draft 2020-12, of `project.json`) and `npm run cli -- normalize <folder> [--write]` (completes a sparse project, section 4.1; manifest key `cli.normalize`).
@@ -1455,7 +1457,7 @@ An effect (Batch 74; color, stylize, keys and LUTs since Batch 75): one step of 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
 | `id` | string (not empty) | yes |  | Unique among the clip's effects: letters, digits, `_` or `-` (keyframe ids are `effects.<id>.<param>`). |
-| `type` | `"gaussianBlur"` | `"directionalBlur"` | `"glow"` | `"dropShadow"` | `"outline"` | `"colorAdjust"` | `"vignette"` | `"sharpen"` | `"grain"` | `"chromaKey"` | `"lumaKey"` | `"lut"` | `"rgbSplit"` | `"pixelate"` | `"mirror"` | `"wave"` | `"glitch"` | `"posterize"` | `"invert"` | yes |  | The effect type. |
+| `type` | `"gaussianBlur"` | `"directionalBlur"` | `"glow"` | `"dropShadow"` | `"outline"` | `"colorAdjust"` | `"vignette"` | `"sharpen"` | `"grain"` | `"chromaKey"` | `"lumaKey"` | `"lut"` | `"rgbSplit"` | `"pixelate"` | `"mirror"` | `"wave"` | `"glitch"` | `"posterize"` | `"invert"` | `"denoise"` | `"colorCorrect"` | yes |  | The effect type. |
 | `enabled` | boolean | yes | `true` | Off: the effect is kept but not drawn. |
 | `params` | object of number, string, or number[] (1 to 4 items) by id | yes | `{}` | Parameters by name: numbers (toggles are 0 or 1), colors [r, g, b, a] (straight alpha, 0..1), choices (strings) and files (a project path such as `luts/warm.cube`, or "" for none). Only the type's parameters, each in its range. |
 

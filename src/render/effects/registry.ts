@@ -12,6 +12,9 @@ import { EFFECT_BLOCK, EFFECT_FRAME_SLOT, effectTypeOf, paramOffset } from "../.
 import type { EffectType } from "../../core/document/types.js";
 import { dominantChannel } from "../../core/effects/colorMath.js";
 import { rgbSplitOffset } from "../../core/effects/stylize.js";
+import { colorCorrectUniforms, type ColorCorrectParams, type ColorCorrectUniforms } from "../../core/effects/colorCorrect.js";
+import { denoisePasses, MIN_NOISE, type DenoiseFilter, type DenoisePass } from "../../core/effects/denoisePlan.js";
+import { DENOISE_METHODS } from "../../core/effects/effectParams.js";
 import { lutLibrary } from "./lutLibrary.js";
 
 /** The programs of the effect shader (`code` in its uniform). */
@@ -42,6 +45,14 @@ export const FX_PROGRAM = {
   invert: 23,
   /** An adjustment's input (spec §21.20): the picture below inside the frame's box, transparent past it. */
   crop: 24,
+  // v1.3: the denoise filters (a = step px, luma threshold, chroma threshold, shadows), their finish pass
+  // (a = detail, noise level, step) and the color correction (core/effects/colorCorrect.ts).
+  dnNlm: 25,
+  dnAtrous: 26,
+  dnBilateral: 27,
+  dnMedian: 28,
+  dnFinish: 29,
+  colorCorrect: 30,
 } as const;
 export type FxProgram = (typeof FX_PROGRAM)[keyof typeof FX_PROGRAM];
 
@@ -346,6 +357,113 @@ export const EFFECT_REGISTRY: Readonly<Record<EffectType, EffectRenderDef>> = {
   posterize: pixelPass("posterize", FX_PROGRAM.posterize, ["levels"]),
   // a.x = amount.
   invert: pixelPass("invert", FX_PROGRAM.invert, ["amount"]),
+  // v1.3. The passes of core/effects/denoisePlan.ts, then the finish pass over the effect's input.
+  denoise: {
+    type: "denoise",
+    params: EFFECT_DEFS.denoise.params,
+    neighbors: true,
+    reach: () => 0,
+    passes(writer, data, o, scale) {
+      const noise = p(data, o, "denoise", "noise");
+      const passes = plannedDenoise(Math.round(p(data, o, "denoise", "method")), p(data, o, "denoise", "luma"), p(data, o, "denoise", "chroma"), noise, scale);
+      if (passes.length === 0) return;
+      const shadows = p(data, o, "denoise", "shadows");
+      for (const pass of passes) {
+        // Every pass keeps the input of the effect (withInput): the finish pass reads it, so no pass may write over it.
+        const u = writer.pass(DENOISE_PROGRAM[pass.filter], true);
+        u[FX_SLOT.a] = pass.step;
+        u[FX_SLOT.a + 1] = pass.luma;
+        u[FX_SLOT.a + 2] = pass.chroma;
+        u[FX_SLOT.a + 3] = shadows;
+      }
+      const finish = writer.pass(FX_PROGRAM.dnFinish, true);
+      finish[FX_SLOT.a] = p(data, o, "denoise", "detail");
+      finish[FX_SLOT.a + 1] = Math.max(MIN_NOISE, noise);
+      finish[FX_SLOT.a + 2] = Math.max(1, scale);
+    },
+  },
+  // v1.3. With clarity: the picture blurred across and down (the local average), then the correction reading
+  // it and the input; without: the correction alone. a = gains, amount; b = black, 1 / range, 1 / gamma,
+  // contrast; color = saturation, vibrance, highlights, shadows; c = clarity, sharpen, 1 px step.
+  colorCorrect: {
+    type: "colorCorrect",
+    params: EFFECT_DEFS.colorCorrect.params,
+    neighbors: true,
+    reach: () => 0,
+    passes(writer, data, o, scale) {
+      const c = plannedCorrection(data, o);
+      if (!(c.amount > 0)) return;
+      if (c.clarity > 0) {
+        const radius = CLARITY_RADIUS * Math.max(1, scale);
+        // The blur passes keep the input (withInput): the correction reads it beside the blur.
+        const across = writer.pass(FX_PROGRAM.blur, true);
+        writeBlur(across, 1, 0, radius);
+        across[FX_SLOT.size + 3] = 1;
+        const down = writer.pass(FX_PROGRAM.blur, true);
+        writeBlur(down, 0, 1, radius);
+        down[FX_SLOT.size + 3] = 1;
+      }
+      const u = writer.pass(FX_PROGRAM.colorCorrect, true);
+      u[FX_SLOT.a] = c.gain[0];
+      u[FX_SLOT.a + 1] = c.gain[1];
+      u[FX_SLOT.a + 2] = c.gain[2];
+      u[FX_SLOT.a + 3] = c.amount;
+      u[FX_SLOT.b] = c.black;
+      u[FX_SLOT.b + 1] = c.invRange;
+      u[FX_SLOT.b + 2] = c.invGamma;
+      u[FX_SLOT.b + 3] = c.contrast;
+      u[FX_SLOT.color] = c.saturation;
+      u[FX_SLOT.color + 1] = c.vibrance;
+      u[FX_SLOT.color + 2] = c.highlights;
+      u[FX_SLOT.color + 3] = c.shadows;
+      u[FX_SLOT.c] = c.clarity;
+      u[FX_SLOT.c + 1] = c.sharpen;
+      u[FX_SLOT.c + 2] = Math.max(1, scale);
+      u[FX_SLOT.c + 3] = 0;
+    },
+  },
+};
+
+// The last denoise plan and color correction, kept: a video stage is planned every frame with the same values
+// (no allocation once warm).
+let denoiseKey = [-1, 0, 0, 0, 0];
+let denoiseKept: readonly DenoisePass[] = [];
+function plannedDenoise(method: number, luma: number, chroma: number, noise: number, scale: number): readonly DenoisePass[] {
+  const k = denoiseKey;
+  if (k[0] === method && k[1] === luma && k[2] === chroma && k[3] === noise && k[4] === scale) return denoiseKept;
+  denoiseKey = [method, luma, chroma, noise, scale];
+  denoiseKept = denoisePasses({ method: DENOISE_METHODS[method] ?? "hybrid", luma, chroma, noise }, scale);
+  return denoiseKept;
+}
+
+const CORRECT_PARAMS = EFFECT_DEFS.colorCorrect.params.map((def) => def.name as keyof ColorCorrectParams);
+const correctKey = new Float32Array(CORRECT_PARAMS.length).fill(NaN);
+let correctKept: ColorCorrectUniforms | null = null;
+function plannedCorrection(data: Float32Array, o: number): ColorCorrectUniforms {
+  let same = correctKept !== null;
+  for (let i = 0; i < CORRECT_PARAMS.length; i++) {
+    const value = data[o + 1 + i] as number;
+    if (correctKey[i] !== value) same = false;
+    correctKey[i] = value;
+  }
+  if (same && correctKept) return correctKept;
+  const values = {} as ColorCorrectParams;
+  CORRECT_PARAMS.forEach((name, i) => {
+    values[name] = correctKey[i] as number;
+  });
+  correctKept = colorCorrectUniforms(values);
+  return correctKept;
+}
+
+/** Stage px (at scale 1) of the blur the clarity compares the picture with. */
+export const CLARITY_RADIUS = 40;
+
+const DENOISE_PROGRAM: Readonly<Record<DenoiseFilter, FxProgram>> = {
+  nlm: FX_PROGRAM.dnNlm,
+  atrous: FX_PROGRAM.dnAtrous,
+  bilateral: FX_PROGRAM.dnBilateral,
+  median: FX_PROGRAM.dnMedian,
+  finish: FX_PROGRAM.dnFinish,
 };
 
 /** Copies `count` floats of the block at `o` (from parameter `name`) into `u` from `slot`. */

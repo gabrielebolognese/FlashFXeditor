@@ -151,6 +151,61 @@ describe("effect registry and plan (spec §21.19)", () => {
     expect(Array.from(plan.uniform(1).slice(FX_SLOT.a, FX_SLOT.a + 3))).toEqual([0.20000000298023224, 1.5, 12]);
   });
 
+  it("denoise: its filter passes keep the input of the effect for the finish pass, steps scaled with the stage (v1.3)", () => {
+    const plan = new EffectPlan();
+    const build = (effects: Effect[], scale = 1) => {
+      const { data, length } = packed(effects);
+      return plan.build({ width: 200, height: 200, rect: [0, 0, 200, 200], scale, data, length, masked: false });
+    };
+    const programs = (count: number) => Array.from({ length: count }, (_, i) => plan.uniform(i)[FX_SLOT.size + 2]);
+    const denoise = (params: Effect["params"]): Effect => ({ ...newEffect("denoise", "d"), params: { ...newEffect("denoise", "d").params, ...params } });
+    let count = build([newEffect("gaussianBlur", "a"), denoise({ noise: 0.01 })]);
+    // blur across, blur down, then non-local means, three wavelet levels and the finish pass.
+    expect(programs(count).slice(2)).toEqual([FX_PROGRAM.dnNlm, FX_PROGRAM.dnAtrous, FX_PROGRAM.dnAtrous, FX_PROGRAM.dnAtrous, FX_PROGRAM.dnFinish]);
+    const input = plan.dst[1];
+    for (let i = 2; i < count; i++) {
+      expect(plan.orig[i]).toBe(input);
+      if (i < count - 1) expect(plan.dst[i]).not.toBe(input);
+    }
+    expect(plan.dst[count - 1]).toBe(FX_BUFFER.out);
+    expect(plan.uniform(count - 1)[FX_SLOT.a + 1]).toBeCloseTo(0.01, 6);
+    count = build([denoise({ method: "wavelet" })], 2);
+    expect(programs(count)).toEqual([FX_PROGRAM.dnAtrous, FX_PROGRAM.dnAtrous, FX_PROGRAM.dnAtrous, FX_PROGRAM.dnAtrous, FX_PROGRAM.dnAtrous, FX_PROGRAM.dnFinish]);
+    expect(Array.from({ length: 5 }, (_, i) => plan.uniform(i)[FX_SLOT.a])).toEqual([2, 4, 8, 16, 32]);
+    expect(programs(build([denoise({ method: "median" })]))).toEqual([FX_PROGRAM.dnMedian, FX_PROGRAM.dnMedian, FX_PROGRAM.dnAtrous, FX_PROGRAM.dnFinish]);
+    // Nothing to do at strength 0: no pass.
+    expect(build([denoise({ luma: 0, chroma: 0 })])).toBe(0);
+    expect(stackReach(packed([denoise({})]).data, EFFECT_BLOCK)).toBe(0);
+  });
+
+  it("color correct: one pass, or two blur passes that keep the input and the correction when the clarity is on (v1.3)", () => {
+    const plan = new EffectPlan();
+    const correct = (params: Effect["params"]): Effect => ({ ...newEffect("colorCorrect", "c"), params: { ...newEffect("colorCorrect", "c").params, ...params } });
+    const build = (effects: Effect[]) => {
+      const { data, length } = packed(effects);
+      return plan.build({ width: 200, height: 200, rect: [0, 0, 200, 200], scale: 1, data, length, masked: false });
+    };
+    expect(build([correct({ gamma: 1.4, exposure: 0 })])).toBe(1);
+    const u = plan.uniform(0);
+    expect(u[FX_SLOT.size + 2]).toBe(FX_PROGRAM.colorCorrect);
+    expect(plan.orig[0]).toBe(plan.src[0]);
+    expect(u[FX_SLOT.b + 2]).toBeCloseTo(1 / 1.4, 5);
+    // Neutral gains keep the brightness of a gray.
+    expect(0.2126 * (u[FX_SLOT.a] as number) + 0.7152 * (u[FX_SLOT.a + 1] as number) + 0.0722 * (u[FX_SLOT.a + 2] as number)).toBeCloseTo(1, 5);
+    const count = build([correct({ clarity: 30, sharpen: 40 })]);
+    expect(count).toBe(3);
+    expect([plan.uniform(0)[FX_SLOT.size + 2], plan.uniform(1)[FX_SLOT.size + 2], plan.uniform(2)[FX_SLOT.size + 2]]).toEqual([FX_PROGRAM.blur, FX_PROGRAM.blur, FX_PROGRAM.colorCorrect]);
+    // The correction reads the blur (src) and the untouched input (orig).
+    expect(plan.orig[2]).toBe(0);
+    expect(plan.dst[0]).not.toBe(0);
+    expect(plan.dst[1]).not.toBe(0);
+    expect(plan.src[2]).toBe(plan.dst[1]);
+    expect(plan.uniform(2)[FX_SLOT.c]).toBeCloseTo(0.3, 6);
+    expect(plan.uniform(2)[FX_SLOT.c + 1]).toBeCloseTo(0.4, 6);
+    // Mixed out entirely: no pass.
+    expect(build([correct({ amount: 0, clarity: 30 })])).toBe(0);
+  });
+
   it("has a render definition for every type", () => {
     for (const [type, def] of Object.entries(EFFECT_REGISTRY)) expect(def.type).toBe(type);
   });

@@ -53,6 +53,10 @@ const unit = (name: string, label: string, value: number) => num(name, label, va
 export const LUT_FOLDER = "luts";
 export const LUT_EXTENSION = ".cube";
 
+/** The filter families of the denoise effect (core/effects/denoisePlan.ts plans each one's passes). */
+export const DENOISE_METHODS = ["hybrid", "wavelet", "nlm", "bilateral", "median"] as const;
+export type DenoiseMethod = (typeof DENOISE_METHODS)[number];
+
 /** Every type's parameters (Batch 74, 75 and 76), in the Add rows' order. */
 export const EFFECT_DEFS: Readonly<Record<EffectType, EffectTypeDef>> = {
   gaussianBlur: { type: "gaussianBlur", label: "Gaussian blur", params: [px("radius", "Radius", 10, 500), repeatEdges] },
@@ -147,6 +151,45 @@ export const EFFECT_DEFS: Readonly<Record<EffectType, EffectTypeDef>> = {
   posterize: { type: "posterize", label: "Posterize", params: [num("levels", "Levels", 6, 2, 64)] },
   // The colors turned over (1 - c), mixed in by `amount`.
   invert: { type: "invert", label: "Invert", params: [unit("amount", "Amount", 1)] },
+  // v1.3. Noise reduction (core/effects/denoisePlan.ts): `method` picks the filter family; `luma` and `chroma`
+  // how hard brightness grain and color blotches are removed; `detail` how much real texture is put back;
+  // `shadows` the extra strength in dark areas; `noise` the grain's measured size (the Denoise command sets it).
+  denoise: {
+    type: "denoise",
+    label: "Denoise",
+    params: [
+      { name: "method", label: "Method", kind: "choice", default: "hybrid", options: DENOISE_METHODS, keyframeable: false },
+      unit("luma", "Luma", 0.5),
+      unit("chroma", "Chroma", 0.7),
+      unit("detail", "Detail", 0.4),
+      unit("shadows", "Shadows", 0.5),
+      num("noise", "Noise level", 0.02, 0, 0.2, undefined, 0.001),
+    ],
+  },
+  // v1.3. Color correction (core/effects/colorCorrect.ts), in this order: white balance and exposure, levels
+  // (black and white point), gamma (above 1 brightens the middle), shadows and highlights, contrast (an S
+  // curve), clarity (local contrast) and sharpen (fine detail, grain left alone), saturation and vibrance;
+  // `amount` mixes the result with the picture. The Auto color command sets every value per clip.
+  colorCorrect: {
+    type: "colorCorrect",
+    label: "Color correct",
+    params: [
+      unit("amount", "Amount", 1),
+      num("exposure", "Exposure", 0, -3, 3, "EV", 0.01),
+      num("black", "Black point", 0, 0, 0.5, undefined, 0.001),
+      num("white", "White point", 1, 0.5, 1, undefined, 0.001),
+      num("gamma", "Brightness", 1, 0.3, 3, undefined, 0.01),
+      percent("contrast", "Contrast"),
+      percent("temperature", "Temperature"),
+      percent("tint", "Tint"),
+      percent("saturation", "Saturation"),
+      percent("vibrance", "Vibrance"),
+      percent("highlights", "Highlights"),
+      percent("shadows", "Shadows"),
+      num("clarity", "Clarity", 0, 0, 100, "%"),
+      num("sharpen", "Sharpen", 0, 0, 100, "%"),
+    ],
+  },
 };
 
 const TYPE_SET: ReadonlySet<string> = new Set(EFFECT_TYPES);

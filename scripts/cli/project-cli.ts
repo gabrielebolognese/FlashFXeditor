@@ -7,6 +7,8 @@
 //   render <dir> --out <file.mp4> | --frames <list> --png <dir>   headless render with the app's own compositor (§21.6)
 //   fill <dir> <values.json> sets template parameters of compound instances (§21.24)
 //   compare <a> <b>          SSIM and PSNR of two videos or PNG folders (§21.6)
+//   enhance <dir>            measured denoise and color correction written into project.json (v1.3, scripts/cli/enhance.ts)
+//   enhance-server           the same over HTTP for other apps (docs/denoise_color_endpoint.md)
 //   schema                   the JSON Schema of project.json
 //   docs                     writes the field reference of docs/INTEROP.md (`npm run docs:interop`)
 import { readFileSync, writeFileSync } from "node:fs";
@@ -16,6 +18,7 @@ import { projectJsonSchema } from "../../src/core/document/jsonSchema.js";
 import { FIELDS_BEGIN_START, FIELDS_END, fieldReference } from "../../src/core/document/interopDoc.js";
 import { fillProjectFolder, normalizeProjectFolder, projectInfo, validateProjectFolder, type FolderReport } from "./folder.js";
 import { compareCommand, renderCommand, RENDER_USAGE } from "./render.js";
+import { ENHANCE_USAGE, enhanceCommand, enhanceServerCommand, presetList } from "./enhance.js";
 
 const root = new URL("../", import.meta.url);
 
@@ -30,7 +33,7 @@ const USAGE = `Usage: project-cli <command>
   normalize <dir> [--write] complete a sparse project (print it; --write: write project.json and fonts/)
   schema                    print the JSON Schema of project.json
   fill <dir> <values.json>  set the template parameters of compound instances (by clip id or name) and write project.json
-${RENDER_USAGE}`;
+${RENDER_USAGE}${ENHANCE_USAGE}`;
 
 const list = (counts: Record<string, number>): string => Object.entries(counts).map(([kind, count]) => `${count} ${kind}`).join(", ");
 
@@ -118,6 +121,12 @@ export async function run(argv: readonly string[]): Promise<number> {
   // render and compare take options with values: they parse their own arguments.
   if (command === "render") return renderCommand(rest);
   if (command === "compare") return compareCommand(rest);
+  if (command === "enhance") return enhanceCommand(rest);
+  if (command === "enhance-presets") {
+    console.log(JSON.stringify(presetList(), null, 2));
+    return 0;
+  }
+  if (command === "enhance-server") return enhanceServerCommand(rest, appVersion());
   const flags = new Set(rest.filter((arg) => arg.startsWith("--")));
   const args = rest.filter((arg) => !arg.startsWith("--"));
   const unknown = [...flags].filter((flag) => !["--json", "--write"].includes(flag));

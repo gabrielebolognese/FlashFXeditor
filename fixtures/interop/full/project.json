@@ -1541,6 +1541,20 @@
       "height": "M"
     },
     {
+      "id": "every-enhance",
+      "kind": "video",
+      "name": "enhance",
+      "clipIds": [
+        "every-enhanced"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
       "id": "every-templates",
       "kind": "video",
       "name": "templates",
@@ -9103,6 +9117,82 @@
       "start": 400,
       "duration": 96,
       "mediaId": "every-clip"
+    },
+    "every-enhanced": {
+      "kind": "video",
+      "name": "enhanced",
+      "enabled": true,
+      "in": 0,
+      "out": 1600000,
+      "speed": 0.5,
+      "transform": {
+        "x": -380,
+        "y": 760,
+        "scale": 0.6,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": true
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "every-enhanced",
+      "trackId": "every-enhance",
+      "start": 400,
+      "duration": 96,
+      "mediaId": "every-clip",
+      "effects": [
+        {
+          "id": "fx1",
+          "type": "denoise",
+          "enabled": true,
+          "params": {
+            "method": "hybrid",
+            "luma": 0.5,
+            "chroma": 0.7,
+            "detail": 0.4,
+            "shadows": 0.5,
+            "noise": 0.02
+          }
+        },
+        {
+          "id": "fx2",
+          "type": "colorCorrect",
+          "enabled": true,
+          "params": {
+            "amount": 1,
+            "exposure": -0.25,
+            "black": 0.02,
+            "white": 0.95,
+            "gamma": 1.2,
+            "contrast": 20,
+            "temperature": -10,
+            "tint": 5,
+            "saturation": 10,
+            "vibrance": 15,
+            "highlights": -15,
+            "shadows": 10,
+            "clarity": 20,
+            "sharpen": 30
+          }
+        }
+      ]
     },
     "every-tp-image": {
       "kind": "image",

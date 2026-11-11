@@ -27,6 +27,7 @@ import { canvasInput, cropMode } from "./previewController.js";
 import { addMasks, presetMasks, removeSelectedMasks } from "./maskController.js";
 import { addEffects, applyLastLook, loadLutForSelection, removeSelectedEffects, saveLook } from "./effectController.js";
 import { effectAddCommand } from "../panels/properties/effectIcons.js";
+import { enhance } from "./enhanceController.js";
 import { actions, appSettings, documentStore, sessionStore } from "./services.js";
 import { reportTrimLimit } from "./timelineController.js";
 
@@ -254,6 +255,10 @@ export function installPropertiesController(): () => void {
     // Effects (Batch 74).
     ...EFFECT_TYPES.map((type) => actions.register(effectAddCommand(type), () => addEffects(type))),
     actions.register("clip.effect.removeAll", removeSelectedEffects),
+    // Enhance (v1.3): measured denoise and color correction, matched across the clips.
+    actions.register("clip.enhance.auto", () => void enhance("both")),
+    actions.register("clip.enhance.denoise", () => void enhance("denoise")),
+    actions.register("clip.enhance.color", () => void enhance("color")),
     // LUTs and looks (Batch 75).
     actions.register("clip.effect.lut.load", () => void loadLutForSelection()),
     actions.register("clip.effect.saveLook", () => void saveLook()),

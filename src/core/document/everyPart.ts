@@ -1,7 +1,7 @@
 // The "every" part of fixtures/interop/full (Batch 82): what the other fixtures do not already show, so that the
 // full fixture holds every value of every list of the capability manifest: all easing curves, the normal blend
 // mode, every text animation, every caption highlight mode and cue animation, a two-stop gradient fill, a beveled
-// join, an equal-power fade and the media and font kinds of template parameters. 1080 x 1920 at 30 fps, 96 frames;
+// join, an equal-power fade, the media and font kinds of template parameters and the enhance effects (v1.3). 1080 x 1920 at 30 fps, 96 frames;
 // its media are files of fixtures/interop/basic (`EVERY_ASSETS_FROM`). Built from the model constants, so a value
 // added to a list later is shown here too.
 import { makeCaptionClip, makeCompoundClip, makeMedia, makeMediaClip, makeShapeClip, makeSolidClip, makeTextClip } from "./fixtures.js";
@@ -175,6 +175,19 @@ export function buildEveryPart(): Project {
 
   // A template with a media and a font parameter, and its instance.
   project.media.badge = { ...makeMedia("badge", "image", 5_000_000), name: "badge.png", file: { relPath: "media/badge.png" }, hasAudio: false, width: 64, height: 64 };
+  // The enhance effects (v1.3) on the video in a corner (half speed): a denoise and a color correction with every part on.
+  add({
+    ...makeMediaClip(project, { id: "enhanced", trackId: "enhance", start: 0, duration: EVERY_DURATION, mediaId: "clip" }),
+    in: 0,
+    out: frameToUs(48, project.settings.fps),
+    speed: 0.5,
+    volume: { gainDb: 0, muted: true },
+    transform: T({ x: -380, y: 760, scale: 0.6 }),
+    effects: [
+      { id: "fx1", type: "denoise", enabled: true, params: { method: "hybrid", luma: 0.5, chroma: 0.7, detail: 0.4, shadows: 0.5, noise: 0.02 } },
+      { id: "fx2", type: "colorCorrect", enabled: true, params: { amount: 1, exposure: -0.25, black: 0.02, white: 0.95, gamma: 1.2, contrast: 20, temperature: -10, tint: 5, saturation: 10, vibrance: 15, highlights: -15, shadows: 10, clarity: 20, sharpen: 30 } },
+    ],
+  } as Clip);
   const innerTrack = (id: string): Track => emptyTrack(id, "video", id);
   const inner = [innerTrack("tp-pic"), innerTrack("tp-label")];
   const picture = { ...makeMediaClip(project, { id: "tp-image", trackId: "tp-pic", start: 0, duration: 30, mediaId: "badge", kind: "image" }), in: 0, out: frameToUs(30, project.settings.fps), transform: T({ y: -40 }) };

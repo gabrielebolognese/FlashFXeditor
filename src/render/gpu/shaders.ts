@@ -1281,6 +1281,279 @@ fn stylize(program: i32, p: vec2f) -> vec4f {
   }
 }
 
+// v1.3: denoise (core/effects/denoisePlan.ts). Colors stay premultiplied; brightness (luma) and color (chroma:
+// blue and red minus luma) are filtered apart, each with its own threshold. a = step (px), luma threshold,
+// chroma threshold, shadows (how much the thresholds rise in the dark).
+fn dnChroma(c: vec4f) -> vec2f {
+  let y = luma709(c.rgb);
+  return vec2f(c.b - y, c.r - y);
+}
+
+// The luma of the luma-weighted mean with the chroma of the chroma-weighted mean.
+fn dnCompose(l: vec4f, c: vec4f) -> vec4f {
+  let y = luma709(l.rgb);
+  let k = dnChroma(c);
+  let r = y + k.y;
+  let b = y + k.x;
+  let g = (y - 0.2126 * r - 0.0722 * b) / 0.7152;
+  return vec4f(clamp(vec3f(r, g, b), vec3f(0.0), vec3f(l.a)), l.a);
+}
+
+fn dnBoost(y: f32) -> f32 {
+  let d = 1.0 - clamp(y, 0.0, 1.0);
+  return 1.0 + 2.0 * fx.a.w * d * d;
+}
+
+// exp(-d2 / h^2); nothing passes a threshold of 0.
+fn dnWeight(d2: f32, h: f32) -> f32 {
+  if (h <= 0.0) { return 0.0; }
+  return exp(-d2 / (h * h));
+}
+
+// A pixel no neighbor resembles (the weights besides its own sum to under a half) is a speck of noise, not
+// detail: an edge or a line always has neighbors like it. It takes the plain mean u of its surroundings.
+// Only on the finest pass (taps up to 1.5 px apart: specks are single pixels) and away from the picture's edge.
+fn dnLone(l: vec4f, u: vec4f, wl: f32, hl: f32) -> vec4f {
+  if (hl <= 0.0 || fx.a.x > 1.5 || abs(u.a - l.a) > 0.01) { return l; }
+  return mix(u, l, clamp((wl - 1.0) * 2.0, 0.0, 1.0));
+}
+
+// The B3 spline weight of a tap i steps from the middle (1, 2/3, 1/6).
+fn dnSpline(i: i32) -> f32 {
+  if (i == 0) { return 1.0; }
+  if (abs(i) == 1) { return 2.0 / 3.0; }
+  return 1.0 / 6.0;
+}
+
+// One edge-avoiding a-trous level: a 5 x 5 B3 spline whose taps are fx.a.x px apart.
+fn dnAtrous(p: vec2f) -> vec4f {
+  let s = tapSrc(p);
+  let y0 = luma709(s.rgb);
+  let c0 = dnChroma(s);
+  let boost = dnBoost(y0);
+  let hl = fx.a.y * boost;
+  let hc = fx.a.z * boost;
+  let he = max(hl, hc) * 1.5;
+  var sumL = s;
+  var wl = 1.0;
+  var sumC = s;
+  var wc = 1.0;
+  var sumU = s;
+  var wu = 1.0;
+  for (var j = -2; j <= 2; j++) {
+    for (var i = -2; i <= 2; i++) {
+      if (i == 0 && j == 0) { continue; }
+      let q = tapSrc(p + vec2f(f32(i), f32(j)) * fx.a.x);
+      let k = dnSpline(i) * dnSpline(j);
+      let dy = luma709(q.rgb) - y0;
+      let da = q.a - s.a;
+      let d2 = dy * dy + da * da;
+      let dc = dnChroma(q) - c0;
+      let a = k * dnWeight(d2, hl);
+      let b = k * dnWeight(d2, he) * dnWeight(dot(dc, dc), hc);
+      sumL += q * a;
+      wl += a;
+      sumC += q * b;
+      wc += b;
+      sumU += q * k;
+      wu += k;
+    }
+  }
+  return dnCompose(dnLone(sumL / wl, sumU / wu, wl, hl), sumC / wc);
+}
+
+// A joint bilateral filter: 7 x 7 taps fx.a.x px apart, a Gaussian in space times one in color distance.
+fn dnBilateral(p: vec2f) -> vec4f {
+  let s = tapSrc(p);
+  let y0 = luma709(s.rgb);
+  let c0 = dnChroma(s);
+  let boost = dnBoost(y0);
+  let hl = fx.a.y * boost;
+  let hc = fx.a.z * boost;
+  var sumL = s;
+  var wl = 1.0;
+  var sumC = s;
+  var wc = 1.0;
+  var sumU = s;
+  var wu = 1.0;
+  for (var j = -3; j <= 3; j++) {
+    for (var i = -3; i <= 3; i++) {
+      if (i == 0 && j == 0) { continue; }
+      let q = tapSrc(p + vec2f(f32(i), f32(j)) * fx.a.x);
+      let k = exp(-f32(i * i + j * j) / 6.48);
+      let dy = luma709(q.rgb) - y0;
+      let da = q.a - s.a;
+      let dc = dnChroma(q) - c0;
+      let d2 = dy * dy + da * da + dot(dc, dc);
+      let a = k * dnWeight(d2, hl);
+      let b = k * dnWeight(d2, hc);
+      sumL += q * a;
+      wl += a;
+      sumC += q * b;
+      wc += b;
+      sumU += q * k;
+      wu += k;
+    }
+  }
+  return dnCompose(dnLone(sumL / wl, sumU / wu, wl, hl), sumC / wc);
+}
+
+// What a non-local means patch compares: luma, and the alpha so a transparent neighbor never matches.
+fn dnValue(c: vec4f) -> f32 { return luma709(c.rgb) + 0.5 * c.a; }
+
+// Non-local means: each pixel of a 5 x 5 window (fx.a.x px apart) weighted by how alike the 3 x 3 patches
+// around it and around p are; p itself weighs as much as its best match.
+fn dnNlm(p: vec2f) -> vec4f {
+  let gap = fx.a.x;
+  let s = tapSrc(p);
+  var around: array<f32, 9>;
+  for (var n = 0; n < 9; n++) {
+    around[n] = dnValue(tapSrc(p + vec2f(f32(n % 3 - 1), f32(n / 3 - 1)) * gap));
+  }
+  let c0 = dnChroma(s);
+  let boost = dnBoost(luma709(s.rgb));
+  let hl = fx.a.y * boost;
+  let hc = fx.a.z * boost;
+  let he = max(hl, hc) * 1.5;
+  var sumL = vec4f(0.0);
+  var wl = 0.0;
+  var bestL = 0.0;
+  var sumC = vec4f(0.0);
+  var wc = 0.0;
+  var bestC = 0.0;
+  for (var j = -2; j <= 2; j++) {
+    for (var i = -2; i <= 2; i++) {
+      if (i == 0 && j == 0) { continue; }
+      let at = p + vec2f(f32(i), f32(j)) * gap;
+      var q = vec4f(0.0);
+      var d2 = 0.0;
+      for (var n = 0; n < 9; n++) {
+        let t = tapSrc(at + vec2f(f32(n % 3 - 1), f32(n / 3 - 1)) * gap);
+        if (n == 4) { q = t; }
+        let e = dnValue(t) - around[n];
+        d2 += e * e;
+      }
+      d2 = d2 / 9.0;
+      let dc = dnChroma(q) - c0;
+      let a = dnWeight(d2, hl);
+      let b = dnWeight(d2, he) * dnWeight(dot(dc, dc), hc);
+      sumL += q * a;
+      wl += a;
+      bestL = max(bestL, a);
+      sumC += q * b;
+      wc += b;
+      bestC = max(bestC, b);
+    }
+  }
+  bestL = max(bestL, 0.0001);
+  bestC = max(bestC, 0.0001);
+  return dnCompose((sumL + s * bestL) / (wl + bestL), (sumC + s * bestC) / (wc + bestC));
+}
+
+// The 3 x 3 median of each channel (taps fx.a.x px apart), mixed in by fx.a.y (luma) and fx.a.z (chroma).
+fn dnMedian(p: vec2f) -> vec4f {
+  let s = tapSrc(p);
+  var v: array<vec4f, 9>;
+  for (var n = 0; n < 9; n++) {
+    v[n] = tapSrc(p + vec2f(f32(n % 3 - 1), f32(n / 3 - 1)) * fx.a.x);
+  }
+  for (var i = 0; i < 5; i++) {
+    for (var j = i + 1; j < 9; j++) {
+      let lo = min(v[i], v[j]);
+      v[j] = max(v[i], v[j]);
+      v[i] = lo;
+    }
+  }
+  let m = v[4];
+  return dnCompose(mix(s, m, clamp(fx.a.y, 0.0, 1.0)), mix(s, m, clamp(fx.a.z, 0.0, 1.0)));
+}
+
+// The finish pass: src is the denoised picture, orig the input of the effect. Where the denoised picture has
+// structure (a luma slope well above the noise level fx.a.y), a share fx.a.x of the luma that was removed is
+// put back; flat areas get a little of it so they never look like plastic. a.z = px between the taps of the slope.
+fn dnFinish(p: vec2f) -> vec4f {
+  let d = tapSrc(p);
+  if (fx.a.x <= 0.0) { return d; }
+  let o = tapOrig(p);
+  let st = fx.a.z;
+  let gx = luma709(tapSrc(p + vec2f(st, 0.0)).rgb) - luma709(tapSrc(p - vec2f(st, 0.0)).rgb);
+  let gy = luma709(tapSrc(p + vec2f(0.0, st)).rgb) - luma709(tapSrc(p - vec2f(0.0, st)).rgb);
+  let slope = 0.5 * length(vec2f(gx, gy));
+  let m = sstep(fx.a.y * 0.75, fx.a.y * 3.0, slope);
+  let back = (luma709(o.rgb) - luma709(d.rgb)) * fx.a.x * (0.15 + 0.85 * m);
+  return vec4f(clamp(d.rgb + vec3f(back), vec3f(0.0), vec3f(d.a)), d.a);
+}
+
+fn denoise(program: i32, p: vec2f) -> vec4f {
+  switch program {
+    case 25: { return dnNlm(p); }
+    case 26: { return dnAtrous(p); }
+    case 27: { return dnBilateral(p); }
+    case 28: { return dnMedian(p); }
+    default: { return dnFinish(p); }
+  }
+}
+
+// v1.3: color correction (core/effects/colorCorrect.ts, line for line). orig is the input of the effect; src the
+// same, or its blur when the clarity is on. a = gains, amount; b = black, 1 / range, 1 / gamma, contrast;
+// color = saturation, vibrance, highlights, shadows; c = clarity, sharpen, px between the taps of the sharpen.
+fn ccLuma(q: vec2f, y0: f32) -> f32 {
+  let t = tapOrig(q);
+  if (t.a < 0.001) { return y0; }
+  return luma709(t.rgb) / t.a;
+}
+
+fn colorCorrect(p: vec2f) -> vec4f {
+  let o = tapOrig(p);
+  if (o.a <= 0.0) { return vec4f(0.0); }
+  let c0 = o.rgb / o.a;
+  var c = clamp((c0 * fx.a.xyz - vec3f(fx.b.x)) * fx.b.y, vec3f(0.0), vec3f(1.0));
+  // What was nearly black keeps less of its color the more the gamma lifts it: mostly color noise lives there.
+  let fade = mix(1.0, sstep(0.0, 0.1, luma709(c)), clamp((1.0 / max(fx.b.z, 0.05) - 1.0) * 1.5, 0.0, 0.85));
+  c = pow(c, vec3f(fx.b.z));
+  var y = luma709(c);
+  c = vec3f(y) + (c - vec3f(y)) * fade;
+  if (y > 0.0001) {
+    let up = 1.0 - y;
+    let moved = y + 1.7 * (fx.color.w * y * up * up + fx.color.z * y * y * up);
+    c = clamp(c * (max(moved, 0.0) / y), vec3f(0.0), vec3f(1.0));
+  }
+  let k = fx.b.w;
+  if (k >= 0.0) { c = c + (c * c * (vec3f(3.0) - 2.0 * c) - c) * k; }
+  else { c = c + (vec3f(0.5) - c) * (-k * 0.5); }
+  c = clamp(c, vec3f(0.0), vec3f(1.0));
+  // Clarity and sharpen move the brightness by what the luma of the input differs from its surroundings.
+  let y0 = luma709(c0);
+  var add = 0.0;
+  if (fx.c.x > 0.0) {
+    let b = tapSrc(p);
+    let around = luma709(b.rgb) / max(b.a, 0.0001);
+    y = luma709(c);
+    // Large differences (a dark figure on a bright wall) are held back, so edges get no halo.
+    let local = y0 - around;
+    add += fx.c.x * 1.6 * (local / (1.0 + 6.0 * abs(local))) * 4.0 * y * (1.0 - y);
+  }
+  if (fx.c.y > 0.0) {
+    let st = fx.c.z;
+    let e = ccLuma(p + vec2f(st, 0.0), y0) + ccLuma(p - vec2f(st, 0.0), y0) + ccLuma(p + vec2f(0.0, st), y0) + ccLuma(p - vec2f(0.0, st), y0);
+    let g = ccLuma(p + vec2f(st, st), y0) + ccLuma(p + vec2f(-st, st), y0) + ccLuma(p + vec2f(st, -st), y0) + ccLuma(p - vec2f(st, st), y0);
+    let d = y0 - (4.0 * y0 + 2.0 * e + g) / 16.0;
+    // Differences the size of grain are left alone.
+    add += clamp(fx.c.y * 3.0 * d * sstep(0.004, 0.02, abs(d)), -0.12, 0.12);
+  }
+  c = clamp(c + vec3f(add), vec3f(0.0), vec3f(1.0));
+  y = luma709(c);
+  // A boost fades out in the deep shadows; a cut applies everywhere.
+  let roll = sstep(0.02, 0.3, y);
+  c = vec3f(y) + (c - vec3f(y)) * (1.0 + fx.color.x * select(1.0, roll, fx.color.x > 0.0));
+  let chroma = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
+  let vib = 1.0 + fx.color.y * (1.0 - clamp(chroma, 0.0, 1.0)) * select(1.0, roll, fx.color.y > 0.0);
+  y = luma709(c);
+  c = clamp(vec3f(y) + (c - vec3f(y)) * vib, vec3f(0.0), vec3f(1.0));
+  c = mix(c0, c, clamp(fx.a.w, 0.0, 1.0));
+  return vec4f(c * o.a, o.a);
+}
+
 @fragment
 fn fs(@builtin(position) position: vec4f) -> @location(0) vec4f {
   let p = position.xy;
@@ -1306,6 +1579,8 @@ fn fs(@builtin(position) position: vec4f) -> @location(0) vec4f {
     case 9: { return vec4f(dilate(p)); }
     case 10, 11, 12, 13, 14, 15, 16: { return pixelEffect(program, p); }
     case 17, 18, 19, 20, 21, 22, 23: { return stylize(program, p); }
+    case 25, 26, 27, 28, 29: { return denoise(program, p); }
+    case 30: { return colorCorrect(p); }
     // 24: an adjustment's input (fx.size.w set: transparent past the frame's box).
     default: { return tapSrc(p); }
   }

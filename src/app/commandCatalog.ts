@@ -149,7 +149,7 @@ import {
 import { EASE_LABELS, KEYFRAME_SECTIONS, SECTION_LABELS, type KeyframeSection } from "../core/document/keyframes.js";
 import { TRANSITION_LABELS } from "../core/document/transitions.js";
 import { TRANSITION_ICONS } from "../panels/properties/transitionIcons.js";
-import { EFFECT_ADD_TITLES, EFFECT_ICONS, EFFECT_KEYWORDS, effectAddCommand } from "../panels/properties/effectIcons.js";
+import { EFFECT_ADD_TITLES, EFFECT_ICONS, EFFECT_KEYWORDS, effectAddCommand, ENHANCE_ICON } from "../panels/properties/effectIcons.js";
 import { BLEND_MODES, EASE_IDS, EFFECT_TYPES, LABEL_COLORS, TRANSITION_KINDS } from "../core/document/types.js";
 import { BLEND_MODE_META } from "../core/effects/blendModes.js";
 import type { FocusScope } from "../core/keyboard/focusScope.js";
@@ -392,6 +392,10 @@ export const COMMANDS: readonly CommandInfo[] = [
   // Effects (spec §21.19, Batch 74)
   ...EFFECT_TYPES.map((type) => clip(effectAddCommand(type), EFFECT_ADD_TITLES[type], { icon: EFFECT_ICONS[type], keywords: EFFECT_KEYWORDS[type] })),
   clip("clip.effect.removeAll", "Remove effects", { icon: Eraser, keywords: "effect blur glow shadow outline delete clear" }),
+  // Enhance (v1.3)
+  clip("clip.enhance.auto", "Enhance: denoise and color correct", { icon: ENHANCE_ICON, keywords: "enhance auto denoise noise grain color correct balance match clips quality fix" }),
+  clip("clip.enhance.denoise", "Auto denoise", { icon: EFFECT_ICONS.denoise, keywords: "enhance denoise noise reduction grain clean low light" }),
+  clip("clip.enhance.color", "Auto color correct", { icon: EFFECT_ICONS.colorCorrect, keywords: "enhance auto color correct white balance exposure contrast match clips balance brightness" }),
   // LUTs and looks (spec §21.19, Batch 75)
   clip("clip.effect.lut.load", "Load LUT (.cube)…", { icon: FileUp, keywords: "lut cube color grade look import file" }),
   clip("clip.effect.saveLook", "Save effects as look", { icon: BookmarkPlus, keywords: "look preset effect stack save grade" }),

@@ -634,6 +634,8 @@ export const EFFECT_TYPES = [
   "gaussianBlur", "directionalBlur", "glow", "dropShadow", "outline",
   "colorAdjust", "vignette", "sharpen", "grain", "chromaKey", "lumaKey", "lut",
   "rgbSplit", "pixelate", "mirror", "wave", "glitch", "posterize", "invert",
+  // v1.3: noise reduction and the color correction the Enhance commands set (core/enhance/).
+  "denoise", "colorCorrect",
 ] as const;
 export type EffectType = (typeof EFFECT_TYPES)[number];
 

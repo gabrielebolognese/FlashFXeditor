@@ -1117,6 +1117,256 @@ vec4 stylize(int program, vec2 p) {
   return s;
 }
 
+// v1.3: denoise and color correction, see EFFECT_WGSL (line for line).
+vec2 dnChroma(vec4 c) {
+  float y = luma709(c.rgb);
+  return vec2(c.b - y, c.r - y);
+}
+
+vec4 dnCompose(vec4 l, vec4 c) {
+  float y = luma709(l.rgb);
+  vec2 k = dnChroma(c);
+  float r = y + k.y;
+  float b = y + k.x;
+  float g = (y - 0.2126 * r - 0.0722 * b) / 0.7152;
+  return vec4(clamp(vec3(r, g, b), vec3(0.0), vec3(l.a)), l.a);
+}
+
+float dnBoost(float y) {
+  float d = 1.0 - clamp(y, 0.0, 1.0);
+  return 1.0 + 2.0 * u_fx[1].w * d * d;
+}
+
+float dnWeight(float d2, float h) {
+  if (h <= 0.0) { return 0.0; }
+  return exp(-d2 / (h * h));
+}
+
+vec4 dnLone(vec4 l, vec4 u, float wl, float hl) {
+  if (hl <= 0.0 || u_fx[1].x > 1.5 || abs(u.a - l.a) > 0.01) { return l; }
+  return mix(u, l, clamp((wl - 1.0) * 2.0, 0.0, 1.0));
+}
+
+float dnSpline(int i) {
+  if (i == 0) { return 1.0; }
+  if (abs(i) == 1) { return 2.0 / 3.0; }
+  return 1.0 / 6.0;
+}
+
+vec4 dnAtrous(vec2 p) {
+  vec4 s = tapSrc(p);
+  float y0 = luma709(s.rgb);
+  vec2 c0 = dnChroma(s);
+  float boost = dnBoost(y0);
+  float hl = u_fx[1].y * boost;
+  float hc = u_fx[1].z * boost;
+  float he = max(hl, hc) * 1.5;
+  vec4 sumL = s;
+  float wl = 1.0;
+  vec4 sumC = s;
+  float wc = 1.0;
+  vec4 sumU = s;
+  float wu = 1.0;
+  for (int j = -2; j <= 2; j++) {
+    for (int i = -2; i <= 2; i++) {
+      if (i == 0 && j == 0) { continue; }
+      vec4 q = tapSrc(p + vec2(float(i), float(j)) * u_fx[1].x);
+      float k = dnSpline(i) * dnSpline(j);
+      float dy = luma709(q.rgb) - y0;
+      float da = q.a - s.a;
+      float d2 = dy * dy + da * da;
+      vec2 dc = dnChroma(q) - c0;
+      float a = k * dnWeight(d2, hl);
+      float b = k * dnWeight(d2, he) * dnWeight(dot(dc, dc), hc);
+      sumL += q * a;
+      wl += a;
+      sumC += q * b;
+      wc += b;
+      sumU += q * k;
+      wu += k;
+    }
+  }
+  return dnCompose(dnLone(sumL / wl, sumU / wu, wl, hl), sumC / wc);
+}
+
+vec4 dnBilateral(vec2 p) {
+  vec4 s = tapSrc(p);
+  float y0 = luma709(s.rgb);
+  vec2 c0 = dnChroma(s);
+  float boost = dnBoost(y0);
+  float hl = u_fx[1].y * boost;
+  float hc = u_fx[1].z * boost;
+  vec4 sumL = s;
+  float wl = 1.0;
+  vec4 sumC = s;
+  float wc = 1.0;
+  vec4 sumU = s;
+  float wu = 1.0;
+  for (int j = -3; j <= 3; j++) {
+    for (int i = -3; i <= 3; i++) {
+      if (i == 0 && j == 0) { continue; }
+      vec4 q = tapSrc(p + vec2(float(i), float(j)) * u_fx[1].x);
+      float k = exp(-float(i * i + j * j) / 6.48);
+      float dy = luma709(q.rgb) - y0;
+      float da = q.a - s.a;
+      vec2 dc = dnChroma(q) - c0;
+      float d2 = dy * dy + da * da + dot(dc, dc);
+      float a = k * dnWeight(d2, hl);
+      float b = k * dnWeight(d2, hc);
+      sumL += q * a;
+      wl += a;
+      sumC += q * b;
+      wc += b;
+      sumU += q * k;
+      wu += k;
+    }
+  }
+  return dnCompose(dnLone(sumL / wl, sumU / wu, wl, hl), sumC / wc);
+}
+
+float dnValue(vec4 c) { return luma709(c.rgb) + 0.5 * c.a; }
+
+vec4 dnNlm(vec2 p) {
+  float gap = u_fx[1].x;
+  vec4 s = tapSrc(p);
+  float around[9];
+  for (int n = 0; n < 9; n++) {
+    around[n] = dnValue(tapSrc(p + vec2(float(n % 3 - 1), float(n / 3 - 1)) * gap));
+  }
+  vec2 c0 = dnChroma(s);
+  float boost = dnBoost(luma709(s.rgb));
+  float hl = u_fx[1].y * boost;
+  float hc = u_fx[1].z * boost;
+  float he = max(hl, hc) * 1.5;
+  vec4 sumL = vec4(0.0);
+  float wl = 0.0;
+  float bestL = 0.0;
+  vec4 sumC = vec4(0.0);
+  float wc = 0.0;
+  float bestC = 0.0;
+  for (int j = -2; j <= 2; j++) {
+    for (int i = -2; i <= 2; i++) {
+      if (i == 0 && j == 0) { continue; }
+      vec2 at = p + vec2(float(i), float(j)) * gap;
+      vec4 q = vec4(0.0);
+      float d2 = 0.0;
+      for (int n = 0; n < 9; n++) {
+        vec4 t = tapSrc(at + vec2(float(n % 3 - 1), float(n / 3 - 1)) * gap);
+        if (n == 4) { q = t; }
+        float e = dnValue(t) - around[n];
+        d2 += e * e;
+      }
+      d2 = d2 / 9.0;
+      vec2 dc = dnChroma(q) - c0;
+      float a = dnWeight(d2, hl);
+      float b = dnWeight(d2, he) * dnWeight(dot(dc, dc), hc);
+      sumL += q * a;
+      wl += a;
+      bestL = max(bestL, a);
+      sumC += q * b;
+      wc += b;
+      bestC = max(bestC, b);
+    }
+  }
+  bestL = max(bestL, 0.0001);
+  bestC = max(bestC, 0.0001);
+  return dnCompose((sumL + s * bestL) / (wl + bestL), (sumC + s * bestC) / (wc + bestC));
+}
+
+vec4 dnMedian(vec2 p) {
+  vec4 s = tapSrc(p);
+  vec4 v[9];
+  for (int n = 0; n < 9; n++) {
+    v[n] = tapSrc(p + vec2(float(n % 3 - 1), float(n / 3 - 1)) * u_fx[1].x);
+  }
+  for (int i = 0; i < 5; i++) {
+    for (int j = i + 1; j < 9; j++) {
+      vec4 lo = min(v[i], v[j]);
+      v[j] = max(v[i], v[j]);
+      v[i] = lo;
+    }
+  }
+  vec4 m = v[4];
+  return dnCompose(mix(s, m, clamp(u_fx[1].y, 0.0, 1.0)), mix(s, m, clamp(u_fx[1].z, 0.0, 1.0)));
+}
+
+vec4 dnFinish(vec2 p) {
+  vec4 d = tapSrc(p);
+  if (u_fx[1].x <= 0.0) { return d; }
+  vec4 o = tapOrig(p);
+  float st = u_fx[1].z;
+  float gx = luma709(tapSrc(p + vec2(st, 0.0)).rgb) - luma709(tapSrc(p - vec2(st, 0.0)).rgb);
+  float gy = luma709(tapSrc(p + vec2(0.0, st)).rgb) - luma709(tapSrc(p - vec2(0.0, st)).rgb);
+  float slope = 0.5 * length(vec2(gx, gy));
+  float m = sstep(u_fx[1].y * 0.75, u_fx[1].y * 3.0, slope);
+  float back = (luma709(o.rgb) - luma709(d.rgb)) * u_fx[1].x * (0.15 + 0.85 * m);
+  return vec4(clamp(d.rgb + vec3(back), vec3(0.0), vec3(d.a)), d.a);
+}
+
+vec4 denoise(int program, vec2 p) {
+  if (program == 25) { return dnNlm(p); }
+  if (program == 26) { return dnAtrous(p); }
+  if (program == 27) { return dnBilateral(p); }
+  if (program == 28) { return dnMedian(p); }
+  return dnFinish(p);
+}
+
+float ccLuma(vec2 q, float y0) {
+  vec4 t = tapOrig(q);
+  if (t.a < 0.001) { return y0; }
+  return luma709(t.rgb) / t.a;
+}
+
+vec4 colorCorrect(vec2 p) {
+  vec4 o = tapOrig(p);
+  if (o.a <= 0.0) { return vec4(0.0); }
+  vec4 ga = u_fx[1];
+  vec4 gb = u_fx[2];
+  vec4 gc = u_fx[3];
+  vec4 gd = u_fx[5];
+  vec3 c0 = o.rgb / o.a;
+  vec3 c = clamp((c0 * ga.xyz - vec3(gb.x)) * gb.y, vec3(0.0), vec3(1.0));
+  float fade = mix(1.0, sstep(0.0, 0.1, luma709(c)), clamp((1.0 / max(gb.z, 0.05) - 1.0) * 1.5, 0.0, 0.85));
+  c = pow(c, vec3(gb.z));
+  float y = luma709(c);
+  c = vec3(y) + (c - vec3(y)) * fade;
+  if (y > 0.0001) {
+    float up = 1.0 - y;
+    float moved = y + 1.7 * (gc.w * y * up * up + gc.z * y * y * up);
+    c = clamp(c * (max(moved, 0.0) / y), vec3(0.0), vec3(1.0));
+  }
+  float k = gb.w;
+  if (k >= 0.0) { c = c + (c * c * (vec3(3.0) - 2.0 * c) - c) * k; }
+  else { c = c + (vec3(0.5) - c) * (-k * 0.5); }
+  c = clamp(c, vec3(0.0), vec3(1.0));
+  float y0 = luma709(c0);
+  float add = 0.0;
+  if (gd.x > 0.0) {
+    vec4 b = tapSrc(p);
+    float around = luma709(b.rgb) / max(b.a, 0.0001);
+    y = luma709(c);
+    float local = y0 - around;
+    add += gd.x * 1.6 * (local / (1.0 + 6.0 * abs(local))) * 4.0 * y * (1.0 - y);
+  }
+  if (gd.y > 0.0) {
+    float st = gd.z;
+    float e = ccLuma(p + vec2(st, 0.0), y0) + ccLuma(p - vec2(st, 0.0), y0) + ccLuma(p + vec2(0.0, st), y0) + ccLuma(p - vec2(0.0, st), y0);
+    float g = ccLuma(p + vec2(st, st), y0) + ccLuma(p + vec2(-st, st), y0) + ccLuma(p + vec2(st, -st), y0) + ccLuma(p - vec2(st, st), y0);
+    float d = y0 - (4.0 * y0 + 2.0 * e + g) / 16.0;
+    add += clamp(gd.y * 3.0 * d * sstep(0.004, 0.02, abs(d)), -0.12, 0.12);
+  }
+  c = clamp(c + vec3(add), vec3(0.0), vec3(1.0));
+  y = luma709(c);
+  float roll = sstep(0.02, 0.3, y);
+  c = vec3(y) + (c - vec3(y)) * (1.0 + gc.x * (gc.x > 0.0 ? roll : 1.0));
+  float chroma = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
+  float vib = 1.0 + gc.y * (1.0 - clamp(chroma, 0.0, 1.0)) * (gc.y > 0.0 ? roll : 1.0);
+  y = luma709(c);
+  c = clamp(vec3(y) + (c - vec3(y)) * vib, vec3(0.0), vec3(1.0));
+  c = mix(c0, c, clamp(ga.w, 0.0, 1.0));
+  return vec4(c * o.a, o.a);
+}
+
 void main() {
   vec2 p = gl_FragCoord.xy;
   int program = int(u_fx[0].z + 0.5);
@@ -1142,6 +1392,8 @@ void main() {
   if (program == 9) { outColor = vec4(dilate(p)); return; }
   if (program >= 10 && program <= 16) { outColor = pixelEffect(program, p); return; }
   if (program >= 17 && program <= 23) { outColor = stylize(program, p); return; }
+  if (program >= 25 && program <= 29) { outColor = denoise(program, p); return; }
+  if (program == 30) { outColor = colorCorrect(p); return; }
   outColor = tapSrc(p);
 }
 `;

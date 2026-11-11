@@ -1,6 +1,6 @@
 // Effects (spec §21.19, Batch 74): the icon and the Add command of each type, shared by the command catalog
 // and the Effects section.
-import { Aperture, Blend, Columns2, Contrast, Droplets, Grid3x3, Layers2, PaintBucket, Palette, Scissors, SlidersHorizontal, Sparkles, SquareDashed, Sun, SunDim, Triangle, Waves, Wind, Zap, type LucideIcon } from "lucide-react";
+import { Aperture, Blend, Focus as DenoiseIcon, SwatchBook, WandSparkles, Columns2, Contrast, Droplets, Grid3x3, Layers2, PaintBucket, Palette, Scissors, SlidersHorizontal, Sparkles, SquareDashed, Sun, SunDim, Triangle, Waves, Wind, Zap, type LucideIcon } from "lucide-react";
 import type { EffectType } from "../../core/document/types.js";
 
 export const EFFECT_ICONS: Readonly<Record<EffectType, LucideIcon>> = {
@@ -23,6 +23,8 @@ export const EFFECT_ICONS: Readonly<Record<EffectType, LucideIcon>> = {
   glitch: Zap,
   posterize: PaintBucket,
   invert: Contrast,
+  denoise: DenoiseIcon,
+  colorCorrect: SwatchBook,
 };
 
 /** The palette title of each type's Add command. */
@@ -46,6 +48,8 @@ export const EFFECT_ADD_TITLES: Readonly<Record<EffectType, string>> = {
   glitch: "Add glitch",
   posterize: "Add posterize",
   invert: "Add invert",
+  denoise: "Add denoise",
+  colorCorrect: "Add color correct",
 };
 
 /** Search words of each type. */
@@ -69,6 +73,8 @@ export const EFFECT_KEYWORDS: Readonly<Record<EffectType, string>> = {
   glitch: "effect glitch datamosh digital broken signal distort stylize",
   posterize: "effect posterize levels banding poster stylize",
   invert: "effect invert negative colors stylize",
+  denoise: "effect denoise noise reduction grain clean low light nlm wavelet bilateral median",
+  colorCorrect: "effect color correct auto balance white balance levels exposure contrast clarity sharpen enhance",
 };
 
 /** The Add rows of the Effects section: blurs and light (Batch 74), color, keys and LUT (Batch 75), distortion and stylize (Batch 76). */
@@ -76,7 +82,11 @@ export const EFFECT_ADD_ROWS: readonly { label: string; types: readonly EffectTy
   { label: "Add", types: ["gaussianBlur", "directionalBlur", "glow", "dropShadow", "outline"] },
   { label: "Color", types: ["colorAdjust", "vignette", "sharpen", "grain", "chromaKey", "lumaKey", "lut"] },
   { label: "Stylize", types: ["rgbSplit", "pixelate", "mirror", "wave", "glitch", "posterize", "invert"] },
+  { label: "Enhance", types: ["denoise", "colorCorrect"] },
 ];
 
 /** The command id adding an effect of `type` to the selected clips. */
 export const effectAddCommand = (type: EffectType): string => `clip.effect.add.${type}`;
+
+/** The icon of the Enhance command (v1.3: measured denoise and color correction). */
+export const ENHANCE_ICON: LucideIcon = WandSparkles;

@@ -23,6 +23,7 @@ Effects change how a layer looks after it is drawn: blur it, make it glow, give 
 - [Color, stylize and key effects](#color-stylize-and-key-effects)
 - [Stylize effects](#stylize-effects)
 - [Use a LUT](#use-a-lut)
+- [Denoise and auto color](#denoise-and-auto-color)
 - [Adjustment clips](#adjustment-clips)
 - [Save and apply looks](#save-and-apply-looks)
 - [Reorder, turn off and remove effects](#reorder-turn-off-and-remove-effects)
@@ -95,6 +96,54 @@ In the command palette, **Load LUT (.cube)…** gives a file to all selected cli
 
 > **Note:** If a LUT file goes missing from the project, the clip draws without it and nothing warns you.
 
+## Denoise and auto color
+
+**Enhance** cleans up footage in one step. It measures each clip and adds two effects with values that fit that clip:
+
+- **Denoise** removes grain. Its strength follows the noise the clip has.
+- **Color correct** fixes white balance, brightness, contrast, clarity, sharpness and saturation.
+
+When several clips are enhanced together they are matched: a clip that is brighter, darker or warmer than the others is moved to the middle of the group, so cuts between them do not jump.
+
+1. Select the video or image clips. With nothing selected, every video and image clip of the timeline is used.
+2. Open the command palette and run **Enhance: denoise and color correct**, or click the wand button in the **Enhance** row of the **Effects** section.
+3. Wait for the "Enhance: n clips" message. It takes a few seconds per clip.
+
+**Auto denoise** and **Auto color correct** in the command palette do only one of the two. Running a command again updates the same two effects. One **Undo** removes the whole step.
+
+Both effects can also be added by hand from the **Enhance** row and edited like any other effect.
+
+**Denoise**
+
+| Field | What it does |
+| --- | --- |
+| **Method** | **hybrid** suits most footage. **wavelet** is fastest and good on coarse blotches. **nlm** keeps fabric and hair texture. **bilateral** is the lightest. **median** removes speckle. |
+| **Luma** | How hard brightness grain is removed. |
+| **Chroma** | How hard color blotches are removed. |
+| **Detail** | How much real texture and edge detail is put back. |
+| **Shadows** | Extra strength in dark areas. |
+| **Noise level** | The measured grain. Raise it when grain is left, lower it when the picture looks waxy. |
+
+**Color correct**
+
+| Field | What it does |
+| --- | --- |
+| **Temperature**, **Tint** | White balance. |
+| **Exposure** | Stops of light. |
+| **Black point**, **White point** | The levels that become black and white. |
+| **Brightness** | The middle tones: above 1 brighter. Black and white stay. |
+| **Shadows**, **Highlights** | The dark and the bright range on their own. |
+| **Contrast** | Above 0 more contrast. |
+| **Clarity** | Local contrast: large shapes stand out. |
+| **Sharpen** | Fine detail. Grain is left alone. |
+| **Saturation**, **Vibrance** | All colors, or mostly the dull ones. |
+| **Amount** | Mixes the result with the uncorrected picture. |
+
+Things to know:
+- The values hold for the whole clip. When the light changes in the middle of a clip, split it there and run **Enhance** again.
+- Denoise works inside each frame. Very heavy noise can still shimmer slightly in motion.
+- Denoise is costly: playback of a denoised clip can drop frames. The export is not affected, only slower.
+
 ## Adjustment clips
 An adjustment clip has no picture of its own. Its effects apply to everything below it, on lower tracks, while the clip lasts. Use one to grade or glitch a whole stretch of your edit at once.
 
@@ -156,4 +205,4 @@ Every number and color has a stopwatch and a key diamond, as in [Keyframes](keyf
 - [Keyframes](keyframes.md)
 - [Editing properties](editing-properties.md)
 
-<sub>Last updated: Batch 76, 2026-11-09</sub>
+<sub>Last updated: Enhance (v1.3 work), 2026-11-10</sub>

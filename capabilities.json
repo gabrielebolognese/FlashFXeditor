@@ -378,7 +378,9 @@
     "wave",
     "glitch",
     "posterize",
-    "invert"
+    "invert",
+    "denoise",
+    "colorCorrect"
   ],
   "audio": {
     "clipGainDb": [

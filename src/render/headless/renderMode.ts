@@ -18,7 +18,10 @@ import { attachPreview, gpuDevice, renderFramePng, startGpu } from "../../app/pr
 import { documentStore, fontLibrary, keyValueStore, sessionStore, themeBridge } from "../../app/services.js";
 import { contentEnd } from "../../timeline/model/queries.js";
 import { setPlayhead } from "../../core/store/sessionStore.js";
-import type { Frame, Project } from "../../core/document/types.js";
+import type { ClipId, Frame, Project } from "../../core/document/types.js";
+import type { ClipEnhancement, EnhanceOptions } from "../../core/enhance/solve.js";
+import { planFor } from "../../app/enhanceController.js";
+import { isEnhanceable } from "../../app/enhanceSampler.js";
 import { ExportFile } from "../../export/exportFile.js";
 import { BUILT_IN_PRESETS, codecFor, exportFormat, REELS_PRESET } from "../../export/presets.js";
 import { openProjectFolder } from "../../project/openProject.js";
@@ -72,6 +75,18 @@ export interface RenderApi {
   video(options: VideoOptions): Promise<VideoResult>;
   frames(frames: readonly Frame[]): Promise<FramesResult>;
   compare(options: { region: Rect | null; diff: boolean; worst: number }): Promise<CompareReport>;
+  /** Measures the project's video and image clips (or `clips`) and plans their denoise and color correction (v1.3); writes nothing. */
+  enhance(options: EnhanceRequest): Promise<EnhanceResult>;
+}
+
+export interface EnhanceRequest extends EnhanceOptions {
+  /** Clip ids; every video and image clip when absent or empty. */
+  clips?: string[] | null;
+}
+
+export interface EnhanceResult {
+  plan: ClipEnhancement[];
+  skipped: { clipId: string; reason: string }[];
 }
 
 declare global {
@@ -202,6 +217,13 @@ export function startRenderMode(search: string, origin: string): RenderApi {
         postProgress(base, index + 1, frames.length);
       }
       return { files, ...size };
+    },
+    async enhance(options) {
+      await ready;
+      const project = documentStore.getState();
+      const all = (Object.keys(project.clips) as ClipId[]).filter((id) => isEnhanceable(project, project.clips[id])).sort((a, b) => (project.clips[a]?.start ?? 0) - (project.clips[b]?.start ?? 0));
+      const ids = options.clips && options.clips.length > 0 ? (options.clips as ClipId[]) : all;
+      return planFor(ids, options, undefined, (done, total) => postProgress(base, done, total));
     },
     async compare(options) {
       await ready;

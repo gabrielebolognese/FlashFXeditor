@@ -273,6 +273,7 @@ export function EffectsSection({ ids }: { ids: readonly ClipId[] }) {
               <IconButton key={type} commandId={effectAddCommand(type)} />
             ))}
             {at === 0 && <IconButton commandId="clip.effect.removeAll" />}
+            {group.label === "Enhance" && <IconButton commandId="clip.enhance.auto" />}
           </span>
         </Row>
       ))}
