@@ -1,0 +1,29 @@
+{
+  "schema": "card/1",
+  "title": "Your first handstand push-up",
+  "kind": "tutorial",
+  "generator": "calisthenics-editor",
+  "generationId": "accfb31b0177d138a7404cabaeec07a733555194423dd3a6157dec2420563c85",
+  "generatedAt": "2026-11-11T17:53:53Z",
+  "durationSec": 3,
+  "format": "1080x1920 30 fps",
+  "poster": "poster.jpg",
+  "video": "../2026-11-11.mp4",
+  "checks": [
+    {
+      "name": "validate",
+      "ok": true
+    },
+    {
+      "name": "duration",
+      "ok": false
+    }
+  ],
+  "notes": [
+    "2 pauses just over the limit at 33.9 s and 39.1 s",
+    "The outro has no music"
+  ],
+  "futureField": {
+    "anything": true
+  }
+}

@@ -13,5 +13,7 @@ fixtures/**/cache/
 fixtures/**/history/
 fixtures/**/session.json
 fixtures/**/exports/
+# The inbox fixture is a generator root that keeps its projects in exports/.
+!fixtures/interop/inbox/autopilot/exports/
 
 out/

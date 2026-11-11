@@ -22,7 +22,8 @@ import { createAppSettings } from "../project/appSettings.js";
 import { INITIAL_SAVE_STATUS, type SaveStatus } from "../project/Autosaver.js";
 import { idbKeyValueStore } from "../project/kv.js";
 import { fromHandle, isDirectoryHandle } from "../project/fs.js";
-import { ProjectsFolder } from "../project/projectsFolder.js";
+import { Inbox } from "../project/inbox/inbox.js";
+import { WatchedFolders } from "../project/inbox/watchedFolders.js";
 import { RecentProjects } from "../project/recentProjects.js";
 import { TemplateStore } from "../project/templates.js";
 import { LookStore } from "../project/looks.js";
@@ -59,8 +60,10 @@ export const audioClock = new AudioClock();
 /** IndexedDB key-value store of global things: recent projects, settings, global text presets (spec §3.1). */
 export const keyValueStore = idbKeyValueStore();
 export const recentProjects = new RecentProjects(keyValueStore);
-/** The folder `/?open=<path>` resolves against (spec §21.5): a directory handle in IndexedDB. */
-export const projectsFolder = new ProjectsFolder(keyValueStore, (handle) => (isDirectoryHandle(handle) ? fromHandle(handle) : null));
+/** The folders generators write projects into: directory handles in IndexedDB. `/?open=<path>` resolves against them (spec §21.5). */
+export const watchedFolders = new WatchedFolders(keyValueStore, (handle) => (isDirectoryHandle(handle) ? fromHandle(handle) : null));
+/** The start screen's inbox: the projects found in the watched folders, with their cards and review status. */
+export const inbox = new Inbox(watchedFolders, keyValueStore, undefined, (a, b) => (isDirectoryHandle(a.handle) && isDirectoryHandle(b.handle) ? a.handle.isSameEntry(b.handle) : Promise.resolve(a.handle === b.handle)));
 /** Project templates (spec §15): settings, track layout and text presets, in IndexedDB. */
 export const templateStore = new TemplateStore(keyValueStore);
 /** Looks (spec §21.19, Batch 75): effect stacks saved by name, in IndexedDB. */

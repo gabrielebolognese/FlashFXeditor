@@ -1,0 +1,262 @@
+/* The start screen's inbox (gap: the DS has no review cards): project tiles as the recent ones (surface-1,
+   hairline, radius-lg), a 9:16 poster on top, a status badge (accent wash = waiting, raised surface = done)
+   and a notes chip (--warning, --danger when a check failed). Filter chips as the Media tab's. */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.overline {
+  flex: 1 1 auto;
+  color: var(--text-tertiary);
+  font: var(--type-overline);
+  letter-spacing: var(--type-overline-track);
+  text-transform: uppercase;
+}
+
+.filters {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-0);
+  padding: var(--space-0);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+}
+
+.filter {
+  height: var(--control-compact);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-micro) var(--ease-out),
+    color var(--duration-micro) var(--ease-out);
+}
+
+.filter:hover {
+  color: var(--text-primary);
+}
+
+.filter[aria-pressed="true"] {
+  background: var(--surface-4);
+  color: var(--text-primary);
+}
+
+.filter:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.reconnect {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.emptyRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.empty {
+  color: var(--text-muted);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--recent-card-min), 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  transition: border-color var(--duration-micro) var(--ease-out);
+}
+
+.card:hover,
+.card:focus-within {
+  border-color: var(--surface-5);
+}
+
+/* Waiting for a look: the accent edge. */
+.card[data-status="new"],
+.card[data-status="updated"] {
+  border-color: var(--accent-dim);
+}
+
+.open {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1 1 auto;
+  width: 100%;
+  padding: var(--space-2) var(--space-2) 0;
+  border-radius: var(--radius-lg);
+  text-align: left;
+}
+
+.open[aria-disabled] {
+  opacity: var(--disabled-opacity);
+}
+
+.poster {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 9 / 16;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+}
+
+.posterImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.posterIcon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+  color: var(--text-muted);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0);
+  min-width: 0;
+}
+
+.name {
+  overflow: hidden;
+  color: var(--text-primary);
+  font: var(--type-body-strong);
+  letter-spacing: var(--type-body-strong-track);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The meta lines wrap: when it was made and its format are never cut off. */
+.meta {
+  min-height: var(--type-caption-line);
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  overflow-wrap: anywhere;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2);
+}
+
+.badge,
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-0);
+  padding: var(--space-0) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-pill);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  white-space: nowrap;
+}
+
+.badge {
+  background: var(--accent-wash);
+  color: var(--accent);
+}
+
+.badge[data-reviewed] {
+  background: var(--surface-3);
+  color: var(--text-muted);
+}
+
+.updated {
+  color: var(--accent);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}
+
+.chip {
+  margin-left: auto;
+  background: var(--surface-3);
+  color: var(--warning);
+  cursor: pointer;
+}
+
+.chip[data-failed] {
+  background: var(--danger-wash);
+  color: var(--danger);
+}
+
+.chip:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.chipIcon {
+  width: var(--type-caption-size);
+  height: var(--type-caption-size);
+}
+
+/* The notes: a list under the card, over what follows. */
+.notes {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-1) 0 0;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-5);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--surface-3);
+  box-shadow: var(--shadow-overlay);
+  color: var(--text-primary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}
+
+/* The filter row: the chip groups side by side, wrapping. */
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}

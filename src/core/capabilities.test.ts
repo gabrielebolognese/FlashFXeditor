@@ -40,7 +40,7 @@ describe("capabilities.json (spec §21.2)", () => {
     expect(manifest.lastBatch).toBe(LAST_BATCH);
     expect(manifest.cli).toEqual({ validate: true, normalize: true, info: true, render: true, compare: true, fill: true });
     expect(manifest.text).toMatchObject({ spans: true, counter: true, animators: true });
-    expect(manifest.interop).toEqual({ openLink: true, externalReload: true, repairOnOpen: true, fallbackOf: true, generatorMeta: true });
+    expect(manifest.interop).toEqual({ openLink: true, externalReload: true, repairOnOpen: true, fallbackOf: true, generatorMeta: true, projectInbox: true, cardFile: true, reviewFile: true, editedCopy: true });
     expect(manifest.audio).toMatchObject({ fades: true, trackGain: true, pan: true, loudness: true, beatMarkers: true, panRange: [-1, 1], fadeCurves: ["linear", "equalPower", "exponential"] });
     expect(FEATURES.templates).toBe(true);
   });

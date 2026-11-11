@@ -184,6 +184,11 @@ export const RULES: Record<string, Rule> = {
   "interop.repairOnOpen": { test: "src/project/repair.test.ts" },
   "interop.fallbackOf": anyKey("fallbackOf"),
   "interop.generatorMeta": anyKey("generator"),
+  // The project inbox: the sample projects of fixtures/interop/inbox/, watched and listed by this test.
+  "interop.projectInbox": { test: "src/project/inbox/inboxFixtures.test.ts" },
+  "interop.cardFile": { test: "src/project/inbox/inboxFixtures.test.ts" },
+  "interop.reviewFile": { test: "src/project/inbox/inboxFixtures.test.ts" },
+  "interop.editedCopy": { test: "src/project/inbox/inboxFixtures.test.ts" },
 };
 
 /** The top-level manifest keys that describe the build, not a capability. */

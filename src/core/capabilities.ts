@@ -30,7 +30,7 @@ export const FEATURES = {
   templates: true,
   export: { alpha: true, imageSequence: true, gif: true, stems: true },
   cli: { validate: true, normalize: true, info: true, render: true, compare: true, fill: true },
-  interop: { openLink: true, externalReload: true, repairOnOpen: true, fallbackOf: true, generatorMeta: true },
+  interop: { openLink: true, externalReload: true, repairOnOpen: true, fallbackOf: true, generatorMeta: true, projectInbox: true, cardFile: true, reviewFile: true, editedCopy: true },
 } as const;
 
 export interface Capabilities {

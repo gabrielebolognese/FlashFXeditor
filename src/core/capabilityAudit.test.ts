@@ -30,7 +30,7 @@ describe("capability audit (Batch 82)", () => {
     expect(tested).toEqual([
       "audio.beatMarkers", "captions.wordsImport", "cli.compare", "cli.fill", "cli.info", "cli.normalize", "cli.render", "cli.validate",
       "export.alpha", "export.containers", "export.gif", "export.imageSequence", "export.stems", "export.videoCodecs",
-      "interop.externalReload", "interop.openLink", "interop.repairOnOpen", "media.animatedImage.alpha", "media.animatedImage.formats",
+      "interop.cardFile", "interop.editedCopy", "interop.externalReload", "interop.openLink", "interop.projectInbox", "interop.repairOnOpen", "interop.reviewFile", "media.animatedImage.alpha", "media.animatedImage.formats",
       "media.audio", "media.image", "media.lottieFormats", "media.video", "vector.svgImport",
     ]);
   });

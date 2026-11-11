@@ -15,7 +15,8 @@ import { errorMessage } from "../project/errorMessage.js";
 import { fromHandle, isDirectoryHandle, type FsDir } from "../project/fs.js";
 import { createProject, openProjectFolder, ProjectOpenError, type NewProjectSettings, type OpenedProject } from "../project/openProject.js";
 import { ProjectSession } from "../project/ProjectSession.js";
-import { parseOpenLink, resolveLinkTarget, withoutOpenLink } from "../project/projectsFolder.js";
+import { resolveOpenLink } from "../project/inbox/links.js";
+import { parseOpenLink, withoutOpenLink } from "../project/projectsFolder.js";
 import { RECENT_THUMB_HEIGHT, type RecentProject } from "../project/recentProjects.js";
 import type { RepairReport } from "../project/repair.js";
 import { RESOLUTION_PRESETS, ratioCommandId } from "../project/projectPresets.js";
@@ -31,7 +32,7 @@ import { attachPresets, detachPresets } from "./presetController.js";
 import { attachPreview, captureThumbnail, detachPreview, frameService } from "./previewController.js";
 import { reportRepair, repairOpened } from "./repairController.js";
 import { syncTemplatesFromLibrary } from "./compoundTemplateController.js";
-import { actions, appSettings, appVersion, documentStore, focusScopes, layoutStore, projectsFolder, recentProjects, saveStatus, sessionStore, templateStore, lookStore, compoundTemplateStore, workerPool } from "./services.js";
+import { actions, appSettings, appVersion, documentStore, focusScopes, layoutStore, inbox, recentProjects, saveStatus, sessionStore, templateStore, lookStore, compoundTemplateStore, watchedFolders, workerPool } from "./services.js";
 
 /** Workers that serve one project (sessions, indexes, analysis and proxy jobs): stopped when it closes (P13). */
 const PROJECT_WORKERS = ["decode", "analysis", "proxy"] as const;
@@ -63,7 +64,7 @@ export interface AppView {
   dialog: Dialog | null;
   /** A pick/open/create flow is running; buttons that start another one are disabled. */
   busy: boolean;
-  /** `/?open=<path>` waits for the projects folder (a choice) or its permission (a click): the start screen says so (spec §21.5). */
+  /** `/?open=<path>` waits for a watched folder (a choice) or for access to one (a click): the start screen says so (spec §21.5). */
   openLink: { path: string; need: "folder" | "permission" } | null;
 }
 
@@ -270,6 +271,12 @@ async function openDir(dir: FsDir, retry = false): Promise<void> {
   // Media that disagree with their files are corrected before the project shows (one step, not undoable; spec §21.5).
   const repaired = await repairOpened(opened);
   await switchTo(repaired.opened, repaired.report);
+  // Opened, whatever the way in (a card, Recent, a link, Open project, a drop): reviewed. review.json goes into the
+  // folder, or the record stays in this browser when the folder cannot be written; then the inbox shows it.
+  void inbox
+    .markOpened(repaired.opened.dir, repaired.opened.project.id)
+    .then(() => inbox.scan())
+    .catch((error: unknown) => console.warn("[inbox] could not mark the project as reviewed", error));
 }
 
 /** New project: pick a folder, then the settings dialog (with a template preselected for New from template). */
@@ -375,10 +382,13 @@ function onBeforeUnload(event: BeforeUnloadEvent): void {
   }
 }
 
-// --- Projects folder and open links (spec §21.5) ---
+// --- Watched folders and open links (spec §21.5; the project inbox) ---
 
-/** The projects folder picker (a user gesture); null when cancelled. */
-async function pickProjectsFolder(): Promise<FsDir | null> {
+/** Chrome refuses some folders in its picker; what to do instead, in plain words. */
+export const BLOCKED_FOLDER_HINT = "Chrome does not allow Desktop, Documents, the home folder or a OneDrive folder itself, or a folder that contains them. Pick a folder inside one of them, or a folder like Videos.";
+
+/** The watched folder picker (a user gesture); null when cancelled. */
+async function pickWatchedFolder(): Promise<FsDir | null> {
   try {
     const picker = window as unknown as DirectoryPickerWindow;
     return fromHandle(await picker.showDirectoryPicker({ id: "shorts-editor-projects", mode: "readwrite" }));
@@ -388,83 +398,96 @@ async function pickProjectsFolder(): Promise<FsDir | null> {
   }
 }
 
-/** Opens the project at `path` inside the projects folder `root`; a missing folder is a toast and the start screen. */
-function openLinkTarget(root: FsDir, path: string): Promise<void> {
-  return guarded(async () => {
-    const target = await resolveLinkTarget(root, path);
-    setView({ openLink: null });
-    window.history.replaceState(null, "", `${window.location.pathname}${withoutOpenLink(window.location.search)}${window.location.hash}`);
-    if (!target.ok) {
+const sameFolder = (a: FsDir, b: FsDir): Promise<boolean> =>
+  isDirectoryHandle(a.handle) && isDirectoryHandle(b.handle) ? a.handle.isSameEntry(b.handle) : Promise.resolve(a.handle === b.handle);
+
+/** Opens a project folder the app already holds (an inbox card, a link): the same path as Open project. */
+export function openFolder(dir: FsDir): Promise<void> {
+  return guarded(() => openDir(dir));
+}
+
+/** The link is used (or leads nowhere): the address drops it and the start screen stops asking. */
+function finishLink(): void {
+  setView({ openLink: null });
+  window.history.replaceState(null, "", `${window.location.pathname}${withoutOpenLink(window.location.search)}${window.location.hash}`);
+}
+
+/**
+ * Follows `/?open=<path>` or `/?open=<folder label>:<path>`: the path is tried in each watched folder in order
+ * and the first project found opens. `request`: a click allows asking for access to folders that lost it.
+ */
+async function followLink(link: string, request: boolean): Promise<void> {
+  try {
+    await watchedFolders.load();
+    const result = await resolveOpenLink(watchedFolders.folders(), link, { request });
+    if (result.kind === "noFolders") {
+      setView({ openLink: { path: link, need: "folder" } });
+    } else if (result.kind === "needsAccess") {
+      setView({ openLink: { path: link, need: "permission" } });
+      if (request) showToast({ tone: "warning", message: "No access to a watched folder", detail: `Allow access to ${result.folders.map((folder) => folder.label).join(", ")} to open ${result.path}.` });
+    } else if (result.kind === "missing") {
+      finishLink();
+      const where = result.searched.length === 1 ? (result.searched[0]?.label ?? "the watched folder") : "any watched folder";
       showToast({
         tone: "warning",
-        message: `Can't open ${path}`,
-        detail: target.reason === "missing" ? `There is no folder "${path}" inside ${root.name}.` : `The folder "${path}" has no project.json.`,
+        message: `Can't open ${result.path}`,
+        detail: result.reason === "missing" ? `There is no folder "${result.path}" inside ${where}.` : `The folder "${result.path}" has no project.json.`,
       });
-      return;
+    } else {
+      finishLink();
+      await openFolder(result.dir);
     }
-    await openDir(target.dir);
-  });
+  } catch (error) {
+    showError("Could not open the link", error);
+  }
 }
 
-/** `/?open=<path>` at start: opens at once when the stored folder is allowed, else the start screen asks for the one click it needs. */
-export async function startOpenLink(path: string): Promise<void> {
-  const root = await projectsFolder.load();
-  if (!root) {
-    setView({ openLink: { path, need: "folder" } });
-    return;
-  }
-  let status: string = "prompt";
-  try {
-    status = await root.queryPermission("readwrite");
-  } catch (error) {
-    console.warn("[open-link] cannot query the projects folder", error);
-  }
-  if (status !== "granted") {
-    setView({ openLink: { path, need: "permission" } });
-    return;
-  }
-  await openLinkTarget(root, path);
-}
-
-/** Start screen, Settings > General and the palette: choose (or change) the projects folder; a waiting link opens with it. */
-export async function chooseProjectsFolder(): Promise<void> {
-  try {
-    const dir = await pickProjectsFolder();
-    if (!dir) return;
-    await projectsFolder.set(dir);
-    const pending = appView.getState().openLink;
-    if (pending) await openLinkTarget(dir, pending.path);
-  } catch (error) {
-    showError("Could not use that folder", error);
-  }
+/** `/?open=<path>` at start: opens at once when a watched folder with access has it, else the start screen asks for the one click it needs. */
+export function startOpenLink(link: string): Promise<void> {
+  return followLink(link, false);
 }
 
 /** The start screen's "Open <path>": the click gives `requestPermission` its user gesture. */
 export async function continueOpenLink(): Promise<void> {
   const pending = appView.getState().openLink;
-  const root = projectsFolder.dir;
-  if (!pending || !root) return;
-  try {
-    if ((await root.requestPermission("readwrite")) !== "granted") {
-      showToast({ tone: "warning", message: "No access to the projects folder", detail: `Allow access to ${root.name} to open ${pending.path}.` });
-      return;
-    }
-  } catch (error) {
-    showError("Could not ask for access", error);
-    return;
-  }
-  await openLinkTarget(root, pending.path);
+  if (pending) await followLink(pending.path, true);
 }
 
-/** Forgets the projects folder (Settings > General). */
-export function clearProjectsFolder(): void {
-  void projectsFolder.clear();
+/** Start screen, Settings > General and the palette: add a folder to watch; a waiting link opens with it. */
+export async function addWatchedFolder(): Promise<void> {
+  let dir: FsDir | null;
+  try {
+    dir = await pickWatchedFolder();
+  } catch (error) {
+    console.info("[watched-folders] the browser refused the folder:", error);
+    showToast({ tone: "warning", message: "The browser did not allow that folder", detail: BLOCKED_FOLDER_HINT }, { durationMs: 12_000 });
+    return;
+  }
+  if (!dir) return;
+  try {
+    await watchedFolders.add(dir, sameFolder);
+    void inbox.scan();
+    const pending = appView.getState().openLink;
+    if (pending) await followLink(pending.path, false);
+  } catch (error) {
+    showError("Could not use that folder", error);
+  }
+}
+
+/** Settings > General: stop watching a folder (nothing on disk changes). */
+export function removeWatchedFolder(id: string): void {
+  void watchedFolders.remove(id).then(() => inbox.scan());
+}
+
+/** Settings > General: the label a folder shows on its cards and takes in `/?open=<label>:<path>`. */
+export function renameWatchedFolder(id: string, label: string): void {
+  void watchedFolders.rename(id, label).then(() => inbox.scan());
 }
 
 /** Registers project actions and loads persisted lists. Returns a stop function. */
 export function installProjectController(): () => void {
   void recentProjects.load();
-  void projectsFolder.load();
+  void watchedFolders.load();
   const link = parseOpenLink(window.location.search);
   if (link) void startOpenLink(link);
   void appSettings.load();
@@ -490,7 +513,7 @@ export function installProjectController(): () => void {
       if (typeof id === "string") void newFromTemplate(id);
     }),
     actions.register("project.open", () => void openProject()),
-    actions.register("project.chooseProjectsFolder", () => void chooseProjectsFolder()),
+    actions.register("project.chooseProjectsFolder", () => void addWatchedFolder()),
     actions.register("project.rename", () => projectNaming.set(true), { enabled: () => current !== null }),
     actions.register("project.allowEditing", () => allowEditing(), { enabled: () => saveStatus.getState().readOnly }),
     ...RESOLUTION_PRESETS.map((preset) => actions.register(ratioCommandId(preset), () => changeRatio(preset), { enabled: () => current !== null })),

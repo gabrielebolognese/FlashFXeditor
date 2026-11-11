@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { memoryKeyValueStore } from "./kv.js";
 import { createMemoryDir } from "./memoryFs.js";
-import { openSegments, parseOpenLink, ProjectsFolder, resolveLinkTarget, withoutOpenLink } from "./projectsFolder.js";
+import { openSegments, parseOpenLink, resolveLinkTarget, withoutOpenLink } from "./projectsFolder.js";
 
 describe("open links", () => {
   it("reads and cleans the open parameter", () => {
@@ -41,22 +40,5 @@ describe("resolveLinkTarget", () => {
     expect(await resolveLinkTarget(root, "interop/nope")).toEqual({ ok: false, reason: "missing" });
     expect(await resolveLinkTarget(root, "interop/empty")).toEqual({ ok: false, reason: "noProject" });
     expect(await resolveLinkTarget(root, "../x")).toEqual({ ok: false, reason: "missing" });
-  });
-});
-
-describe("ProjectsFolder", () => {
-  it("keeps the handle across loads and forgets it", async () => {
-    const kv = memoryKeyValueStore();
-    const dir = createMemoryDir("projects");
-    const wrap = (handle: unknown) => (handle === dir ? dir : null);
-    const first = new ProjectsFolder(kv, wrap);
-    expect(await first.load()).toBeNull();
-    await first.set(dir);
-    expect(first.info.getState()).toEqual({ name: "projects" });
-    const second = new ProjectsFolder(kv, wrap);
-    expect(await second.load()).toBe(dir);
-    await second.clear();
-    expect(second.info.getState()).toBeNull();
-    expect(await new ProjectsFolder(kv, wrap).load()).toBeNull();
   });
 });

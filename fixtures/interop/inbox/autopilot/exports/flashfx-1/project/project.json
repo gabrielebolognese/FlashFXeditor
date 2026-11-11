@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 24,
+  "id": "inbox-flashfx-1",
+  "name": "FlashFX 1",
+  "settings": {
+    "width": 1080,
+    "height": 1920,
+    "fps": {
+      "num": 30,
+      "den": 1
+    },
+    "background": {
+      "r": 0,
+      "g": 0,
+      "b": 0,
+      "a": 1
+    },
+    "sampleRate": 48000
+  },
+  "media": {},
+  "bins": [],
+  "tracks": [
+    {
+      "id": "v1",
+      "kind": "video",
+      "name": "V1",
+      "clipIds": [
+        "bar"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    }
+  ],
+  "clips": {
+    "bar": {
+      "id": "bar",
+      "trackId": "v1",
+      "kind": "solid",
+      "name": "Solid",
+      "start": 0,
+      "duration": 90,
+      "enabled": true,
+      "fill": {
+        "r": 0.55,
+        "g": 0.36,
+        "b": 0.96,
+        "a": 1
+      },
+      "shape": "roundedRect",
+      "size": {
+        "w": 700,
+        "h": 700
+      },
+      "cornerRadius": 54,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1
+    }
+  },
+  "markers": [],
+  "captionTracks": {},
+  "textPresetsLocal": [],
+  "sequences": {},
+  "meta": {
+    "createdAt": "2026-11-11T17:00:00.000Z",
+    "modifiedAt": "2026-11-11T17:00:00.000Z",
+    "appVersion": "1.2.0",
+    "generator": {
+      "name": "interop-fixture",
+      "version": "1",
+      "source": "scripts/fixtures/make-inbox.mjs"
+    }
+  }
+}

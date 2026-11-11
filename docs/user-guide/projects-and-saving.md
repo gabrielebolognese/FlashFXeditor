@@ -289,14 +289,47 @@ Tools outside the editor can create projects and keep editing them. The editor o
 > **Video placeholder: Projects from other tools**
 > - File: `videos/projects-and-saving/projects-from-other-tools.mp4` (not recorded yet)
 > - Length: about 75 seconds
-> - Shows: on the start screen click **Projects folder** and choose a folder; open `/?open=interop/basic` in a new tab and the project opens; edit `project.json` in another program and watch the project reload; make a change in the editor, edit the file again, and click **Reload** in the banner; open a project with **baked** layers, select a baked clip, click **Make editable** in the **Properties** header and confirm.
+> - Shows: on the start screen click **Add a folder to watch** and choose a folder; its projects appear as cards in the **Inbox**; click a card and go back to see **Reviewed**; open `/?open=interop/basic` in a new tab and the project opens; edit `project.json` in another program and watch the project reload; make a change in the editor, edit the file again, and click **Reload** in the banner; open a project with **baked** layers, select a baked clip, click **Make editable** in the **Properties** header and confirm.
+
+### See new projects in the inbox
+The **Inbox** at the top of the start screen lists every project found in your watched folders, each as a card. You do not need a link or a path: a project a tool writes into a watched folder shows up on its own.
+
+1. On the start screen, click **Add a folder to watch** and choose the folder your tool writes its projects into. Add more folders with **Add folder**, or in **Settings** > **General** under **Watched folders**.
+2. Wait for the card. The editor looks at the folders when it starts, when you switch back to its window, and every 30 seconds.
+3. Click the card to open the project.
+
+What a card shows:
+- The poster, the title, the folder label, how long ago it was made, and its length and format.
+- **Not reviewed** until you open the project, then **Reviewed**. When the tool builds the project again after you opened it, the card says **Not reviewed** and **updated**.
+- A chip with a number when the tool left notes. Hover or click it to read them. The chip is red when one of the tool's checks failed.
+
+Cards from all watched folders are in one list. Cards that are not reviewed come first, then the newest. The title of the section says how many are not reviewed.
+
+The chips above the cards filter the list:
+- **All** shows everything.
+- One chip per kind of project, for example one per channel (**FlashFX reel**). The tool that made the project sets the kind.
+- One chip per watched folder, when you watch more than one.
+- **Not reviewed only** hides what you already opened.
+
+The editor remembers your filter in this browser.
+
+A card with the badge **Edited copy** is the backup a tool kept of a project you had edited before it built the project again. It is listed so you can open it, but it does not count as not reviewed.
+
+Right-click a card for **Mark as reviewed**, **Mark as not reviewed** and **Remove from inbox**. Removing hides the card until the tool builds the project again. It never deletes anything on disk.
+
+Things to know:
+- After the browser restarts it may ask again for access to a folder. The inbox then shows a **Reconnect** button for that folder. One click is enough.
+- Chrome does not allow Desktop, Documents, the home folder or a OneDrive folder itself. Pick a folder inside one of them, or a folder like Videos.
+- In **Settings** > **General** you can change the label of a watched folder or remove it with the **x**. Removing a folder deletes nothing.
+- While a project is open, a new project in a watched folder shows a short message with an **Open** button. Your open project stays as it is unless you click it.
+- A project is found up to three folders below the watched folder. You can watch the main folder of a tool that keeps its projects in a folder named `exports`.
 
 ### Open a project from a link
-1. On the start screen, click **Projects folder** and choose the folder that holds your generated projects. You can also do this in **Settings** > **General** (**Projects folder**, **Choose…** or **Change…**), or run **Choose projects folder…** from the command palette.
-2. Open a link like `/?open=interop/basic`. The path is relative to the projects folder.
-3. If the start screen shows **Choose your projects folder to open** and the path, choose the folder, or allow access again. The project opens after at most one click, and it joins **Recent projects**.
+1. Add the folder that holds your generated projects as a watched folder (see above). You can also run **Add a folder to watch…** from the command palette.
+2. Open a link like `/?open=interop/basic`. The path is looked up in each watched folder, in order, and the first project found opens. To name the folder, write its label first: `/?open=Reels:monday/project`.
+3. If the start screen shows a button with the path, click it to add the folder or to allow access again. The project opens after at most one click, and it joins **Recent projects**.
 
-To remove the folder, click the **x** next to it in **Settings** > **General**. A path that leaves the folder, or a folder without a project, does not open.
+A path that leaves the folder, or a folder without a project, does not open.
 
 ### Reload when another tool changes the project
 The editor checks `project.json` when you return to its window and every 5 seconds while it is visible. It does not check during a drag or an export.

@@ -1,0 +1,12 @@
+{
+  "schema": "card/1",
+  "title": "Pull-up progressions",
+  "kind": "reel",
+  "generator": "reels-pipeline",
+  "generationId": "6f63db0a8220ff5b3650cb4a6fb7022eb7087dbb4c2e362cac2065c2b275fa9d",
+  "generatedAt": "2026-11-11T12:00:00Z",
+  "durationSec": 3,
+  "notes": [
+    "Rebuilt with the new intro"
+  ]
+}

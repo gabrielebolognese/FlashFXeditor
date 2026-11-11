@@ -24,6 +24,7 @@ import { installPlaybackController } from "./app/playbackController.js";
 import { installFontController } from "./app/fontController.js";
 import { installPresetController } from "./app/presetController.js";
 import { installPreviewController, startGpu } from "./app/previewController.js";
+import { installInboxController } from "./app/inboxController.js";
 import { installProjectController } from "./app/projectController.js";
 import { installPropertiesController } from "./app/propertiesController.js";
 import { startServices } from "./app/services.js";
@@ -76,6 +77,7 @@ async function start(): Promise<void> {
   startGpu(choice);
   installSettingsController();
   installProjectController();
+  installInboxController();
   installHistoryController();
   installExternalController();
   installStandInController();

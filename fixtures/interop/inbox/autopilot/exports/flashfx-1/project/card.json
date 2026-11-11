@@ -1,0 +1,18 @@
+{
+  "schema": "card/1",
+  "title": "Glow text in 20 seconds",
+  "kind": "FlashFX reel",
+  "generator": "reels-autopilot",
+  "generationId": "5092f43cca7303c5a89cc915d7db1bae1842764a277a0209f62bbd9f361c2e9d",
+  "generatedAt": "2026-11-11T15:00:00Z",
+  "durationSec": 3,
+  "format": "1080x1920 30 fps",
+  "video": "../flashfx-1.mp4",
+  "checks": [
+    {
+      "name": "validate",
+      "ok": true
+    }
+  ],
+  "notes": []
+}

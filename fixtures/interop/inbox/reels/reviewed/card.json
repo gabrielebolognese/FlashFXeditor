@@ -1,0 +1,15 @@
+{
+  "schema": "card/1",
+  "title": "Morning routine",
+  "kind": "reel",
+  "generator": "reels-pipeline",
+  "generationId": "69402378f28b6da97f3a54b1193321a22e318a0662c516ff3ddf7e1979d77299",
+  "generatedAt": "2026-11-10T08:00:00Z",
+  "durationSec": 3,
+  "checks": [
+    {
+      "name": "validate",
+      "ok": true
+    }
+  ]
+}

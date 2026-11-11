@@ -19,6 +19,10 @@ vi.mock("./services.js", async () => {
   const { INITIAL_SAVE_STATUS } = await import("../project/Autosaver.js");
   const { memoryKeyValueStore } = await import("../project/kv.js");
   const { RecentProjects } = await import("../project/recentProjects.js");
+  const { Inbox } = await import("../project/inbox/inbox.js");
+  const { WatchedFolders } = await import("../project/inbox/watchedFolders.js");
+  const { MemoryDir } = await import("../project/memoryFs.js");
+  const watchedFolders = new WatchedFolders(memoryKeyValueStore(), (handle) => (handle instanceof MemoryDir ? handle : null));
   const { TemplateStore } = await import("../project/templates.js");
   const { IdleQueue } = await import("../core/scheduler/IdleQueue.js");
   const { FrameScheduler } = await import("../core/scheduler/FrameScheduler.js");
@@ -41,6 +45,8 @@ vi.mock("./services.js", async () => {
     keyValueStore: memoryKeyValueStore(),
     layoutStore: createLayoutStore(null),
     recentProjects: new RecentProjects(memoryKeyValueStore()),
+    watchedFolders,
+    inbox: new Inbox(watchedFolders, memoryKeyValueStore()),
     saveStatus: createStore(INITIAL_SAVE_STATUS),
     scheduler: new FrameScheduler(
       () => 0,

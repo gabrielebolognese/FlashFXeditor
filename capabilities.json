@@ -456,6 +456,10 @@
     "externalReload": true,
     "repairOnOpen": true,
     "fallbackOf": true,
-    "generatorMeta": true
+    "generatorMeta": true,
+    "projectInbox": true,
+    "cardFile": true,
+    "reviewFile": true,
+    "editedCopy": true
   }
 }

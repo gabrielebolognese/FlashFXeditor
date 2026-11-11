@@ -1,9 +1,9 @@
-import { FolderOpen, RotateCcw, Trash2, X } from "lucide-react";
+import { FolderOpen, FolderPlus, RotateCcw, Trash2, X } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 import { commandLabel } from "../../app/commandCatalog.js";
 import { presetLibrary } from "../../app/presetController.js";
-import { appView, clearProjectsFolder } from "../../app/projectController.js";
-import { actions, appSettings, projectsFolder } from "../../app/services.js";
+import { appView, BLOCKED_FOLDER_HINT, removeWatchedFolder, renameWatchedFolder } from "../../app/projectController.js";
+import { actions, appSettings, watchedFolders } from "../../app/services.js";
 import { checkDownloadedModels, downloadedModels, releaseTranscribeWorker, removeDownloadedModel } from "../../app/transcribeController.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import { LANGUAGE_OPTIONS } from "../../media/transcribe/languages.js";
@@ -13,6 +13,8 @@ import { SILENCE_MIN_MS, SILENCE_PADDING_MS, SILENCE_THRESHOLD } from "../../tim
 import { Button } from "../../ui/Button.js";
 import { IconButton } from "../../ui/IconButton.js";
 import { Select } from "../../ui/Select.js";
+import { TextField } from "../../ui/TextField.js";
+import { MAX_LABEL, type WatchedFolderInfo } from "../../project/inbox/watchedFolders.js";
 import { shortcutLabel } from "../../ui/shortcutLabel.js";
 import { Row } from "../properties/Section.js";
 import sectionStyles from "../properties/Section.module.css";
@@ -126,24 +128,43 @@ function Transcription() {
  * The preset library folder (spec §10.3; the Presets tab's strip has the same buttons). Sync and Stop
  * are always there (Batch 46), disabled until a folder is chosen.
  */
-/** The projects folder `/?open=<path>` links resolve against (spec §21.5): chosen once, kept in this browser. */
-function ProjectsFolderRow() {
-  const folder = useStoreSelector(projectsFolder.info, (info) => info);
+const selectWatched = (list: readonly WatchedFolderInfo[]) => list;
+
+/**
+ * The watched folders (the project inbox; they replace the single projects folder of spec §21.5): the folders
+ * generators write projects into. Each has a label (shown on its cards, usable in `/?open=<label>:<path>`).
+ */
+function WatchedFolderRows() {
+  const folders = useStoreSelector(watchedFolders.list, selectWatched);
   return (
-    <Row label="Projects folder">
-      <div className={styles.folder}>
-        <span className={styles.folderText}>
-          {folder && <span className={styles.folderName}>{folder.name}</span>}
-          <span className={styles.muted}>{folder ? "/?open=<path> opens a project inside it" : "None: needed for open links"}</span>
-        </span>
-        <span className={styles.folderButtons}>
-          <Button size="compact" icon={FolderOpen} commandId="project.chooseProjectsFolder">
-            {folder ? "Change…" : "Choose…"}
-          </Button>
-          <IconButton control icon={X} label={folder ? "Forget the projects folder" : "Forget the projects folder: none is set"} disabled={!folder} onClick={clearProjectsFolder} />
-        </span>
-      </div>
-    </Row>
+    <>
+      {folders.map((folder, index) => (
+        <Row key={folder.id} label={index === 0 ? "Watched folders" : ""}>
+          <div className={styles.folder}>
+            <span className={styles.folderText}>
+              <TextField compact value={folder.label} maxLength={MAX_LABEL} ariaLabel={`Label of the watched folder ${folder.name}`} onCommit={(label) => renameWatchedFolder(folder.id, label)} />
+              <span className={styles.muted}>Folder: {folder.name}</span>
+            </span>
+            <span className={styles.folderButtons}>
+              <IconButton control icon={X} label={`Stop watching ${folder.name} (nothing is deleted)`} onClick={() => removeWatchedFolder(folder.id)} />
+            </span>
+          </div>
+        </Row>
+      ))}
+      <Row label={folders.length === 0 ? "Watched folders" : ""}>
+        <div className={styles.folder}>
+          <span className={styles.folderText}>
+            <span className={styles.muted}>{folders.length === 0 ? "None. Projects written into a watched folder show up in the inbox." : "Projects in these folders show up in the inbox. Open links look in each, in order."}</span>
+            <span className={styles.muted}>{BLOCKED_FOLDER_HINT}</span>
+          </span>
+          <span className={styles.folderButtons}>
+            <Button size="compact" icon={FolderPlus} commandId="project.chooseProjectsFolder">
+              Add folder…
+            </Button>
+          </span>
+        </div>
+      </Row>
+    </>
   );
 }
 
@@ -231,7 +252,7 @@ export function GeneralSettings() {
       </Group>
       <Group title="Storage">
         <CacheRow projectOpen={projectOpen} />
-        <ProjectsFolderRow />
+        <WatchedFolderRows />
         <LibraryFolder />
         <Row label="Starter presets">
           <div className={styles.folderButtons}>

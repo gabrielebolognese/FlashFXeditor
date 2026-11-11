@@ -90,7 +90,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 
 **Menus take the keyboard.** While a menu is open, the arrow keys, <kbd>Enter</kbd> and <kbd>Space</kbd> work on its rows. When it closes, the keyboard goes back to the panel you were in. See [Menus and lists](#menus-and-lists).
 
-**No keys in Batch 56.** Reload project from disk, Keep my version, Make all baked layers editable and Choose projects folder… have no default key; add one in **Settings** > **Shortcuts**.
+**No keys in Batch 56.** Reload project from disk, Keep my version, Make all baked layers editable and Add a folder to watch… (called Choose projects folder… before the inbox) have no default key; add one in **Settings** > **Shortcuts**.
 
 **Your keys.** The tables on this page show the default keys. If you changed keys in **Settings** > **Shortcuts**, yours apply instead, and the tooltips, menus, the command palette and the shortcut sheet (<kbd>?</kbd>) show yours. Many commands that have no key on this page, such as **Normalize**, **Ripple mode** or **Add solid**, can get one there. See [Change a shortcut](command-palette-and-custom-shortcuts.md#change-a-shortcut).
 

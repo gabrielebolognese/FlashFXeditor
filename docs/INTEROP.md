@@ -1157,7 +1157,7 @@ Generator fallback levels, from best to worst: a **sprite** (a baked image or sh
 
 ### 7.1 Opening, updating and converting (manifest keys `interop.openLink`, `interop.externalReload`, `interop.repairOnOpen`)
 
-- **Open link.** The user chooses a *projects folder* once (the start screen's `Projects folder` button, Settings > General); the editor keeps it in the browser, per address. `/?open=<path>` opens the project folder at `<path>` inside it (segments joined by `/`). Print that link when a generator finishes. With no projects folder set, or without permission, the start screen shows one button (`Choose your projects folder to open <path>`, `Open <path>`); a missing folder or one without `project.json` gives a toast naming the path. An opened project joins Recent projects.
+- **Open link.** The user adds *watched folders* once (the start screen's inbox, Settings > General; section 7.1.1); the editor keeps them in the browser, per address. `/?open=<path>` opens the project folder at `<path>` inside the first watched folder that has it (segments joined by `/`); `/?open=<folder label>:<path>` names the folder. Print that link when a generator finishes. With no watched folder, or without permission, the start screen shows one button (`Add the folder that holds <path>`, `Open <path>`); a missing folder or one without `project.json` gives a toast naming the path. An opened project joins Recent projects.
 - **Edit it again.** While a project is open, the editor looks at `project.json` when its window gets focus and every 5 s while the window is visible and nothing is dragging, saving or exporting. A file it did not write itself reloads in place when the user has no unsaved changes (the document that was open goes to `history/`; playhead, zoom and selection stay). With unsaved changes a banner offers `Reload` and `Keep mine`; the editor writes nothing until the user answers, and a save that follows `Keep mine` copies your version of `project.json` to `history/` first. Write the file in one piece (write a temporary file, then replace `project.json`) so a check never reads half of it.
 - **Repair on open.** Media records whose `durationUs`, `width`/`height`, `fps` or `hasAudio` disagree with the file's header by more than one frame are corrected, clips that reach past a shortened media end are trimmed, and a toast gives the counts (details in `history/repair-<date>.log`). `normalize` writes the same facts, so a project it completed needs no repair.
 - **Make editable.** A stand-in shows a `baked` badge on its clip and, in the properties panel, `Make editable`. The conversion takes `data` (and `data.media`, whose files are inside the folder), completes it with the field table's defaults, migrates it from `fallbackOf.schemaVersion`, places it at `start - headTrim` for `duration + headTrim` frames and applies a head trim of `headTrim` frames with the editor's own trim, then validates the project strictly. It is one undo step; what was changed on the stand-in itself (transform, opacity, keys) is not carried over. `Make all editable` (palette) converts every convertible stand-in and reports the rest. A sparse stand-in written at an older schema:
@@ -1167,6 +1167,46 @@ Generator fallback levels, from best to worst: a **sprite** (a baked image or sh
 ```
 
 - **Large projects.** Up to 40 video tracks, 1,000 clips and 5,000 keyframes open in under 2 s on a warm cache (`fixtures/interop/large/`, made by `scripts/fixtures/make-large.mjs`); `fixtures/interop/standins/` has stand-ins to convert.
+
+### 7.1.1 The project inbox: watched folders, `card.json` and `review.json` (manifest keys `interop.projectInbox`, `interop.cardFile`, `interop.reviewFile`, `interop.editedCopy`)
+
+A generator does not have to print a link: a project written into a watched folder shows up on the editor's start screen on its own, as a card labeled `Not reviewed` until the user opens it.
+
+- **Watched folders.** The user adds each output folder once (the start screen's `Add a folder to watch`, Settings > General); the editor keeps them in the browser, per address. The single projects folder of earlier versions became the first watched folder. Each folder has a label (default: the folder's name, unique, without `:` or slashes). Chrome refuses Desktop, Documents, the home folder and a OneDrive folder itself, and folders that contain them: write into a subfolder of those, or into a folder like Videos.
+- **Discovery.** In every watched folder, a project is any directory up to 3 levels below it (the watched folder itself counts as level 0) that contains `project.json`. Folders named `cache`, `history`, `media`, `fonts`, `luts` or `node_modules`, and folders whose name starts with a dot, are not entered; a project folder is not searched for more projects (so its own `exports/` is never looked at). A folder named `exports` outside a project is entered: with a generator's root folder watched, `<root>/exports/<name>/project` (3 levels down) is listed and `/?open=exports/<name>/project` opens it, while working copies deeper than 3 levels (`<root>/channels/<id>/runs/<run>/s15-project/project`) are not. The cards of all watched folders are shown in one list, each with its folder label; the same relative path in two watched folders gives two cards, each with its own review. The editor looks at start, when its window gets the focus, and every 30 seconds while the window is visible. A project that leaves the disk leaves the inbox. Write `project.json` last (after media, `card.json` and the poster), or write the project elsewhere and move the folder in: a folder without `project.json` is not listed.
+- **The card file (optional).** `card.json` next to `project.json`. Every field is optional, unknown fields are ignored, a field of the wrong type is dropped alone:
+
+```jsonc
+{
+  "schema": "card/1",
+  "title": "Your first handstand push-up",
+  "kind": "tutorial",
+  "generator": "calisthenics-editor",
+  "generationId": "sha256 of the project.json it wrote",
+  "generatedAt": "2026-11-11T17:53:53Z",
+  "durationSec": 90.2,
+  "format": "1080x1920 30 fps",
+  "poster": "poster.jpg",
+  "video": "../2026-11-11.mp4",
+  "checks": [{ "name": "validate", "ok": true }, { "name": "duration", "ok": true }],
+  "notes": ["2 pauses just over the limit at 33.9 s and 39.1 s"]
+}
+```
+
+  `title` is the card's name. `kind` is free text (tutorial, montage, reel, or a channel name and what it makes: "FlashFX reel"); the inbox has one filter chip per `kind`, so write it the same way every time. `generationId` is any text that changes each time the generator writes the project again (the SHA-256 of the `project.json` it wrote is a good one); it is what makes a rebuilt project `Not reviewed` again. `generatedAt` is an ISO time and orders the cards. `poster` names an image in the project folder, 9:16, about 540 x 960. `video` is the generator's own render, relative to the project folder (kept for tools; the card does not play it). `checks` with `"ok": false` turn the notes chip red; `notes` are the things the author should look at.
+- **Without `card.json`:** the title is the `name` of `project.json`, the format comes from its `settings`, the time is when `project.json` was written, and the poster is the thumbnail of Recent projects when the project was opened before (a neutral tile otherwise). Keep `id`, `name` and `settings` near the top of `project.json`: the editor reads only its first 8 KB when they are there.
+- **The review file (written by the editor).** Opening a project by any way (a card, Recent projects, a link, Open project, a drop) writes `review.json` into the project folder, through a temporary file `review.json.tmp` and a replace; `project.json` is not touched for this:
+
+```jsonc
+{ "schema": "review/1", "firstOpenedAt": "2026-11-11T18:02:10.000Z", "lastOpenedAt": "2026-11-11T18:02:10.000Z", "reviewedGenerationId": "the card's generationId, or null" }
+```
+
+  A generator may read it to know what was looked at, and must leave it in place when it rebuilds a project. When the folder cannot be written, the editor keeps the same record in the browser, by project id and generation.
+- **Status.** `Not reviewed`: no `review.json`, or the card's `generationId` differs from `reviewedGenerationId` (the card then also says `updated`). `Reviewed`: opened at least once since it was generated. A project without a `generationId` is reviewed once opened. The editor writes nothing else into a project folder for the inbox. The card's menu has Mark as reviewed, Mark as not reviewed (deletes `review.json`) and Remove from inbox (hides the card in this browser until the generation changes; nothing on disk changes).
+- **Filter.** Above the cards: `All`, one chip per `kind` found on the cards, one chip per watched folder (when there are several) and `Not reviewed only`. The choice is remembered in the browser. No card field beyond `kind` is needed.
+- **Edited copy (`interop.editedCopy`).** A project folder whose name starts with `project.edited-` (for example `exports/<name>/project.edited-2026-11-10`, the backup a generator makes of a project the user edited before it builds the project again) is listed with the badge `Edited copy`. It is never counted or announced as not reviewed and `Not reviewed only` hides it. It opens like any project.
+- **Links.** `/?open=<path>` tries the path in each watched folder, in the order of Settings, and opens the first project found. `/?open=<folder label>:<path>` looks in that folder only (the label is matched without regard to case). A folder that lost its permission is asked for with one click on the start screen.
+- `fixtures/interop/inbox/` holds the cases as three watched folders: `tutorials/handstand/project` (a card with every field and a poster), `tutorials/plain` (no card), `reels/reviewed` and `reels/rebuilt` (built again after its review), and `autopilot`, a generator's root: `exports/flashfx-1/project` (listed), `exports/flashfx-1/project.edited-2026-11-10` (an edited copy) and `channels/flashfx/runs/r1/s15-project/project` (too deep, not listed).
 
 ### 7.2 Render your project and compare it with your reference (manifest keys `cli.render`, `cli.compare`)
 
