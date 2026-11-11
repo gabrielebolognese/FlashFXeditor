@@ -5,7 +5,7 @@ These are the everyday cleanup edits. You can split clips at the playhead or any
 > **Video placeholder: Split, delete and close gaps**
 > - File: `videos/splitting-and-deleting/overview.mp4` (not recorded yet)
 > - Length: about 90 seconds
-> - Shows: a timeline with three videos with sound end to end on V1 and A1; click in the ruler in the middle of the first clip and press <kbd>Ctrl</kbd>+<kbd>K</kbd>: the video and its sound split at the playhead; press <kbd>C</kbd> and point at the second clip: a thin white line follows the pointer; click: the clip and its sound split there; press <kbd>V</kbd>; click the right part of the first clip and press <kbd>Delete</kbd>: a gap opens; point at the gap (it lights up), click it (gold tint, dashed gold outline) and press <kbd>G</kbd>: the gap closes and the later clips move left; click another clip and press <kbd>Shift</kbd>+<kbd>Delete</kbd>: it disappears and the rest moves up; delete two more clips with <kbd>Delete</kbd>, then press <kbd>Shift</kbd>+<kbd>G</kbd>: every gap closes at once; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>: all the gaps come back.
+> - Shows: a timeline with three videos with sound end to end on V1 and A1; click in the ruler in the middle of the first clip and press <kbd>Ctrl</kbd>+<kbd>S</kbd>: the video and its sound split at the playhead; press <kbd>C</kbd> and point at the second clip: a thin white line follows the pointer; click: the clip and its sound split there; press <kbd>V</kbd>; click the right part of the first clip and press <kbd>Delete</kbd>: a gap opens; point at the gap (it lights up), click it (gold tint, dashed gold outline) and press <kbd>G</kbd>: the gap closes and the later clips move left; click another clip and press <kbd>Shift</kbd>+<kbd>Delete</kbd>: it disappears and the rest moves up; delete two more clips with <kbd>Delete</kbd>, then press <kbd>Shift</kbd>+<kbd>G</kbd>: every gap closes at once; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>: all the gaps come back.
 
 ## In this page
 - [Split clips at the playhead](#split-clips-at-the-playhead)
@@ -15,6 +15,7 @@ These are the everyday cleanup edits. You can split clips at the playhead or any
 - [Select a gap](#select-a-gap)
 - [Close a gap](#close-a-gap)
 - [Close all gaps (compact)](#close-all-gaps-compact)
+- [Close the gaps of your last delete](#close-the-gaps-of-your-last-delete)
 - [How other tracks follow a ripple](#how-other-tracks-follow-a-ripple)
 - [Use the clip and gap menus](#use-the-clip-and-gap-menus)
 
@@ -22,12 +23,12 @@ These are the everyday cleanup edits. You can split clips at the playhead or any
 
 1. Move the playhead to the frame where the cut should be. See [Move the playhead](timeline.md#move-the-playhead).
 2. Optional: select the clips you want to split. With nothing selected, every clip under the playhead on the targeted tracks splits.
-3. Press <kbd>Ctrl</kbd>+<kbd>K</kbd>, or click **Split at playhead** in the timeline toolbar.
+3. Press <kbd>Ctrl</kbd>+<kbd>S</kbd>, or click **Split at playhead** in the timeline toolbar.
 
 | You press | What splits |
 | --- | --- |
-| <kbd>Ctrl</kbd>+<kbd>K</kbd> with nothing selected | Every clip under the playhead on the targeted tracks, together with their linked clips. |
-| <kbd>Ctrl</kbd>+<kbd>K</kbd> with clips selected | Only the selected clips under the playhead, together with their linked clips (for example a video's sound). Selected clips that the playhead does not cross stay whole. |
+| <kbd>Ctrl</kbd>+<kbd>S</kbd> with nothing selected | Every clip under the playhead on the targeted tracks, together with their linked clips. |
+| <kbd>Ctrl</kbd>+<kbd>S</kbd> with clips selected | Only the selected clips under the playhead, together with their linked clips (for example a video's sound). Selected clips that the playhead does not cross stay whole. |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> | Every clip under the playhead, on every track, whatever is selected and whichever tracks are targeted. |
 
 Clips on locked tracks never split. While **Linked selection** is off, linked clips split only if they are selected or on a targeted track themselves. See [Turn Linked selection off](links-and-groups.md#turn-linked-selection-off).
@@ -43,9 +44,9 @@ What you get:
 - Selected clips stay selected: both parts of each one. The right part of the clip you clicked last gets the thicker outline. With nothing selected, nothing is selected afterwards.
 - The history step is named **Split clip** or **Split clips**. <kbd>Ctrl</kbd>+<kbd>Z</kbd> puts each clip back together in one step.
 - Nothing splits when no clip is under the playhead, or when the playhead is exactly on a clip's start or end.
-- <kbd>Ctrl</kbd>+<kbd>K</kbd> and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> work in every panel, except while you type in a text field.
+- <kbd>Ctrl</kbd>+<kbd>S</kbd> and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> work in every panel, except while you type in a text field.
 
-> **Tip:** Every track is targeted at first, so with nothing selected, <kbd>Ctrl</kbd>+<kbd>K</kbd> and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> do the same. To keep a track out of <kbd>Ctrl</kbd>+<kbd>K</kbd>, for example a music track under several shots, click the crosshair in its header. See [Choose the tracks your edits use](tracks.md#choose-the-tracks-your-edits-use-target).
+> **Tip:** Every track is targeted at first, so with nothing selected, <kbd>Ctrl</kbd>+<kbd>S</kbd> and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> do the same. To keep a track out of <kbd>Ctrl</kbd>+<kbd>S</kbd>, for example a music track under several shots, click the crosshair in its header. See [Choose the tracks your edits use](tracks.md#choose-the-tracks-your-edits-use-target).
 
 ## Cut clips with the Razor tool
 
@@ -132,7 +133,7 @@ Closing a gap moves the clips after it to the left by the gap's length, so the c
 
 ## Close all gaps (compact)
 
-Press <kbd>Shift</kbd>+<kbd>G</kbd>, or click **Close all gaps (compact)** in the timeline toolbar. Every gap on the compacted tracks closes, from the start of the timeline to the last clip of each track, including the space before the first clip. The clips end up packed end to end.
+Press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd> or <kbd>Shift</kbd>+<kbd>G</kbd>, or click **Close all gaps (compact)** in the timeline toolbar. Every gap on the compacted tracks closes, from the start of the timeline to the last clip of each track, including the space before the first clip. The clips end up packed end to end.
 
 Which tracks are compacted:
 
@@ -146,7 +147,21 @@ Which tracks are compacted:
 - To compact one track only, right-click a gap on that track and choose **Close all gaps on track**, or select the track and press <kbd>Shift</kbd>+<kbd>G</kbd>. The history step is named **Close all gaps on track** or **Close all gaps**.
 - Each compacted track closes its own gaps. A compacted track without gaps stays as it is: it neither moves nor stops the others.
 - The other unlocked tracks follow the ripple, and they can stop it where one of their clips can't move. See [How other tracks follow a ripple](#how-other-tracks-follow-a-ripple).
-- <kbd>Shift</kbd>+<kbd>G</kbd> works only while the Timeline panel is active.
+- <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd> and <kbd>Shift</kbd>+<kbd>G</kbd> work while the Timeline or the Preview panel is active.
+
+## Close the gaps of your last delete
+
+Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> after you deleted clips with <kbd>Delete</kbd>. Only the gaps that this one delete left are closed. Older gaps stay.
+
+1. Select one or more clips, on one track or on several.
+2. Press <kbd>Delete</kbd>. The clips go and their gaps stay.
+3. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>. The gaps of that delete close, on every track they are on.
+
+- **One delete at a time.** If you delete one clip, then another, the key closes the gap of the second delete only. If you select both clips and delete them together, it closes both gaps.
+- The result is the same as a **Ripple delete** of those clips. The other tracks follow, see [How other tracks follow a ripple](#how-other-tracks-follow-a-ripple).
+- It is one step in the history, named **Close the gap of the last delete** or **Close the gaps of the last delete**.
+- A gap that you filled again, or a delete that you undid, is not closed. A message says when there is nothing to close.
+- The key works in every panel. You can also run **Close the gaps of the last delete** from the command palette.
 
 ## How other tracks follow a ripple
 

@@ -89,7 +89,7 @@ Click **Ratio** in the Preview panel header. It shows the current shape, for exa
 
 The project keeps its resolution: a 4K vertical project (2160×3840) becomes 3840×2160, not 1920×1080. As with any new frame size, the **Change the frame size** dialog then asks how your clips follow the new frame; click **Adapt layout** to refit them. See [Change the frame size](#change-the-frame-size).
 
-You can switch as often as you like, at any time; each switch is one undo step. The same choices are in the command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `ratio`). For any other size, choose **Custom** in the **Resolution** row of the Project section. The exported video has the project's shape: a 16:9 project exports a horizontal video. See [Exporting video](exporting-video.md).
+You can switch as often as you like, at any time; each switch is one undo step. The same choices are in the command palette (<kbd>Ctrl</kbd>+<kbd>P</kbd>, type `ratio`). For any other size, choose **Custom** in the **Resolution** row of the Project section. The exported video has the project's shape: a 16:9 project exports a horizontal video. See [Exporting video](exporting-video.md).
 
 ## Change the frame size
 
@@ -192,7 +192,7 @@ Clips you copy in a project at another frame rate convert the same way when you 
 A template keeps the setup of a project so you can start new projects with it: "the frame size, frame rate, background, the tracks (with the caption style) and this project's text presets. No media and no clips."
 
 1. Open the project whose setup you want to keep.
-2. Click **Save as template…** in the **Project** section, or run **Save as template…** in the command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>).
+2. Click **Save as template…** in the **Project** section, or run **Save as template…** in the command palette (<kbd>Ctrl</kbd>+<kbd>P</kbd>).
 3. In the **Save as template** dialog, type a **Name**. It starts as the project name and takes up to 80 characters.
 4. Click **Save template**, or press <kbd>Enter</kbd> in the **Name** field. The message **Saved the template** with its name appears.
 

@@ -39,7 +39,7 @@ When your edit is ready, the **Export** tab turns it into an video with picture 
 
 ## Open the Export tab
 
-Click **Export** in the app bar (the gold button at the right), or press <kbd>Ctrl</kbd>+<kbd>E</kbd> in any panel. You can also type `export` in the command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>) and choose **Export…**.
+Click **Export** in the app bar (the gold button at the right), or press <kbd>Ctrl</kbd>+<kbd>E</kbd> in any panel. You can also type `export` in the command palette (<kbd>Ctrl</kbd>+<kbd>P</kbd>) and choose **Export…**.
 
 The **Export** tab opens in the right panel, next to **Edit Properties**:
 

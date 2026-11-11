@@ -356,7 +356,7 @@ export function keepSavedVersion(): void {
 /** The app bar's project name is being edited (`project.rename`: a click on the name, or the palette). */
 export const projectNaming = createStore(false);
 
-/** Mod+S and the save dot. */
+/** Mod+Alt+S and the save dot. */
 export function saveNow(): void {
   void current?.saveNow();
 }

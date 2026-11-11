@@ -9,7 +9,8 @@ import { LABEL_COLORS, type ClipId, type LabelColor } from "../core/document/typ
 import { createStore } from "../core/store/createStore.js";
 import { EMPTY_SELECTION, selectedTrackIds, toSnapshot } from "../core/store/selection.js";
 import { selectGap } from "../core/store/sessionStore.js";
-import { deleteClips, rippleDelete } from "../timeline/edit/delete.js";
+import { closeDeletedSpans, deleteClips, deletionSet, openSpans, removedSpans, rippleDelete } from "../timeline/edit/delete.js";
+import type { Gap } from "../timeline/model/queries.js";
 import { closeGap, compactGaps, gapAtPlayhead, type CloseResult } from "../timeline/edit/gaps.js";
 import { clipsToSplit, selectionAfterSplit, splitClips, type SplitScope } from "../timeline/edit/split.js";
 import { gapAt, isClipLocked } from "../timeline/model/queries.js";
@@ -46,7 +47,7 @@ function splitAt(frame: number, scope: SplitScope): void {
 }
 
 /**
- * `Mod+K` (spec §6.11): the selected clips under the playhead, or with nothing selected every clip
+ * `Mod+S` (spec §6.11 names `Mod+K`; the user's key since 2026-11-11): the selected clips under the playhead, or with nothing selected every clip
  * under it on targeted tracks; `Mod+Shift+K` (`all`): every unlocked track.
  */
 function splitAtPlayhead(all: boolean): CommandRun {
@@ -106,6 +107,27 @@ const compactTrackAction: CommandRun = () => {
 };
 
 /**
+ * What the last Delete left open: the spans of the clips that one command removed (all of them, on every
+ * track, linked partners included). A second delete replaces it; closing it, or a ripple delete, clears it.
+ */
+let lastDelete: { projectId: string; spans: Gap[] } | null = null;
+
+/** `Mod+Shift+P`: closes the gaps of the last delete action only, across tracks, as one undo step. */
+const closeLastDeleteAction: CommandRun = () => {
+  const project = documentStore.getState();
+  const spans = lastDelete && lastDelete.projectId === project.id ? openSpans(project, lastDelete.spans) : [];
+  if (spans.length === 0) {
+    showToast({ tone: "info", message: "No gap from the last delete to close", detail: "Delete clips first. A gap that was filled or undone since is not closed." });
+    return;
+  }
+  const result = closeDeletedSpans(project, spans);
+  reportLimit(result, "gap");
+  if (!result.command) return;
+  documentStore.dispatch(result.command);
+  lastDelete = null;
+};
+
+/**
  * `Delete` / `Backspace` and `Shift+Delete` (spec §6.11): the selected clips and their linked
  * partners go, leaving gaps or (ripple) closing them; a selected gap closes (spec §6.7). With keys
  * selected on a keyframe lane, only those keys go (Batch 35); a selected transition goes alone (Batch 36).
@@ -126,9 +148,13 @@ function deleteSelection(ripple: boolean): void {
   const after = { selection: toSnapshot(EMPTY_SELECTION) };
   if (!ripple) {
     const command = deleteClips(project, ids, { linked: linked() });
-    if (command) documentStore.dispatch(command, after);
+    if (command) {
+      lastDelete = { projectId: project.id, spans: removedSpans(project, new Set(deletionSet(project, ids, { linked: linked() }))) };
+      documentStore.dispatch(command, after);
+    }
     return;
   }
+  lastDelete = null;
   const result = rippleDelete(project, ids, { linked: linked() });
   if (!result?.command) return;
   reportLimit(result, "ripple");
@@ -199,6 +225,7 @@ export function installCutController(): () => void {
     actions.register("edit.rippleDelete", () => deleteSelection(true)),
     actions.register("edit.closeGap", closeGapAction),
     actions.register("edit.closeAllGaps", compactAction),
+    actions.register("edit.closeLastDeleteGaps", closeLastDeleteAction),
     actions.register("edit.closeAllGapsOnTrack", compactTrackAction),
     // The clip menu's label swatches (spec §6.16): a color the selection already has all over comes off again.
     ...LABEL_COLORS.map((color) =>

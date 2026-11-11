@@ -500,7 +500,7 @@ Hold <kbd>S</kbd> while you drag to do the opposite of the setting: with snappin
 
 - Press <kbd>S</kbd> after the drag has started. An <kbd>S</kbd> pressed before you start dragging turns snapping on or off, as it does outside a drag.
 - Holding <kbd>S</kbd> works the same way while you move or resize a layer in the preview. See [Place a layer without snapping](snapping-and-smart-guides.md#place-a-layer-without-snapping).
-- You can hold <kbd>S</kbd> together with <kbd>Shift</kbd>, <kbd>Ctrl</kbd> or <kbd>Alt</kbd>. During a drag, <kbd>S</kbd> never starts a shortcut: <kbd>Ctrl</kbd>+<kbd>S</kbd> does not save until you release the mouse button.
+- You can hold <kbd>S</kbd> together with <kbd>Shift</kbd>, <kbd>Ctrl</kbd> or <kbd>Alt</kbd>. During a drag, <kbd>S</kbd> never starts a shortcut: <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd> does not save until you release the mouse button.
 
 ### Snap the playhead in the ruler
 

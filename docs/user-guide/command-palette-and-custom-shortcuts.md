@@ -5,7 +5,7 @@ Every action in Shorts Editor has a name you can search for and a keyboard short
 > **Video placeholder: Commands and shortcuts in one minute**
 > - File: `videos/command-palette-and-custom-shortcuts/overview.mp4` (not recorded yet)
 > - Length: about 75 seconds
-> - Shows: a 1080×1920 project with three clips on V1 and a gap between the second and third; click the timeline and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>: the palette opens at the top of the window with **Type a command**; type `compact`: **Close all gaps** is the first row, with **Shift+G** at its right; press <kbd>Enter</kbd>: the palette closes and the gap closes; press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> again: **Close all gaps** is first in the list; press <kbd>Esc</kbd>; press <kbd>?</kbd>: the **Keyboard shortcuts** sheet lists every key by category; click **Edit shortcuts**: **Settings** opens on the **Shortcuts** tab; type `split` in the search field, click **Ctrl+K** on the **Split at playhead** row and press <kbd>Ctrl</kbd>+<kbd>J</kbd>; click **Done**; point at **Split at playhead** in the timeline toolbar: the tooltip shows **Ctrl+J**; press <kbd>Ctrl</kbd>+<kbd>J</kbd>: the clip under the playhead splits; right-click a clip, press <kbd>↓</kbd> twice and <kbd>Enter</kbd>: the clip is copied.
+> - Shows: a 1080×1920 project with three clips on V1 and a gap between the second and third; click the timeline and press <kbd>Ctrl</kbd>+<kbd>P</kbd>: the palette opens at the top of the window with **Type a command**; type `compact`: **Close all gaps** is the first row, with **Shift+G** at its right; press <kbd>Enter</kbd>: the palette closes and the gap closes; press <kbd>Ctrl</kbd>+<kbd>P</kbd> again: **Close all gaps** is first in the list; press <kbd>Esc</kbd>; press <kbd>?</kbd>: the **Keyboard shortcuts** sheet lists every key by category; click **Edit shortcuts**: **Settings** opens on the **Shortcuts** tab; type `split` in the search field, click **Ctrl+S** on the **Split at playhead** row and press <kbd>Ctrl</kbd>+<kbd>J</kbd>; click **Done**; point at **Split at playhead** in the timeline toolbar: the tooltip shows **Ctrl+J**; press <kbd>Ctrl</kbd>+<kbd>J</kbd>: the clip under the playhead splits; right-click a clip, press <kbd>↓</kbd> twice and <kbd>Enter</kbd>: the clip is copied.
 
 ## In this page
 - [Run a command from the palette](#run-a-command-from-the-palette)
@@ -26,9 +26,9 @@ The command palette lists every command of the editor: the buttons, the menu row
 > **Video placeholder: Find and run a command**
 > - File: `videos/command-palette-and-custom-shortcuts/palette.mp4` (not recorded yet)
 > - Length: about 40 seconds
-> - Shows: click the timeline and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>; type `fade`: rows such as **Fade in 0.5 s** and **Fade out 1 s** appear, each with **Fades and transitions** beside it; type `fade in 1`: **Fade in 1 s** is first; clear the field and type `undo` with nothing to undo: the **Undo** row is grey and the bottom line reads **Undo: not available now**; press <kbd>↓</kbd> and <kbd>↑</kbd> to move the highlight; type `safe reels` and press <kbd>Enter</kbd>: the Reels safe zone appears over the preview.
+> - Shows: click the timeline and press <kbd>Ctrl</kbd>+<kbd>P</kbd>; type `fade`: rows such as **Fade in 0.5 s** and **Fade out 1 s** appear, each with **Fades and transitions** beside it; type `fade in 1`: **Fade in 1 s** is first; clear the field and type `undo` with nothing to undo: the **Undo** row is grey and the bottom line reads **Undo: not available now**; press <kbd>↓</kbd> and <kbd>↑</kbd> to move the highlight; type `safe reels` and press <kbd>Enter</kbd>: the Reels safe zone appears over the preview.
 
-1. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>. The palette opens at the top of the window, with the cursor in **Type a command**.
+1. Press <kbd>Ctrl</kbd>+<kbd>P</kbd>. The palette opens at the top of the window, with the cursor in **Type a command**.
 2. Type part of the name of what you want to do, for example `split` or `fit`. The list keeps the commands that match, best match first.
 3. Press <kbd>↓</kbd> or <kbd>↑</kbd> to highlight a row, or point at it.
 4. Press <kbd>Enter</kbd>, or click the row. The palette closes and the command runs.
@@ -50,7 +50,7 @@ Each row shows the command's icon, its name, its category (for example **Edit** 
 | <kbd>↓</kbd> or <kbd>↑</kbd> | Next or previous row (from the last row back to the first) |
 | <kbd>Page Down</kbd> or <kbd>Page Up</kbd> | 8 rows down or up |
 | <kbd>Enter</kbd> | Run the highlighted command |
-| <kbd>Esc</kbd>, or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> again | Close the palette without running anything |
+| <kbd>Esc</kbd>, or <kbd>Ctrl</kbd>+<kbd>P</kbd> again | Close the palette without running anything |
 
 A click outside the palette closes it too.
 
@@ -87,7 +87,7 @@ The tab lists every command you can give a key, by category, with the commands t
 | --- | --- |
 | Name | The command, as in the palette and in tooltips. |
 | Place | Where its keys work, for example **Timeline**, **Preview** or **Media**. No place: in every panel. |
-| Key chips | Each key the command has, for example **Ctrl+K**. |
+| Key chips | Each key the command has, for example **Ctrl+S**. |
 | **+** (**Add a key**) | Records one more key for the command. |
 | **Reset to the default keys** (a circular arrow) | Puts back the command's original keys. Dimmed while it has them. |
 
@@ -102,14 +102,14 @@ At the top of the tab:
 > **Video placeholder: Change a shortcut and fix a conflict**
 > - File: `videos/command-palette-and-custom-shortcuts/change-a-shortcut.mp4` (not recorded yet)
 > - Length: about 60 seconds
-> - Shows: click **Settings** (the gear) at the right of the app bar, then the **Shortcuts** tab; in **Search commands or keys** type `split`; on the **Split at playhead** row, click **Ctrl+K**: the chip reads **Press a key…**; press <kbd>Ctrl</kbd>+<kbd>J</kbd>: the chip reads **Ctrl+J** and the top of the tab reads **1 changed**; click **+** on the same row and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the **Ctrl+L** chip turns red, a red line under the row reads **Ctrl+L is also Link / Unlink (Timeline)**, and the **Link / Unlink** row turns red too; point at the **Ctrl+L** chip and click its **x**: both rows are back to normal; click **Reset all**: **Split at playhead** shows **Ctrl+K** again and the top reads **Default keymap**; click **Done**.
+> - Shows: click **Settings** (the gear) at the right of the app bar, then the **Shortcuts** tab; in **Search commands or keys** type `split`; on the **Split at playhead** row, click **Ctrl+S**: the chip reads **Press a key…**; press <kbd>Ctrl</kbd>+<kbd>J</kbd>: the chip reads **Ctrl+J** and the top of the tab reads **1 changed**; click **+** on the same row and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the **Ctrl+L** chip turns red, a red line under the row reads **Ctrl+L is also Link / Unlink (Timeline)**, and the **Link / Unlink** row turns red too; point at the **Ctrl+L** chip and click its **x**: both rows are back to normal; click **Reset all**: **Split at playhead** shows **Ctrl+S** again and the top reads **Default keymap**; click **Done**.
 
 1. Open **Settings** on the **Shortcuts** tab. See [Open the shortcut settings](#open-the-shortcut-settings).
 2. Find the command: type part of its name in **Search commands or keys**, or scroll to its category.
-3. Click the key you want to replace, for example **Ctrl+K** on **Split at playhead**. The chip reads **Press a key…**.
+3. Click the key you want to replace, for example **Ctrl+S** on **Split at playhead**. The chip reads **Press a key…**.
 4. Press the new key, with the modifiers you want, for example <kbd>Ctrl</kbd>+<kbd>J</kbd>. The chip shows the new key.
 
-The new key works at once: in the panels, in the tooltips of the buttons, in the menus, in the palette and in the shortcut sheet. For example, after you give **Split at playhead** <kbd>Ctrl</kbd>+<kbd>J</kbd>, the toolbar's **Split at playhead** tooltip shows **Ctrl+J**, <kbd>Ctrl</kbd>+<kbd>J</kbd> splits, and <kbd>Ctrl</kbd>+<kbd>K</kbd> no longer does.
+The new key works at once: in the panels, in the tooltips of the buttons, in the menus, in the palette and in the shortcut sheet. For example, after you give **Split at playhead** <kbd>Ctrl</kbd>+<kbd>J</kbd>, the toolbar's **Split at playhead** tooltip shows **Ctrl+J**, <kbd>Ctrl</kbd>+<kbd>J</kbd> splits, and <kbd>Ctrl</kbd>+<kbd>S</kbd> no longer does.
 
 **While a chip reads Press a key…**
 - Pressing only <kbd>Ctrl</kbd>, <kbd>Shift</kbd> or <kbd>Alt</kbd> does nothing yet: hold it and press the rest of the key.

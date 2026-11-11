@@ -54,6 +54,27 @@ export function removedSpans(project: Project, removed: ReadonlySet<ClipId>): Ga
 }
 
 /**
+ * The parts of `spans` (what one delete left, see `removedSpans`) that can still be closed: the track is
+ * there and unlocked, and no clip lies in the span now (undone, or something was put there since).
+ */
+export function openSpans(project: Project, spans: readonly Gap[]): Gap[] {
+  return spans.filter((span) => {
+    const track = project.tracks.find((candidate) => candidate.id === span.trackId);
+    if (!track || track.locked) return false;
+    return !(trackIndex(project, track).clips as readonly Clip[]).some((clip) => clip.start < span.end && clip.start + clip.duration > span.start);
+  });
+}
+
+/**
+ * Closes the gaps one delete left (the user's Mod+Shift+P): each span closes by its own length, on every
+ * track it was on, with the ripple of Ripple delete. The result is what Ripple delete would have given.
+ */
+export function closeDeletedSpans(project: Project, spans: readonly Gap[]): CloseResult {
+  const open = openSpans(project, spans);
+  return closeGaps(project, open, { id: "clip.closeDeletedGaps", label: open.length === 1 ? "Close the gap of the last delete" : "Close the gaps of the last delete" });
+}
+
+/**
  * Ripple delete (spec §6.11, §6.19): removes the clips (and partners) and closes each span they leave
  * by its own length; the other unlocked tracks move with the ripple and limit it where their clips
  * would collide (`result.limit`). One command. Null when nothing is deleted.

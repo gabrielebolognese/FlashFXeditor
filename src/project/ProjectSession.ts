@@ -110,7 +110,7 @@ export class ProjectSession {
     return !this.writable;
   }
 
-  /** Mod+S and the save dot: write now even without changes. */
+  /** Mod+Alt+S and the save dot: write now even without changes. */
   saveNow(): Promise<boolean> {
     return this.autosaver.saveNow();
   }

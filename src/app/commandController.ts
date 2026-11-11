@@ -1,4 +1,4 @@
-// Commands as a whole (Batch 40, spec §3.6, §17, §18): the command palette (Mod+Shift+P: fuzzy search,
+// Commands as a whole (Batch 40, spec §3.6, §17, §18): the command palette (Mod+P or F1: fuzzy search,
 // shortcuts, recent first), the cheat sheet (Shift+/: the live keymap by category), the settings dialog
 // with the shortcut editor (rebind, conflicts within scopes, reset, export / import keymap JSON), the
 // keymap overrides kept in the app settings, and the bridge the shared ui components run commands and

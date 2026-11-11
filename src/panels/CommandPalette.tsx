@@ -9,7 +9,7 @@ import { cx } from "../ui/cx.js";
 import { useDismiss } from "../ui/useDismiss.js";
 import styles from "./CommandPalette.module.css";
 
-// The command palette (Batch 40, spec §18 Mod+Shift+P): every command of the catalog the registry has,
+// The command palette (Batch 40, spec §18; Mod+P or F1): every command of the catalog the registry has,
 // found by fuzzy search over its name, category and search words ("compact" finds Close all gaps), with
 // its live shortcut; recent commands first. Up / Down move, Enter runs (in the panel that had the
 // keyboard), Escape or the palette's key again closes. A dialog, rendered only while open; hovering a

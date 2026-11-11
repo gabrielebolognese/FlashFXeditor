@@ -310,6 +310,7 @@ export const COMMANDS: readonly CommandInfo[] = [
   edit("edit.extendToPlayhead", "Extend edit to playhead"),
   edit("edit.closeGap", "Close gap", { icon: FoldHorizontal }),
   edit("edit.closeAllGaps", "Close all gaps", { icon: Shrink, keywords: "compact remove gaps" }),
+  edit("edit.closeLastDeleteGaps", "Close the gaps of the last delete", { icon: FoldHorizontal, keywords: "ripple gap deleted clips cut close after delete" }),
   edit("edit.closeAllGapsOnTrack", "Close all gaps on track", { keywords: "compact", scopes: TL }),
   edit("edit.lift", "Lift in/out range", { keywords: "remove range leave gap" }),
   edit("edit.extract", "Extract in/out range", { keywords: "remove range ripple" }),

@@ -42,7 +42,7 @@ describe("shortcuts follow rebinding", () => {
   afterEach(() => keymap.resetAll());
 
   it("shows a rebound key wherever the label is read (tooltips, menus, the palette)", () => {
-    expect(shortcutLabel("edit.split")).toBe("Ctrl+K");
+    expect(shortcutLabel("edit.split")).toBe("Ctrl+S");
     keymap.setKeys("edit.split", ["Mod+J"]);
     expect(shortcutLabel("edit.split")).toBe("Ctrl+J");
     keymap.setKeys("edit.split", []);

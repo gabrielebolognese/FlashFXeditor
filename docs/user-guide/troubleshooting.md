@@ -53,11 +53,11 @@ This page helps you when something does not work as expected: the editor does no
 >   45. Put a music clip on A1 and a voice clip on A2 under it, select the music and click **Auto-duck** in the **Audio** section: the message **No voice to duck under** appears. Drag the A2 header above A1 and click **Auto-duck** again: the music's line dips under the voice. Click **Auto-duck** once more: the dip gets twice as deep; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
 >   46. Select a title and point at **Remove silence** in the quick actions: it is dimmed. Select a talking-head video recorded in a noisy room and click **Remove silence**: the row reads **No silence found**. Drag the **Threshold** slider to `-30 dB`: red stripes cover the pauses. Click **Cancel**.
 >   47. Click the padlock in the V2 header. Select a clip on V1 and a clip on V2 above it, press <kbd>Ctrl</kbd>+<kbd>C</kbd>, click in the ruler at an empty spot and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the message **Can't paste onto a locked track** names V2. Click the padlock again and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the clips land at the playhead on V1 and V2. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, put the playhead over another clip and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the clip under the copies is cut away. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>: the clips make room instead.
->   48. Click **Settings** in the app bar, click the **Shortcuts** tab, click **+** on **Split at playhead** and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the key turns red on **Split at playhead** and **Link / Unlink**. Click **Done**, click a video with sound on the timeline and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the video and its sound are unlinked, and nothing is split. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, open **Settings** again, click **Shortcuts** and click **Reset all**. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> and type `edit marker`: the row is grey. Press <kbd>Esc</kbd>.
+>   48. Click **Settings** in the app bar, click the **Shortcuts** tab, click **+** on **Split at playhead** and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the key turns red on **Split at playhead** and **Link / Unlink**. Click **Done**, click a video with sound on the timeline and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the video and its sound are unlinked, and nothing is split. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, open **Settings** again, click **Shortcuts** and click **Reset all**. Press <kbd>Ctrl</kbd>+<kbd>P</kbd> and type `edit marker`: the row is grey. Press <kbd>Esc</kbd>.
 >   49. In the **Media** tab, click **Unused**: only the media no clip uses show. Click it again. Open a project whose linked video was moved to another folder: its card shows a red **Offline** badge and its clip is gray. Click **Relink…** on the card and pick the moved file: the badge disappears.
 >   50. Click an empty area of the timeline tracks of a 30 fps project and choose **24 fps** in **Frame rate**: **Convert to 24 fps?** counts the rounded timings. Click **Cancel**. Open a project read-only, rename it and press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>: **Discard unsaved changes?** appears; click **Cancel**. Click **History…**: **Restore…** is dimmed.
 >   51. Delete every clip, press <kbd>Ctrl</kbd>+<kbd>E</kbd> and <kbd>Enter</kbd>: the message **Nothing to export** appears. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, click **Export** in the **Export** tab and press <kbd>Esc</kbd>: the progress message appears at the top of the window. Open **Settings** and click **Clear cache**: the message **An export is running** appears. Click **Done**, then **Cancel** in the progress message: **Export cancelled**.
->   52. Rename a text file to `broken.mp4` and drop it on the **Media** tab: the message **Can't import broken.mp4** appears, and a row with a red **Failed** badge and "Not a readable MP4/MOV file: it is damaged or is not a video" stays under the search field. Click the **X** at the end of the row: it disappears. Click the timeline, press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `reload` and press <kbd>Enter</kbd> on **Reload panel**: the timeline draws itself again, with every clip in place.
+>   52. Rename a text file to `broken.mp4` and drop it on the **Media** tab: the message **Can't import broken.mp4** appears, and a row with a red **Failed** badge and "Not a readable MP4/MOV file: it is damaged or is not a video" stays under the search field. Click the **X** at the end of the row: it disappears. Click the timeline, press <kbd>Ctrl</kbd>+<kbd>P</kbd>, type `reload` and press <kbd>Enter</kbd> on **Reload panel**: the timeline draws itself again, with every clip in place.
 >   53. Click **Presets** in the Preview panel header: the preset bar disappears. Click it again: the bar is back. Choose **Recent** in its set menu and drag a button: nothing moves. Choose **Favorites** and press <kbd>Alt</kbd>+<kbd>9</kbd> with a title selected: the title takes **Yellow word**.
 
 ## In this page
@@ -99,7 +99,7 @@ This page helps you when something does not work as expected: the editor does no
   - [Brackets appear on a cut](#brackets-appear-on-a-cut)
   - [A clip shows a speed badge](#a-clip-shows-a-speed-badge)
   - [Clicking a clip cuts it](#clicking-a-clip-cuts-it)
-  - [Ctrl+K or the Razor does not split a clip](#ctrlk-or-the-razor-does-not-split-a-clip)
+  - [Ctrl+S or the Razor does not split a clip](#ctrls-or-the-razor-does-not-split-a-clip)
   - [Deleting a video also deleted its sound](#deleting-a-video-also-deleted-its-sound)
   - [Closing a gap moved clips on other tracks](#closing-a-gap-moved-clips-on-other-tracks)
   - [A ripple delete or Close gap stopped short](#a-ripple-delete-or-close-gap-stopped-short)
@@ -415,7 +415,7 @@ This page helps you when something does not work as expected: the editor does no
 **Cause:** The browser lost its connection to the graphics card.
 
 **Fix:** Usually nothing: the editor reconnects on its own, typically within a second, and draws the frame again. With WebGPU it keeps trying for about 4 seconds; with WebGL2 it draws again as soon as the browser gives the graphics card back. If the preview stays empty:
-1. Press <kbd>Ctrl</kbd>+<kbd>S</kbd> to save. Saving does not need the graphics card.
+1. Press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd> to save. Saving does not need the graphics card.
 2. Reload the page.
 3. Open the project again from **Recent projects** on the start screen.
 
@@ -428,7 +428,7 @@ If it happens often, see [The picture or the export goes wrong only on this comp
 **Cause:** The editor draws with WebGPU whenever your computer has it. WebGPU is newer than WebGL2, and the graphics drivers of some computers still have problems with it.
 
 **Fix:** Update your graphics driver and the browser first. If the problem stays, start the editor with WebGL2 instead:
-1. Press <kbd>Ctrl</kbd>+<kbd>S</kbd> to save your project.
+1. Press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd> to save your project.
 2. Click the browser's address bar and add `?renderer=webgl2` to the end of the editor's address. If the address already contains a `?`, add `&renderer=webgl2` instead.
 3. Press <kbd>Enter</kbd>. The editor starts again at the start screen.
 4. Open your project from **Recent projects**.
@@ -447,8 +447,8 @@ The editor uses WebGL2 for the preview and for your exports each time you open t
 **Cause:** Something went wrong in that panel, or a panel that draws pictures (the timeline, the preview or the thumbnails of the Media panel) failed to draw 3 times in a row. Only that panel stopped. Your project, its edits and the undo history are safe, and the project keeps saving.
 
 **Fix:**
-1. Click **Reload panel**, or run **Reload panel** from the command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>). The panel builds itself again.
-2. If it stops again right away, press <kbd>Ctrl</kbd>+<kbd>S</kbd> to save, reload the page and open the project again from **Recent projects**.
+1. Click **Reload panel**, or run **Reload panel** from the command palette (<kbd>Ctrl</kbd>+<kbd>P</kbd>). The panel builds itself again.
+2. If it stops again right away, press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd> to save, reload the page and open the project again from **Recent projects**.
 3. If a panel that draws pictures keeps stopping, check the graphics settings: see [No GPU renderer is available](#no-gpu-renderer-is-available), and update Chrome or Edge and your graphics driver. If it still happens, try WebGL2; see [The picture or the export goes wrong only on this computer](#the-picture-or-the-export-goes-wrong-only-on-this-computer).
 
 See [Reload a panel that stopped working](workspace.md#reload-a-panel-that-stopped-working).
@@ -494,7 +494,7 @@ See [Reload a panel that stopped working](workspace.md#reload-a-panel-that-stopp
 
 ### A shortcut runs another command or does nothing
 
-**Symptom:** A key that used to work does nothing, or does something else, for example <kbd>Ctrl</kbd>+<kbd>K</kbd> no longer splits.
+**Symptom:** A key that used to work does nothing, or does something else, for example <kbd>Ctrl</kbd>+<kbd>S</kbd> no longer splits.
 
 **Cause:** One of these:
 - The key was changed or removed in **Settings** > **Shortcuts**, or a keymap file you imported gave it to another command. Your keys are kept in this browser for all your projects.
@@ -726,13 +726,13 @@ When <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> stops short, a message names the
 
 **Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to undo the cut, then press <kbd>V</kbd> or click **Select**. See [Cut clips with the Razor tool](splitting-and-deleting.md#cut-clips-with-the-razor-tool).
 
-### Ctrl+K or the Razor does not split a clip
+### Ctrl+S or the Razor does not split a clip
 
-**Symptom:** You press <kbd>Ctrl</kbd>+<kbd>K</kbd>, or click a clip with the **Razor**, and the clip stays whole.
+**Symptom:** You press <kbd>Ctrl</kbd>+<kbd>S</kbd>, or click a clip with the **Razor**, and the clip stays whole.
 
 **Cause:** One of these:
-- Other clips are selected. With a selection, <kbd>Ctrl</kbd>+<kbd>K</kbd> splits only the selected clips.
-- The clip's track is locked, or, for <kbd>Ctrl</kbd>+<kbd>K</kbd> with nothing selected, not targeted (its crosshair is dimmed).
+- Other clips are selected. With a selection, <kbd>Ctrl</kbd>+<kbd>S</kbd> splits only the selected clips.
+- The clip's track is locked, or, for <kbd>Ctrl</kbd>+<kbd>S</kbd> with nothing selected, not targeted (its crosshair is dimmed).
 - The playhead is not over the clip, or it is exactly on the clip's start or end.
 - With the **Razor**, the cut line snapped onto the clip's start or end.
 - A text field has the keyboard focus.
@@ -976,7 +976,7 @@ See [Projects and saving](projects-and-saving.md).
 
 **Cause:** The editor could not write to the project folder, for example because the folder was moved, renamed or deleted while open, the drive was disconnected, or the disk is full.
 
-**Fix:** Solve the cause (reconnect the drive, free disk space, put the folder back), then click the save dot or press <kbd>Ctrl</kbd>+<kbd>S</kbd> to save again.
+**Fix:** Solve the cause (reconnect the drive, free disk space, put the folder back), then click the save dot or press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd> to save again.
 
 ### Opening another project asks Discard unsaved changes?
 

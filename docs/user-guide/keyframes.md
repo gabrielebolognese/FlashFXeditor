@@ -304,7 +304,7 @@ Select several clips to work on their keyframes together:
 | Edit | What happens to the keyframes |
 | --- | --- |
 | Move a clip | They move with it. |
-| Split a clip (<kbd>Ctrl</kbd>+<kbd>K</kbd>, the **Razor** tool) | Each part keeps its share of the motion. Played one after the other, the parts look exactly as the clip did, also when the cut falls in the middle of an eased move. <kbd>Ctrl</kbd>+<kbd>Z</kbd> gives back one clip with its keyframes. |
+| Split a clip (<kbd>Ctrl</kbd>+<kbd>S</kbd>, the **Razor** tool) | Each part keeps its share of the motion. Played one after the other, the parts look exactly as the clip did, also when the cut falls in the middle of an eased move. <kbd>Ctrl</kbd>+<kbd>Z</kbd> gives back one clip with its keyframes. |
 | Trim the end | Keyframes after the new end stay with the clip, hidden from the lane, and still shape the motion up to the end. Lengthen the clip again and they come back. |
 | Trim the start of a video or audio clip | Keyframes stay on the same frame of the video or the same moment of the sound, so the motion stays in step with the picture and a volume change with the sound. Keyframes before the new start stay hidden, like at the end. With **Follow source** off in **Settings**, they stay at the same distance from the clip's start instead. |
 | Trim the start of an image, solid or text | Keyframes stay at the same distance from the clip's start: the motion starts with the new start. |

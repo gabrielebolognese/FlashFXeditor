@@ -22,7 +22,7 @@ When you add a video with sound to the timeline, its picture and its sound becom
 
 - A click on one selects both, also a click on the video's picture in the preview. A selection rectangle on the timeline that touches one selects both.
 - Trims, rolls, slips, slides and rate stretches change both. See [Trimming clips](trimming.md) and [Advanced trimming](advanced-trimming.md).
-- <kbd>Ctrl</kbd>+<kbd>K</kbd>, the **Razor**, <kbd>Q</kbd>, <kbd>W</kbd> and <kbd>E</kbd> cut or trim both. The two right parts of a split are linked to each other.
+- <kbd>Ctrl</kbd>+<kbd>S</kbd>, the **Razor**, <kbd>Q</kbd>, <kbd>W</kbd> and <kbd>E</kbd> cut or trim both. The two right parts of a split are linked to each other.
 - **Delete** and **Ripple delete** remove both.
 - Moving one moves both, the same number of tracks away from the divider.
 - Copying, cutting or duplicating one on the timeline takes both. The copies are linked to each other, not to the originals. See [Copying, pasting and duplicating clips](copy-and-paste.md).

@@ -371,7 +371,7 @@ What to know:
 - The file is not in the project. It has no card, and you can't select its row, drag it or put it on the timeline.
 - The message at the top of the window still appears and closes by itself. The row stays until you dismiss it.
 - Fix the file, for example export it again, and import it again. When it imports, its row disappears. If it fails again, the row shows the new reason.
-- To remove one row, click its **X**. To remove them all, run **Dismiss failed imports** from the command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>).
+- To remove one row, click its **X**. To remove them all, run **Dismiss failed imports** from the command palette (<kbd>Ctrl</kbd>+<kbd>P</kbd>).
 - The rows are not saved with the project: they disappear when you close the project.
 - A file of an unsupported type, such as .mkv, gets no row. Only the message names it.
 

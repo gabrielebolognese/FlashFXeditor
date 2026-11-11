@@ -38,7 +38,7 @@ Shorts Editor comes with a library of 330 font families, sorted by look: elegant
 2. In **Edit Properties**, click the **Font** field: in the **Text** section for text clips, in the **Caption style** section for captions. The field shows the font's name in the font itself.
 3. The font browser opens under the field, with the cursor in the search field.
 
-You can also run **Open font browser** in the command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>). It shows **Edit Properties**, unfolds the **Text** or **Caption style** section and opens the browser there. See [Font commands in the command palette](#font-commands-in-the-command-palette).
+You can also run **Open font browser** in the command palette (<kbd>Ctrl</kbd>+<kbd>P</kbd>). It shows **Edit Properties**, unfolds the **Text** or **Caption style** section and opens the browser there. See [Font commands in the command palette](#font-commands-in-the-command-palette).
 
 The browser closes when you pick a font, press <kbd>Esc</kbd>, click outside it, or click the **Font** field again. Only a pick changes your text.
 
@@ -293,7 +293,7 @@ The list reads **Reading the font library…** for a moment the first time. See 
 
 ## Font commands in the command palette
 
-Find these in the command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>), in the **Text** group. They have no keys by default; give them keys in **Settings** > **Shortcuts**. See [Change a shortcut](command-palette-and-custom-shortcuts.md#change-a-shortcut).
+Find these in the command palette (<kbd>Ctrl</kbd>+<kbd>P</kbd>), in the **Text** group. They have no keys by default; give them keys in **Settings** > **Shortcuts**. See [Change a shortcut](command-palette-and-custom-shortcuts.md#change-a-shortcut).
 
 | Command | What it does |
 | --- | --- |

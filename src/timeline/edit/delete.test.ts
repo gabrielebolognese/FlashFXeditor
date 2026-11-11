@@ -3,7 +3,7 @@ import { makeMedia, makeMediaClip, makeProject, makeTrack, withClips } from "../
 import type { Clip, MediaClip, Project, Track } from "../../core/document/types.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createSessionStore } from "../../core/store/sessionStore.js";
-import { deleteClips, deletionSet, removedSpans, rippleDelete } from "./delete.js";
+import { closeDeletedSpans, deleteClips, deletionSet, openSpans, removedSpans, rippleDelete } from "./delete.js";
 
 function clip(id: string, trackId: string, start: number, duration: number, extra: Partial<MediaClip> = {}): MediaClip {
   const base = makeMediaClip(makeProject(), { id, trackId, start, duration, mediaId: "m", kind: trackId.startsWith("a") ? "audio" : "video" });
@@ -165,5 +165,65 @@ describe("rippleDelete (spec §6.11, §6.19)", () => {
   it("deletes nothing on locked tracks", () => {
     const p = project([clip("x", "a1", 0, 80)], [makeTrack("v1"), { ...makeTrack("a1", "audio"), locked: true }]);
     expect(rippleDelete(p, ["x"])).toBeNull();
+  });
+});
+
+describe("closing the gaps of the last delete (the user's Mod+Shift+P)", () => {
+  /** Deletes `ids` in one command; returns the store and the spans that delete left. */
+  function deleted(p: Project, ids: string[]) {
+    const spans = removedSpans(p, new Set(deletionSet(p, ids)));
+    const doc = store(p);
+    doc.dispatch(deleteClips(p, ids)!);
+    return { doc, spans };
+  }
+  const row = () => project([clip("a", "v1", 0, 100), clip("b", "v1", 100, 50), clip("c", "v1", 150, 100), clip("d", "v1", 250, 30), clip("e", "v1", 280, 100)]);
+
+  it("closes only the gap of the last delete when two clips were deleted one after the other", () => {
+    const first = deleted(row(), ["b"]);
+    const second = deleted(first.doc.getState(), ["d"]);
+    const p = second.doc.getState();
+    const result = closeDeletedSpans(p, second.spans);
+    second.doc.dispatch(result.command!);
+    // The gap b left (100..150) stays; the one d left is closed.
+    expect(starts(second.doc.getState(), "a", "c", "e")).toEqual([0, 150, 250]);
+    expect(second.doc.history.getState().undoLabel).toBe("Close the gap of the last delete");
+    second.doc.undo();
+    expect(starts(second.doc.getState(), "a", "c", "e")).toEqual([0, 150, 280]);
+  });
+
+  it("closes both gaps when both clips were deleted with one command", () => {
+    const { doc, spans } = deleted(row(), ["b", "d"]);
+    expect(spans).toHaveLength(2);
+    const result = closeDeletedSpans(doc.getState(), spans);
+    doc.dispatch(result.command!);
+    expect(starts(doc.getState(), "a", "c", "e")).toEqual([0, 100, 200]);
+    expect(doc.history.getState().undoLabel).toBe("Close the gaps of the last delete");
+    // One undo step for both.
+    doc.undo();
+    expect(starts(doc.getState(), "a", "c", "e")).toEqual([0, 150, 280]);
+  });
+
+  it("works across tracks, and gives what a ripple delete of the same clips gives", () => {
+    const p = project([clip("a", "v1", 0, 100), clip("b", "v1", 100, 50), clip("c", "v1", 150, 100), clip("x", "a1", 0, 100), clip("y", "a1", 100, 50), clip("z", "a1", 150, 100), clip("m", "a2", 0, 300), clip("n", "a2", 300, 60)]);
+    const { doc, spans } = deleted(p, ["b", "y", "n"]);
+    expect(spans.map((span) => span.trackId)).toEqual(["v1", "a1", "a2"]);
+    doc.dispatch(closeDeletedSpans(doc.getState(), spans).command!);
+    const rippled = store(p);
+    rippled.dispatch(rippleDelete(p, ["b", "y", "n"])!.command!);
+    expect(starts(doc.getState(), "a", "c", "x", "z", "m")).toEqual(starts(rippled.getState(), "a", "c", "x", "z", "m"));
+    expect(starts(doc.getState(), "c", "z")).toEqual([100, 100]);
+  });
+
+  it("leaves alone a span that was undone, filled or is on a locked track", () => {
+    const { doc, spans } = deleted(row(), ["b", "d"]);
+    doc.undo();
+    expect(openSpans(doc.getState(), spans)).toEqual([]);
+    expect(closeDeletedSpans(doc.getState(), spans).command).toBeNull();
+    doc.redo();
+    expect(openSpans(doc.getState(), spans)).toHaveLength(2);
+    const filled = withClips(doc.getState(), [clip("new", "v1", 110, 20)]);
+    expect(openSpans(filled, spans).map((span) => span.start)).toEqual([250]);
+    const locked = { ...doc.getState(), tracks: doc.getState().tracks.map((track) => (track.id === "v1" ? { ...track, locked: true } : track)) };
+    expect(openSpans(locked, spans)).toEqual([]);
   });
 });

@@ -60,7 +60,9 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   { id: "timeline.centerPlayhead", keys: ["Mod+Shift+."], scopes: TL },
 
   // Editing
-  { id: "edit.split", keys: ["Mod+K"], scopes: G },
+  // The user's own keys (2026-11-11): split on Mod+S (Save now moved to Mod+Alt+S), Close all gaps on
+  // Mod+Alt+P, the gaps of the last delete on Mod+Shift+P (the palette moved to Mod+P and F1).
+  { id: "edit.split", keys: ["Mod+S"], scopes: G },
   { id: "edit.splitAll", keys: ["Mod+Shift+K"], scopes: G },
   // §12: Delete also removes the selected media in the media panel.
   { id: "edit.delete", keys: ["Delete", "Backspace"], scopes: ["timeline", "preview", "media"] },
@@ -69,7 +71,8 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   { id: "edit.rippleTrimNext", keys: ["W"], scopes: G },
   { id: "edit.extendToPlayhead", keys: ["E"], scopes: TL },
   { id: "edit.closeGap", keys: ["G"], scopes: TL },
-  { id: "edit.closeAllGaps", keys: ["Shift+G"], scopes: TL },
+  { id: "edit.closeAllGaps", keys: ["Mod+Alt+P", "Shift+G"], scopes: TL_PV },
+  { id: "edit.closeLastDeleteGaps", keys: ["Mod+Shift+P"], scopes: G },
   { id: "edit.lift", keys: [";"], scopes: TL },
   { id: "edit.extract", keys: ["'"], scopes: TL },
   { id: "edit.freezeFrame", keys: ["Shift+F"], scopes: G },
@@ -171,9 +174,9 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   // for the installed app's window (Batch 42, the Batch 01 follow-up).
   { id: "project.new", keys: ["Mod+Alt+N", "Mod+N"], scopes: G },
   { id: "project.open", keys: ["Mod+O"], scopes: G },
-  { id: "project.save", keys: ["Mod+S"], scopes: G, everywhere: true },
+  { id: "project.save", keys: ["Mod+Alt+S"], scopes: G, everywhere: true },
   { id: "app.export", keys: ["Mod+E"], scopes: G },
-  { id: "app.commandPalette", keys: ["Mod+Shift+P"], scopes: G },
+  { id: "app.commandPalette", keys: ["Mod+P", "F1"], scopes: G },
   // The cheat sheet (Batch 40): "?" on any layout, Shift+/ by key position.
   { id: "app.shortcuts", keys: ["Shift+/", "?"], scopes: G },
   { id: "app.cancel", keys: ["Escape"], scopes: G },

@@ -35,7 +35,7 @@ function setup(initialScope: FocusScope = "global", isAvailable?: (id: string) =
 describe("KeyDispatcher", () => {
   it("dispatches a global shortcut and prevents the browser default", () => {
     const t = setup();
-    const event = t.down({ key: "k", code: "KeyK", ctrlKey: true });
+    const event = t.down({ key: "s", code: "KeyS", ctrlKey: true });
     expect(t.onAction).toHaveBeenCalledWith("edit.split", { scope: "global", phase: "down", repeat: false });
     expect(event.defaultPrevented).toBe(true);
   });
@@ -151,16 +151,26 @@ describe("KeyDispatcher", () => {
     expect(t.onAction.mock.calls.map((c) => c[0])).toEqual(["edit.delete", "history.redo"]);
   });
 
-  it("saves with Mod+S while typing in an input and inside a dialog (everywhere bindings)", () => {
+  it("saves with Mod+Alt+S while typing in an input and inside a dialog (everywhere bindings)", () => {
     const t = setup("properties");
     const input = document.createElement("input");
     input.type = "text";
-    const typed = t.down({ key: "s", code: "KeyS", ctrlKey: true }, input);
+    const typed = t.down({ key: "s", code: "KeyS", ctrlKey: true, altKey: true }, input);
     expect(t.onAction).toHaveBeenLastCalledWith("project.save", expect.objectContaining({ scope: "properties" }));
     expect(typed.defaultPrevented).toBe(true);
     t.setScope("dialog");
-    t.down({ key: "s", code: "KeyS", ctrlKey: true });
+    t.down({ key: "s", code: "KeyS", ctrlKey: true, altKey: true });
     expect(t.onAction).toHaveBeenLastCalledWith("project.save", expect.objectContaining({ scope: "dialog" }));
+    // Mod+S is Split: it does not split while typing or in a dialog, and the browser's Save page dialog stays closed.
+    t.onAction.mockClear();
+    t.setScope("properties");
+    const plain = t.down({ key: "s", code: "KeyS", ctrlKey: true }, input);
+    expect(t.onAction).not.toHaveBeenCalled();
+    expect(plain.defaultPrevented).toBe(true);
+    // The same for Mod+P (the palette) and the browser's print dialog.
+    expect(t.down({ key: "p", code: "KeyP", ctrlKey: true }, input).defaultPrevented).toBe(true);
+    t.onAction.mockClear();
+    t.setScope("dialog");
     // Other keys stay with the input and the dialog.
     t.onAction.mockClear();
     t.down({ key: "k", code: "KeyK", ctrlKey: true });
@@ -176,7 +186,7 @@ describe("KeyDispatcher", () => {
     t.down({ key: "j", code: "KeyJ", ctrlKey: true });
     expect(t.onAction).toHaveBeenLastCalledWith("edit.split", expect.anything());
     t.onAction.mockClear();
-    t.down({ key: "k", code: "KeyK", ctrlKey: true });
+    t.down({ key: "s", code: "KeyS", ctrlKey: true });
     expect(t.onAction).not.toHaveBeenCalled();
     // A key the user moved onto another command's chord wins it (the newest binding).
     map.setKeys("edit.split", ["Mod+Z"]);
@@ -194,7 +204,7 @@ describe("KeyDispatcher", () => {
       onAction: () => false,
     });
     scope = "global";
-    const event = new KeyboardEvent("keydown", { key: "s", code: "KeyS", ctrlKey: true, cancelable: true });
+    const event = new KeyboardEvent("keydown", { key: "e", code: "KeyE", ctrlKey: true, cancelable: true });
     dispatcher.handleKeyDown(event);
     expect(event.defaultPrevented).toBe(false);
   });
@@ -261,7 +271,7 @@ describe("focused controls keep their own keys (Batch 46)", () => {
   it("still runs modified shortcuts on a focused control", () => {
     const t = setup();
     const button = make("<button>Split</button>", "button");
-    t.down({ key: "k", code: "KeyK", ctrlKey: true }, button);
+    t.down({ key: "s", code: "KeyS", ctrlKey: true }, button);
     expect(t.onAction).toHaveBeenCalledWith("edit.split", expect.anything());
   });
 });

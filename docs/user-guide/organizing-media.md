@@ -198,7 +198,7 @@ With several items selected, the message gives the path of one of them only. Sel
 
 ## Use the palette
 
-Most of these actions are commands you can run from the command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>) and give a shortcut in **Settings** > **Shortcuts**. None has a key by default.
+Most of these actions are commands you can run from the command palette (<kbd>Ctrl</kbd>+<kbd>P</kbd>) and give a shortcut in **Settings** > **Shortcuts**. None has a key by default.
 
 | Command | What it does |
 | --- | --- |

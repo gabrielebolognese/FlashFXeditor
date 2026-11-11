@@ -1,4 +1,4 @@
-// Splitting clips (spec §6.11, §6.19): the pure edit behind Split at playhead (`Mod+K`), Split all
+// Splitting clips (spec §6.11, §6.19): the pure edit behind Split at playhead (`Mod+S`), Split all
 // tracks (`Mod+Shift+K`) and the Razor tool. A split cuts each clip crossing the frame into two clips
 // with the same properties: the left piece keeps the clip's id, the right piece gets a new one.
 // `sliceClip` moves the source in/out, partitions keyframes and drops what belongs to the cut side

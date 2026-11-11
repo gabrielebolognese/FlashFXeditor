@@ -359,7 +359,7 @@ In the **Audio** section, the **Pan** field places a clip's sound between the sp
 
 ## Detect beats in music
 
-Select a music clip and run **Detect beats** from the command palette (<kbd>Ctrl</kbd>+<kbd>K</kbd>). The editor adds a teal marker named **Beat** on the timeline at every beat, in one undo step. Beats that already have a marker are skipped. Markers are snap targets, so clips you drag or trim snap to the beats. See [Markers and in and out points](markers-and-in-out-points.md).
+Select a music clip and run **Detect beats** from the command palette (<kbd>Ctrl</kbd>+<kbd>S</kbd>). The editor adds a teal marker named **Beat** on the timeline at every beat, in one undo step. Beats that already have a marker are skipped. Markers are snap targets, so clips you drag or trim snap to the beats. See [Markers and in and out points](markers-and-in-out-points.md).
 
 ## Mix a track and normalize the export
 

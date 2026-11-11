@@ -42,7 +42,7 @@ describe("DEFAULT_KEYMAP", () => {
 describe("Keymap (live, rebinding)", () => {
   it("starts at the defaults", () => {
     const map = new Keymap(DEFAULT_KEYMAP);
-    expect(map.keysFor("edit.split")).toEqual(["Mod+K"]);
+    expect(map.keysFor("edit.split")).toEqual(["Mod+S"]);
     expect(map.isCustom("edit.split")).toBe(false);
     expect(map.bindings()).toHaveLength(DEFAULT_KEYMAP.length);
   });
@@ -55,7 +55,7 @@ describe("Keymap (live, rebinding)", () => {
     map.setKeys("transport.shuttleBack", ["Alt+J"]);
     expect(listener).toHaveBeenCalledTimes(2);
     expect(map.keysFor("edit.split")).toEqual(["Mod+J"]);
-    expect(map.defaultKeysFor("edit.split")).toEqual(["Mod+K"]);
+    expect(map.defaultKeysFor("edit.split")).toEqual(["Mod+S"]);
     expect(map.binding("transport.shuttleBack")).toMatchObject({ keys: ["Alt+J"], hold: true, scopes: ["global"] });
     // The customized bindings come last, so they win a chord they share.
     expect(map.bindings().slice(-2).map((b) => b.id)).toEqual(["transport.shuttleBack", "edit.split"]);
@@ -63,7 +63,7 @@ describe("Keymap (live, rebinding)", () => {
 
   it("drops overrides equal to the defaults, resets one or all", () => {
     const map = new Keymap(DEFAULT_KEYMAP);
-    map.setOverrides({ "edit.split": ["Mod+K"], "edit.lift": [] });
+    map.setOverrides({ "edit.split": ["Mod+S"], "edit.lift": [] });
     expect(map.getOverrides()).toEqual({ "edit.lift": [] });
     expect(map.keysFor("edit.lift")).toEqual([]);
     expect(map.bindings().some((b) => b.id === "edit.lift")).toBe(false);
@@ -72,7 +72,7 @@ describe("Keymap (live, rebinding)", () => {
     expect(map.getOverrides()).toEqual({ "edit.split": ["Mod+J"] });
     map.resetAll();
     expect(map.getOverrides()).toEqual({});
-    expect(map.keysFor("edit.split")).toEqual(["Mod+K"]);
+    expect(map.keysFor("edit.split")).toEqual(["Mod+S"]);
   });
 
   it("binds commands without a default in the scopes the resolver gives", () => {
@@ -89,7 +89,7 @@ describe("Keymap (live, rebinding)", () => {
     const listener = vi.fn();
     map.subscribe(listener);
     map.setOverrides({});
-    map.setKeys("edit.split", ["Mod+K"]);
+    map.setKeys("edit.split", ["Mod+S"]);
     expect(listener).not.toHaveBeenCalled();
   });
 });

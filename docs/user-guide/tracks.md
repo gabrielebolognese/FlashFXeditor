@@ -28,7 +28,7 @@ The track header column is at the left of the timeline. Each header shows the tr
 
 | Toggle | Looks like | On video tracks | On audio tracks | On the CC track | What it does |
 | --- | --- | --- | --- | --- | --- |
-| **Target** | A crosshair | Yes | Yes | Yes | Decides whether edits without a selection, such as <kbd>Ctrl</kbd>+<kbd>K</kbd>, act on the track. On in a new track. See [Choose the tracks your edits use](#choose-the-tracks-your-edits-use-target). |
+| **Target** | A crosshair | Yes | Yes | Yes | Decides whether edits without a selection, such as <kbd>Ctrl</kbd>+<kbd>S</kbd>, act on the track. On in a new track. See [Choose the tracks your edits use](#choose-the-tracks-your-edits-use-target). |
 | **Lock** | A padlock | Yes | Yes | Yes | Protects the track's clips from every change. See [Lock a track](#lock-a-track). |
 | **M** (mute) | The letter M | Yes | Yes | No | Takes the track out of the preview (video) or out of the mix (audio). |
 | **S** (solo) | The letter S | No | Yes | No | Plays only the soloed audio tracks. |
@@ -112,7 +112,7 @@ The **Target** toggle (the crosshair) decides which tracks take part in edits th
 
 | Edit | Acts on |
 | --- | --- |
-| <kbd>Ctrl</kbd>+<kbd>K</kbd> with nothing selected | The clips under the playhead on targeted tracks. See [Split clips at the playhead](splitting-and-deleting.md#split-clips-at-the-playhead). |
+| <kbd>Ctrl</kbd>+<kbd>S</kbd> with nothing selected | The clips under the playhead on targeted tracks. See [Split clips at the playhead](splitting-and-deleting.md#split-clips-at-the-playhead). |
 | <kbd>Q</kbd> and <kbd>W</kbd> | The clips under the playhead on targeted tracks. See [Trim to the playhead with Q and W](trimming.md#trim-to-the-playhead-with-q-and-w). |
 | <kbd>G</kbd> with no gap selected | The gap at the playhead on targeted tracks. See [Close a gap](splitting-and-deleting.md#close-a-gap). |
 | <kbd>Shift</kbd>+<kbd>G</kbd> or **Close all gaps (compact)** with no track selected | The gaps on targeted tracks. See [Close all gaps (compact)](splitting-and-deleting.md#close-all-gaps-compact). |
@@ -121,7 +121,7 @@ The **Target** toggle (the crosshair) decides which tracks take part in edits th
 | **Lift** (<kbd>;</kbd>) and **Extract** (<kbd>'</kbd>) | The in/out range on targeted tracks, whatever is selected. With **Extract**, the other tracks follow the ripple. See [Lift or extract a range](markers-and-in-out-points.md#lift-or-extract-a-range). |
 | <kbd>X</kbd> with no clip selected under the playhead | The topmost clip under the playhead on a targeted track comes first. See [Mark a clip or the selection](markers-and-in-out-points.md#mark-a-clip-or-the-selection). |
 
-- While **Linked selection** is on, the linked clips of the clips these edits change follow them, also on a track that is not targeted. For example, <kbd>Ctrl</kbd>+<kbd>K</kbd> on an untargeted A1 still splits the sound of a video it splits on V1. See [Linking and grouping clips](links-and-groups.md).
+- While **Linked selection** is on, the linked clips of the clips these edits change follow them, also on a track that is not targeted. For example, <kbd>Ctrl</kbd>+<kbd>S</kbd> on an untargeted A1 still splits the sound of a video it splits on V1. See [Linking and grouping clips](links-and-groups.md).
 - <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> and the **Razor** tool with <kbd>Shift</kbd> cut every unlocked track, targeted or not.
 - Selected clips are always edited, whatever their track's target. **Lift** and **Extract** are the exception: they ignore the selection and **Linked selection**, and change only targeted tracks.
 - Each click is one step in the history, named **Target track** or **Untarget track**. Targets are saved with the project.
@@ -134,7 +134,7 @@ While a track is locked:
 
 - Its clips can't be selected: a click on them works like a click on empty space, and <kbd>Ctrl</kbd>+<kbd>A</kbd> and selection rectangles skip them. In the preview, a click on their picture goes to the layer below. Locking a track removes its clips from the selection.
 - Its clips can't be moved, resized or rotated in the preview. Their pictures still count as targets when you snap other layers or measure with <kbd>Alt</kbd>, so a locked background or logo is a good reference to line up with. See [Choose what layers snap to](snapping-and-smart-guides.md#choose-what-layers-snap-to).
-- Its clips can't be moved, nudged, trimmed, rolled, slipped, slid, stretched, split (with <kbd>Ctrl</kbd>+<kbd>K</kbd>, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> or the **Razor**), deleted, renamed, linked or grouped.
+- Its clips can't be moved, nudged, trimmed, rolled, slipped, slid, stretched, split (with <kbd>Ctrl</kbd>+<kbd>S</kbd>, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> or the **Razor**), deleted, renamed, linked or grouped.
 - No clip can be dropped, nudged or inserted onto it, also not media dragged from the Media panel or files dropped from File Explorer. The move is refused, and the message **Can't drop clips onto a locked track** names the track. Inserts and overwrites at the playhead pick another track, and a drop on the preview creates a new track instead of using a locked one. See [Adding media to the timeline](adding-media-to-the-timeline.md).
 - Ripples skip it: inserts, ripple trims, <kbd>Q</kbd> and <kbd>W</kbd>, ripple deletes, **Close gap**, **Close all gaps** and **Extract** leave its clips where they are, and its clips never stop a ripple on the other tracks. **Lift** and **Extract** remove nothing from it.
 - The track can't be deleted. See [Delete tracks](#delete-tracks).

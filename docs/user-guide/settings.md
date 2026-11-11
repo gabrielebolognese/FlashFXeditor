@@ -28,7 +28,7 @@ The **Settings** dialog holds the choices that apply to every project you open i
 
 ## Open Settings
 
-1. Click **Settings** (the gear) at the right end of the app bar, or run **Settings** in the command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>).
+1. Click **Settings** (the gear) at the right end of the app bar, or run **Settings** in the command palette (<kbd>Ctrl</kbd>+<kbd>P</kbd>).
 2. The dialog opens on the **General** tab. It has three tabs: **General**, **Shortcuts** and **About**. Click **Shortcuts** to change your keys; see [Change a shortcut](command-palette-and-custom-shortcuts.md#change-a-shortcut). **Edit shortcuts** in the **Keyboard shortcuts** sheet opens the dialog on **Shortcuts**, and **About Shorts Editor** in the command palette opens it on **About**; see [See the version and get help](#see-the-version-and-get-help).
 3. Change what you need. Each change takes effect at once.
 4. Click **Done**, or press <kbd>Escape</kbd>.
@@ -150,14 +150,14 @@ The **About** tab tells you which version of Shorts Editor you are running and h
 > - File: `videos/settings/about.mp4` (not recorded yet)
 > - Length: about 40 seconds
 > - Shows:
->   1. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `about` and press <kbd>Enter</kbd>: **Settings** opens on the **About** tab.
+>   1. Press <kbd>Ctrl</kbd>+<kbd>P</kbd>, type `about` and press <kbd>Enter</kbd>: **Settings** opens on the **About** tab.
 >   2. Point at **Version** (1.2.0) and **Renderer** (**WebGPU**).
 >   3. Click **View licenses**: the license list opens in a new browser tab. Go back to the editor's tab.
 >   4. Scroll down to **Font licenses** and click **Cinzel** ("Natanael Gama · SIL Open Font License 1.1"): its license text opens in a new browser tab. Go back to the editor's tab.
 >   5. Click **Keyboard shortcuts**: **Settings** closes and the **Keyboard shortcuts** sheet opens. Press <kbd>Esc</kbd>.
 
 1. Open the **About** tab in one of these ways:
-   - Run **About Shorts Editor** in the command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>). Typing `version`, `licenses` or `help` finds it too. It has no key by default.
+   - Run **About Shorts Editor** in the command palette (<kbd>Ctrl</kbd>+<kbd>P</kbd>). Typing `version`, `licenses` or `help` finds it too. It has no key by default.
    - Open **Settings** and click the **About** tab.
 2. Click **Done**, or press <kbd>Escape</kbd>, to close it.
 

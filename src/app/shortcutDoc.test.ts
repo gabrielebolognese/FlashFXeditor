@@ -18,7 +18,7 @@ describe("the README's keyboard cheat sheet (Batch 50)", () => {
       const rows = sheet.split("\n").filter((line) => line.startsWith(`| ${info.label.replace(/\|/g, "\\|")} |`));
       expect(rows, binding.id).toHaveLength(1);
     }
-    expect(sheet).toContain("| Split at playhead | `Ctrl+K` | `⌘K` | Everywhere |");
+    expect(sheet).toContain("| Split at playhead | `Ctrl+S` | `⌘S` | Everywhere |");
     expect(sheet).toMatch(/\| Close gap \| `G` \| `G` \| Timeline \|/);
   });
 

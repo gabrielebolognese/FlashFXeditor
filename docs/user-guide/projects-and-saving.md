@@ -5,7 +5,7 @@ Every Shorts Editor project is a folder on your disk. The editor saves your work
 > **Video placeholder: Autosave and undo**
 > - File: `videos/projects-and-saving/autosave-and-undo.mp4` (not recorded yet)
 > - Length: about 75 seconds
-> - Shows: with a project open, click the project name in the app bar, type "Beach day" and press <kbd>Enter</kbd>; the save dot turns gold, then green about a second later; hover the dot to show **All changes saved at** and the time; hover **Undo** to show **Undo Rename project**; press <kbd>Ctrl</kbd>+<kbd>Z</kbd> (the old name comes back) and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> (the new name returns); press <kbd>Ctrl</kbd>+<kbd>S</kbd>; open the project folder in File Explorer and show `project.json`, `session.json` and the backups in `history`; back in the browser, move the playhead, reload the page, open the project from **Recent projects** and show the same name, playhead and panel sizes.
+> - Shows: with a project open, click the project name in the app bar, type "Beach day" and press <kbd>Enter</kbd>; the save dot turns gold, then green about a second later; hover the dot to show **All changes saved at** and the time; hover **Undo** to show **Undo Rename project**; press <kbd>Ctrl</kbd>+<kbd>Z</kbd> (the old name comes back) and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> (the new name returns); press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd>; open the project folder in File Explorer and show `project.json`, `session.json` and the backups in `history`; back in the browser, move the playhead, reload the page, open the project from **Recent projects** and show the same name, playhead and panel sizes.
 
 ## In this page
 - [What is in the project folder](#what-is-in-the-project-folder)
@@ -59,7 +59,7 @@ You can change the pause with **Autosave** in **Settings** > **General** or in t
 
 ## Check the save status
 
-The dot to the right of the project name in the app bar shows the save status. Hover it to see the details; the tooltip also shows <kbd>Ctrl</kbd>+<kbd>S</kbd>.
+The dot to the right of the project name in the app bar shows the save status. Hover it to see the details; the tooltip also shows <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd>.
 
 | Dot | Status | Tooltip | Click the dot to |
 | --- | --- | --- | --- |
@@ -73,9 +73,9 @@ When a save fails, your changes stay in the editor. The editor tries again after
 
 ## Save now
 
-Press <kbd>Ctrl</kbd>+<kbd>S</kbd> or click the save dot. This always writes the project, even when nothing changed, and makes a backup in `history` each time.
+Press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd> or click the save dot. This always writes the project, even when nothing changed, and makes a backup in `history` each time.
 
-<kbd>Ctrl</kbd>+<kbd>S</kbd> works in every panel, also while you type in a text field and while a dialog or a menu is open; the browser's own "Save page" dialog doesn't open. What you are still typing in a field goes into the project when you press <kbd>Enter</kbd> or leave the field, and the next autosave writes it.
+<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd> works in every panel, also while you type in a text field and while a dialog or a menu is open; the browser's own "Save page" dialog doesn't open. What you are still typing in a field goes into the project when you press <kbd>Enter</kbd> or leave the field, and the next autosave writes it.
 
 ## Undo and redo changes
 
@@ -117,7 +117,7 @@ What you can undo:
 | **Lift** and **Extract** (one step each) | Proxies: **Generate proxy**, **Remove proxy**, a proxy being made or failing, and **Regenerate thumbnails** |
 | Trimming clips: each trim drag and each press of <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> | Choosing a tool (**Select**, **Razor**, **Hand**, **Slip**, **Slide**, **Rate stretch**) |
 | Rolling a cut, slipping, sliding and rate stretching clips (one step per drag) | |
-| Splitting clips (each <kbd>Ctrl</kbd>+<kbd>K</kbd> and each **Razor** click), deleting and ripple deleting clips | |
+| Splitting clips (each <kbd>Ctrl</kbd>+<kbd>S</kbd> and each **Razor** click), deleting and ripple deleting clips | |
 | Closing a gap, closing all gaps (one step for all of them) | |
 | Renaming clips and setting or removing their label color (also in the **Clip** section) | Track heights (undo and redo leave them as they are) |
 | Linking, unlinking, grouping and ungrouping clips, **Move into sync** | |
@@ -185,7 +185,7 @@ The editor offers this only when the temporary copy is newer than `project.json`
 
 Every save keeps the previous version of `project.json` in the `history` folder, so you can go back to an earlier state of the project.
 
-1. Click an empty area of the timeline tracks so the **Project** section shows, then click **History…**. You can also run **History…** in the command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>).
+1. Click an empty area of the timeline tracks so the **Project** section shows, then click **History…**. You can also run **History…** in the command palette (<kbd>Ctrl</kbd>+<kbd>P</kbd>).
 2. The **History** dialog lists the versions, newest first. Each row shows when that version was saved, in your local time, then the project's name in that version and the size of the file. The newest row also reads **latest backup**.
 3. Click **Restore…** on the version you want (tooltip **Make this version the current one**).
 4. **Restore this version?** names the project and the time of the version: "The current version is saved first and stays in History, so you can come back to it. Undo history starts over."
@@ -200,7 +200,7 @@ What happens when you restore:
 
 If the current state can't be saved first, nothing is restored and the message **Can't restore this backup** explains why. Click **Done** or press <kbd>Escape</kbd> to close the list without restoring. Before the first saves, the list reads "No earlier versions yet: they appear after the first saves."
 
-> **Important:** `history` keeps only the newest 20 backups. Because every save makes one, 20 backups can cover just the last few minutes of work, and each <kbd>Ctrl</kbd>+<kbd>S</kbd> adds one even without changes. A restore adds one too. Copy a backup somewhere else if you want to keep it.
+> **Important:** `history` keeps only the newest 20 backups. Because every save makes one, 20 backups can cover just the last few minutes of work, and each <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd> adds one even without changes. A restore adds one too. Copy a backup somewhere else if you want to keep it.
 
 ### Restore a version when the project doesn't open
 

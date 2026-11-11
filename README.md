@@ -136,7 +136,7 @@ License, Apache 2.0 or the Ubuntu Font Licence. A rerun fetches the versions `ca
 ## Keyboard shortcuts
 
 The default keys (spec §18). Every key can be changed in Settings > Shortcuts; inside the editor,
-`?` opens this list with your own keys, and `Ctrl+Shift+P` (`⇧⌘P`) finds any command by name.
+`?` opens this list with your own keys, and `Ctrl+P` (`⌘P`) or `F1` finds any command by name.
 
 <!-- shortcuts:start (generated from src/core/keyboard/keymap.ts by npm run docs:shortcuts) -->
 
@@ -180,7 +180,7 @@ The default keys (spec §18). Every key can be changed in Settings > Shortcuts; 
 
 | Command | Windows, Linux | macOS | Where |
 | --- | --- | --- | --- |
-| Split at playhead | `Ctrl+K` | `⌘K` | Everywhere |
+| Split at playhead | `Ctrl+S` | `⌘S` | Everywhere |
 | Split all tracks at playhead | `Ctrl+Shift+K` | `⌘⇧K` | Everywhere |
 | Delete | `Delete`, `Backspace` | `Delete`, `Backspace` | Timeline, Preview, Media |
 | Ripple delete | `Shift+Delete`, `Shift+Backspace` | `⇧Delete`, `⇧Backspace` | Timeline, Preview |
@@ -188,7 +188,8 @@ The default keys (spec §18). Every key can be changed in Settings > Shortcuts; 
 | Ripple trim end to playhead | `W` | `W` | Everywhere |
 | Extend edit to playhead | `E` | `E` | Timeline |
 | Close gap | `G` | `G` | Timeline |
-| Close all gaps | `Shift+G` | `⇧G` | Timeline |
+| Close all gaps | `Ctrl+Alt+P`, `Shift+G` | `⌘⌥P`, `⇧G` | Timeline, Preview |
+| Close the gaps of the last delete | `Ctrl+Shift+P` | `⌘⇧P` | Everywhere |
 | Lift in/out range | `;` | `;` | Timeline |
 | Extract in/out range | `'` | `'` | Timeline |
 | Freeze frame at playhead | `Shift+F` | `⇧F` | Everywhere |
@@ -330,7 +331,7 @@ The default keys (spec §18). Every key can be changed in Settings > Shortcuts; 
 | --- | --- | --- | --- |
 | New project | `Ctrl+Alt+N`, `Ctrl+N` | `⌘⌥N`, `⌘N` | Everywhere |
 | Open project | `Ctrl+O` | `⌘O` | Everywhere |
-| Save now | `Ctrl+S` | `⌘S` | Everywhere |
+| Save now | `Ctrl+Alt+S` | `⌘⌥S` | Everywhere |
 
 ### Export
 
@@ -342,7 +343,7 @@ The default keys (spec §18). Every key can be changed in Settings > Shortcuts; 
 
 | Command | Windows, Linux | macOS | Where |
 | --- | --- | --- | --- |
-| Command palette | `Ctrl+Shift+P` | `⌘⇧P` | Everywhere |
+| Command palette | `Ctrl+P`, `F1` | `⌘P`, `F1` | Everywhere |
 | Keyboard shortcuts | `Shift+/`, `?` | `⇧/`, `?` | Everywhere |
 | Cancel gesture / close | `Escape` | `Escape` | Everywhere |
 

@@ -149,7 +149,7 @@ To put a layer just next to a target instead of on it:
 About holding <kbd>S</kbd>:
 
 - Press <kbd>S</kbd> after the drag has started. An <kbd>S</kbd> pressed before you start dragging turns snapping on or off, as it does outside a drag.
-- While you drag a layer, <kbd>S</kbd> never starts a shortcut, also together with <kbd>Shift</kbd>, <kbd>Ctrl</kbd> or <kbd>Alt</kbd>: <kbd>Ctrl</kbd>+<kbd>S</kbd> does not save until you release the mouse button.
+- While you drag a layer, <kbd>S</kbd> never starts a shortcut, also together with <kbd>Shift</kbd>, <kbd>Ctrl</kbd> or <kbd>Alt</kbd>: <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd> does not save until you release the mouse button.
 
 ## Measure distances with Alt
 

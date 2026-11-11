@@ -17,7 +17,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   9. Press <kbd>S</kbd>: the **Snap** magnet in the timeline toolbar turns off. Drag a clip and hold <kbd>S</kbd>: it snaps to the next clip edge. Release the mouse button, then press <kbd>S</kbd> to turn snapping back on.
 >   10. Press <kbd>Space</kbd> to play. In the middle of a clip, press <kbd>Q</kbd>: the clip loses its beginning up to the playhead and playback goes on. Press <kbd>W</kbd> a little later: the rest of the clip is removed. Press <kbd>Space</kbd> to pause.
 >   11. Click a clip, click in the ruler a little past its end, and press <kbd>E</kbd>: the clip's end moves to the playhead.
->   12. Click in the ruler in the middle of a clip and press <kbd>Ctrl</kbd>+<kbd>K</kbd>: the clip splits at the playhead. Click the right part and press <kbd>Shift</kbd>+<kbd>Delete</kbd>: it disappears and the later clips move left. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> twice.
+>   12. Click in the ruler in the middle of a clip and press <kbd>Ctrl</kbd>+<kbd>S</kbd>: the clip splits at the playhead. Click the right part and press <kbd>Shift</kbd>+<kbd>Delete</kbd>: it disappears and the later clips move left. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> twice.
 >   13. Click a clip, press <kbd>Delete</kbd>, click the gap it leaves and press <kbd>G</kbd>: the gap closes. Press <kbd>F2</kbd> on another clip, type a name and press <kbd>Enter</kbd>.
 >   14. Press <kbd>Y</kbd>: the **Slip** tool turns gold. Press <kbd>U</kbd> for **Slide**, <kbd>R</kbd> for **Rate stretch** and <kbd>C</kbd> for **Razor**. Press <kbd>H</kbd> for **Hand** and drag on the tracks: the view pans. Press <kbd>V</kbd> to go back to **Select**.
 >   15. Zoom in, scroll the playhead out of view, and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd>: the view centers on the playhead.
@@ -41,8 +41,8 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   33. Click right on a cut between two clips on the timeline: red brackets mark it. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd>: a cross dissolve block appears over the cut. Hold <kbd>Alt</kbd> and drag its right end: only that end moves. Click the block and press <kbd>Delete</kbd>: it is gone.
 >   34. Click **Audio scrub** in the timeline toolbar and press <kbd>→</kbd> a few times: each step plays a short bit of sound. Hold <kbd>Ctrl</kbd> and click the white line across an audio clip: a diamond appears on it. Press <kbd>Delete</kbd>: the diamond is gone and the clip stays.
 >   35. Click a video with sound and press <kbd>Ctrl</kbd>+<kbd>C</kbd>. Click in the ruler at an empty spot and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the video and its sound land at the playhead. Put the playhead in the middle of another clip and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>: the clip splits and the copy goes in between. Click a title, press <kbd>Ctrl</kbd>+<kbd>C</kbd>, click another title and press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd>: the **Paste attributes** checklist opens; press <kbd>Enter</kbd>: the second title takes the look of the first.
->   36. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `compact` and press <kbd>Enter</kbd>: every gap closes. Press <kbd>?</kbd>: the **Keyboard shortcuts** sheet lists every key; press <kbd>Esc</kbd>. Right-click a clip, press <kbd>↓</kbd> twice and <kbd>Enter</kbd>: the clip is copied. Press <kbd>Alt</kbd>+<kbd>S</kbd>: **Audio scrub** turns gold; press it again.
->   37. Press <kbd>Ctrl</kbd>+<kbd>E</kbd>: the **Export** tab opens beside **Edit Properties**. Press <kbd>Enter</kbd>: a card under **Queue** shows the progress. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `cancel export` and press <kbd>Enter</kbd>: the message **Export cancelled** appears. Press <kbd>Esc</kbd>: the panel shows **Edit Properties** again.
+>   36. Press <kbd>Ctrl</kbd>+<kbd>P</kbd>, type `compact` and press <kbd>Enter</kbd>: every gap closes. Press <kbd>?</kbd>: the **Keyboard shortcuts** sheet lists every key; press <kbd>Esc</kbd>. Right-click a clip, press <kbd>↓</kbd> twice and <kbd>Enter</kbd>: the clip is copied. Press <kbd>Alt</kbd>+<kbd>S</kbd>: **Audio scrub** turns gold; press it again.
+>   37. Press <kbd>Ctrl</kbd>+<kbd>E</kbd>: the **Export** tab opens beside **Edit Properties**. Press <kbd>Enter</kbd>: a card under **Queue** shows the progress. Press <kbd>Ctrl</kbd>+<kbd>P</kbd>, type `cancel export` and press <kbd>Enter</kbd>: the message **Export cancelled** appears. Press <kbd>Esc</kbd>: the panel shows **Edit Properties** again.
 >   38. Select a text clip and click the **Edit Properties** tab. Press <kbd>Tab</kbd> until the **Outline** switch has a gold ring: its tooltip reads **Outline**. Press <kbd>Space</kbd>: the outline turns on and playback does not start. Click the switch with the mouse and press <kbd>Space</kbd>: playback starts. Click the **Media** tab, press <kbd>Tab</kbd> until a card has the ring, press <kbd>→</kbd> and <kbd>Enter</kbd>: the next card is inserted at the playhead.
 >   39. Select a title and click its **Font** field: the font browser opens. Type `bold` and press <kbd>↓</kbd> three times: the title shows each highlighted font. Press <kbd>Esc</kbd>: the title is back in its font. Open the browser again, press <kbd>↓</kbd> and <kbd>Enter</kbd>: the title takes the first font and the browser closes.
 >   40. With the title still selected, point at the third button of the preset bar above the preview: its tooltip reads **Bold outline** with **Alt+3**. Press <kbd>Alt</kbd>+<kbd>3</kbd>: the title takes **Bold outline**. Click an empty area of the tracks so nothing is selected and press <kbd>Alt</kbd>+<kbd>1</kbd>: a new "Title" appears at the playhead, ready for typing; press <kbd>Esc</kbd>.
@@ -86,7 +86,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 - **Panel** shortcuts work only while that panel is active.
 - When a panel uses the same key as an all-panels shortcut, the panel wins. When the panel's own action has nothing to act on, or belongs to a later feature, the all-panels shortcut works there. For example, in the Preview panel the arrow keys move the selected layers; with no layer selected there, <kbd>←</kbd> and <kbd>→</kbd> step frames as everywhere else.
 
-**Typing comes first.** Shortcuts are off while you type in a text field (a name, a timecode field, a number) or edit a text in the preview (there only <kbd>Ctrl</kbd>+<kbd>Enter</kbd> and <kbd>Esc</kbd> work; see [While you edit text](#while-you-edit-text)), while a dropdown list such as **Sort media by** or **Resolution** has the keyboard focus, and while a dialog or a menu is open. Press <kbd>Enter</kbd> or <kbd>Escape</kbd> to leave a text field. A dropdown list gives the keyboard back as soon as you pick a value with the mouse; after you pick one with the keyboard, click the preview picture or the timeline. One key works everywhere, also while you type and in dialogs: <kbd>Ctrl</kbd>+<kbd>S</kbd> saves the project.
+**Typing comes first.** Shortcuts are off while you type in a text field (a name, a timecode field, a number) or edit a text in the preview (there only <kbd>Ctrl</kbd>+<kbd>Enter</kbd> and <kbd>Esc</kbd> work; see [While you edit text](#while-you-edit-text)), while a dropdown list such as **Sort media by** or **Resolution** has the keyboard focus, and while a dialog or a menu is open. Press <kbd>Enter</kbd> or <kbd>Escape</kbd> to leave a text field. A dropdown list gives the keyboard back as soon as you pick a value with the mouse; after you pick one with the keyboard, click the preview picture or the timeline. One key works everywhere, also while you type and in dialogs: <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd> saves the project.
 
 **Menus take the keyboard.** While a menu is open, the arrow keys, <kbd>Enter</kbd> and <kbd>Space</kbd> work on its rows. When it closes, the keyboard goes back to the panel you were in. See [Menus and lists](#menus-and-lists).
 
@@ -108,7 +108,7 @@ See [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.
 
 | Action | Windows | macOS | Works in |
 | --- | --- | --- | --- |
-| Open the command palette, or close it | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>P</kbd> | All panels, the start screen |
+| Open the command palette, or close it | <kbd>Ctrl</kbd>+<kbd>P</kbd> or <kbd>F1</kbd> | <kbd>⌘</kbd>+<kbd>P</kbd> or <kbd>F1</kbd> | All panels, the start screen |
 | Open the **Keyboard shortcuts** sheet | <kbd>?</kbd> or <kbd>Shift</kbd>+<kbd>/</kbd> | <kbd>?</kbd> or <kbd>⇧</kbd>+<kbd>/</kbd> | All panels, the start screen |
 | Next or previous row | <kbd>↓</kbd> or <kbd>↑</kbd> | <kbd>↓</kbd> or <kbd>↑</kbd> | Command palette |
 | 8 rows down or up | <kbd>Page Down</kbd> or <kbd>Page Up</kbd> | <kbd>Fn</kbd>+<kbd>↓</kbd> or <kbd>Fn</kbd>+<kbd>↑</kbd> | Command palette |
@@ -257,7 +257,7 @@ These shortcuts work only while the Timeline panel is active. See [Timeline](tim
 | Snap the playhead to clip edges, markers and the in and out points | Hold <kbd>Shift</kbd> while you click or drag in the ruler | Hold <kbd>⇧</kbd> while you click or drag in the ruler | Timeline |
 
 - Press <kbd>S</kbd> after the drag has started to switch snapping for that drag only. Holding it does not change the setting or the **Snap** magnet.
-- During a drag, <kbd>S</kbd> never starts a shortcut, also together with <kbd>Shift</kbd>, <kbd>Ctrl</kbd> or <kbd>Alt</kbd>: <kbd>Ctrl</kbd>+<kbd>S</kbd> does not save until you release the mouse button. On a Mac, <kbd>⌥</kbd>+<kbd>S</kbd> during a duplicate drag switches snapping too.
+- During a drag, <kbd>S</kbd> never starts a shortcut, also together with <kbd>Shift</kbd>, <kbd>Ctrl</kbd> or <kbd>Alt</kbd>: <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd> does not save until you release the mouse button. On a Mac, <kbd>⌥</kbd>+<kbd>S</kbd> during a duplicate drag switches snapping too.
 
 See [Snap clips into place](timeline.md#snap-clips-into-place) and [Snapping and smart guides in the preview](snapping-and-smart-guides.md).
 
@@ -286,19 +286,20 @@ See [Splitting, deleting and closing gaps](splitting-and-deleting.md).
 
 | Action | Windows | macOS | Works in |
 | --- | --- | --- | --- |
-| Split at the playhead: the selected clips, or every clip under it when nothing is selected | <kbd>Ctrl</kbd>+<kbd>K</kbd> | <kbd>⌘</kbd>+<kbd>K</kbd> | All panels |
+| Split at the playhead: the selected clips, or every clip under it when nothing is selected | <kbd>Ctrl</kbd>+<kbd>S</kbd> | <kbd>⌘</kbd>+<kbd>S</kbd> | All panels |
 | Split every clip under the playhead, on all tracks | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>K</kbd> | All panels |
 | Delete the selected clips and leave gaps (with keyframes selected on a keyframe lane: delete only them; with a transition selected: delete it; with a gap selected: close it; with a marker selected: delete it) | <kbd>Delete</kbd> or <kbd>Backspace</kbd> | <kbd>Delete</kbd> (⌫) | Timeline, Preview |
 | Ripple delete the selected clips (with keyframes selected: delete only them; with a transition selected: delete it; with a gap selected: close it; with a marker selected: delete it) | <kbd>Shift</kbd>+<kbd>Delete</kbd> or <kbd>Shift</kbd>+<kbd>Backspace</kbd> | <kbd>⇧</kbd>+<kbd>Delete</kbd> (⌫) | Timeline, Preview |
 | Close the selected gap, or the gap at the playhead | <kbd>G</kbd> | <kbd>G</kbd> | Timeline |
-| Close all gaps (compact) | <kbd>Shift</kbd>+<kbd>G</kbd> | <kbd>⇧</kbd>+<kbd>G</kbd> | Timeline |
+| Close all gaps (compact) | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd> or <kbd>Shift</kbd>+<kbd>G</kbd> | <kbd>⌥</kbd>+<kbd>⌘</kbd>+<kbd>P</kbd> or <kbd>⇧</kbd>+<kbd>G</kbd> | Timeline, Preview |
+| Close the gaps of the last delete | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> | <kbd>⇧</kbd>+<kbd>⌘</kbd>+<kbd>P</kbd> | All panels |
 | Rename the selected clip or track | <kbd>F2</kbd> | <kbd>F2</kbd> | Timeline |
 
 - Each of these edits is one undo step.
 - Deleting a clip also deletes its linked clips, for example a video's sound.
 - In the Media panel, <kbd>Delete</kbd>, <kbd>Backspace</kbd> and <kbd>F2</kbd> work on media instead. See [Media panel](#media-panel).
 - The clip and gap menus (right-click) show these shortcuts next to their rows. <kbd>Escape</kbd> closes a menu.
-- Clips on locked tracks are never split or deleted. <kbd>Ctrl</kbd>+<kbd>K</kbd> with nothing selected and <kbd>G</kbd> with no gap selected act on the targeted tracks; <kbd>Shift</kbd>+<kbd>G</kbd> acts on the selected tracks, or on the targeted tracks when no track is selected. See [Tracks](tracks.md).
+- Clips on locked tracks are never split or deleted. <kbd>Ctrl</kbd>+<kbd>S</kbd> with nothing selected and <kbd>G</kbd> with no gap selected act on the targeted tracks; <kbd>Shift</kbd>+<kbd>G</kbd> acts on the selected tracks, or on the targeted tracks when no track is selected. See [Tracks](tracks.md).
 
 ## Compound clips
 
@@ -623,7 +624,7 @@ These keys work in a cue's text in the **Captions** tab of the Media panel. See 
 | Action | Windows | macOS | Works in |
 | --- | --- | --- | --- |
 | Delete the selected cues | <kbd>Delete</kbd> or <kbd>Backspace</kbd> | <kbd>Delete</kbd> (⌫) | **Captions** tab (not while you type in a cue), Timeline |
-| Split the selected cues at the playhead, their text included | <kbd>Ctrl</kbd>+<kbd>K</kbd> | <kbd>⌘</kbd>+<kbd>K</kbd> | All panels (not while you type in a cue) |
+| Split the selected cues at the playhead, their text included | <kbd>Ctrl</kbd>+<kbd>S</kbd> | <kbd>⌘</kbd>+<kbd>S</kbd> | All panels (not while you type in a cue) |
 | Move a cue one frame (it stops at its neighbors) | <kbd>Alt</kbd>+<kbd>←</kbd> or <kbd>Alt</kbd>+<kbd>→</kbd> | <kbd>⌥</kbd>+<kbd>←</kbd> or <kbd>⌥</kbd>+<kbd>→</kbd> | Timeline |
 
 - While you type in a cue, the other shortcuts are off: <kbd>Space</kbd> types a space. Clicking anywhere else also saves the text.
@@ -802,7 +803,7 @@ These shortcuts work in all panels.
 | --- | --- | --- | --- |
 | Undo | <kbd>Ctrl</kbd>+<kbd>Z</kbd> | <kbd>⌘</kbd>+<kbd>Z</kbd> | Same as **Undo** in the app bar. |
 | Redo | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> or <kbd>Ctrl</kbd>+<kbd>Y</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>Z</kbd> or <kbd>⌘</kbd>+<kbd>Y</kbd> | Same as **Redo** in the app bar. |
-| Save now | <kbd>Ctrl</kbd>+<kbd>S</kbd> | <kbd>⌘</kbd>+<kbd>S</kbd> | Also while you type in a field or a dialog is open. The project also saves automatically. |
+| Save now | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>S</kbd> | <kbd>⌥</kbd>+<kbd>⌘</kbd>+<kbd>S</kbd> | Also while you type in a field or a dialog is open. The project also saves automatically. |
 | Open a project folder | <kbd>Ctrl</kbd>+<kbd>O</kbd> | <kbd>⌘</kbd>+<kbd>O</kbd> | Also on the start screen. |
 | Import media | <kbd>Ctrl</kbd>+<kbd>I</kbd> | <kbd>⌘</kbd>+<kbd>I</kbd> | While a project is open. |
 | New project | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> or <kbd>Ctrl</kbd>+<kbd>N</kbd> | <kbd>⌘</kbd>+<kbd>⌥</kbd>+<kbd>N</kbd> or <kbd>⌘</kbd>+<kbd>N</kbd> | Also on the start screen, and while a project is open. <kbd>Ctrl</kbd>+<kbd>N</kbd> is taken by the browser in a normal tab; see [Keys the browser keeps](#keys-the-browser-keeps). |

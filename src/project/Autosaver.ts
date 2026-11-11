@@ -115,7 +115,7 @@ export class Autosaver {
     else if (this.dirty) this.schedule();
   }
 
-  /** Writes now even when nothing changed (Mod+S, retry). Resolves false when the save failed. */
+  /** Writes now even when nothing changed (Mod+Alt+S, retry). Resolves false when the save failed. */
   saveNow(): Promise<boolean> {
     return this.run(true);
   }

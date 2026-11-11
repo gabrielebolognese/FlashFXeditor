@@ -206,7 +206,7 @@ Keys in a cue's text:
 - The merged cue keeps the style of the cue before it: its own style, or the track's when it has none. The style of the cue you merged into it goes.
 - **Merge with previous cue** is dimmed on the first cue.
 
-You can also split cues on the timeline with <kbd>Ctrl</kbd>+<kbd>K</kbd> or the **Razor** tool. See [Edit cues on the timeline](#edit-cues-on-the-timeline).
+You can also split cues on the timeline with <kbd>Ctrl</kbd>+<kbd>S</kbd> or the **Razor** tool. See [Edit cues on the timeline](#edit-cues-on-the-timeline).
 
 ## Find, select and delete cues
 
@@ -226,7 +226,7 @@ Right-click a cue's row in the **Captions** tab, away from its text. The cue is 
 | **Cut** | Copies the selected cues and deletes them (<kbd>Ctrl</kbd>+<kbd>X</kbd> on the timeline). |
 | **Copy** | Copies the selected cues (<kbd>Ctrl</kbd>+<kbd>C</kbd> on the timeline). |
 | **Paste at playhead** | Pastes the copied clips or cues at the playhead. Pasted cues go to the free spot nearest the playhead on the **CC** track. Dimmed until you copy something. See [Paste caption cues](copy-and-paste.md#paste-caption-cues). |
-| **Split at playhead** | Splits the selected cues at the playhead, their text included (<kbd>Ctrl</kbd>+<kbd>K</kbd>). |
+| **Split at playhead** | Splits the selected cues at the playhead, their text included (<kbd>Ctrl</kbd>+<kbd>S</kbd>). |
 | **Merge with previous cue** | Joins the cue to the one before it. Dimmed on the first cue. See [Split and merge cues](#split-and-merge-cues). |
 | **Delete** | Deletes the selected cues (<kbd>Delete</kbd>). |
 | **Copy style** | Remembers the style of the selected cue (with several selected, the one you selected last). See [Copy a cue's style to other cues](#copy-a-cues-style-to-other-cues). |
@@ -254,7 +254,7 @@ Because cues must not overlap, some edits work differently on the **CC** track:
 | Copy and paste (<kbd>Ctrl</kbd>+<kbd>C</kbd>, <kbd>Ctrl</kbd>+<kbd>V</kbd>) | Pasted cues always go to the **CC** track. With **Paste**, they move to the nearest spot near the playhead where they don't overlap other cues; with no room there, nothing is pasted and the message **No room for the captions** appears. **Paste insert** makes room for them. Pasting cues into a project without captions adds the caption track with the copied style. See [Paste caption cues](copy-and-paste.md#paste-caption-cues). |
 | Nudge with <kbd>Alt</kbd>+<kbd>←</kbd> or <kbd>Alt</kbd>+<kbd>→</kbd> | The cue stops at its neighbors. |
 | Trim an edge | The edge stops at the next cue and never pushes it, even with **Ripple mode** on or <kbd>Ctrl</kbd> held. |
-| Split with <kbd>Ctrl</kbd>+<kbd>K</kbd> or the **Razor** | The text is cut too: where the first word after the cut is spoken (with word timings), or else at the space nearest the cut's share of the cue. A one-word cue keeps its word on both sides. |
+| Split with <kbd>Ctrl</kbd>+<kbd>S</kbd> or the **Razor** | The text is cut too: where the first word after the cut is spoken (with word timings), or else at the space nearest the cut's share of the cue. A one-word cue keeps its word on both sides. |
 
 The caption track still moves along with the picture:
 
@@ -396,7 +396,7 @@ Good to know:
 2. Type. The caption keeps its place and style, and a long text wraps and shrinks to fit **Max lines** as it will show.
 3. Press <kbd>Esc</kbd> or <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, or click elsewhere, to finish. What you typed is kept, in one step, **Edit caption**.
 
-- <kbd>Enter</kbd> starts a new line in the cue; it doesn't split the cue. To split it, use <kbd>Enter</kbd> in the cue's text in the **Captions** tab, or <kbd>Ctrl</kbd>+<kbd>K</kbd>. See [Split and merge cues](#split-and-merge-cues).
+- <kbd>Enter</kbd> starts a new line in the cue; it doesn't split the cue. To split it, use <kbd>Enter</kbd> in the cue's text in the **Captions** tab, or <kbd>Ctrl</kbd>+<kbd>S</kbd>. See [Split and merge cues](#split-and-merge-cues).
 - While you type, the spoken word isn't highlighted.
 
 ## Highlight the spoken word

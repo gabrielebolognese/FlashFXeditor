@@ -216,6 +216,9 @@ export class KeyDispatcher {
         return;
       }
     }
+    // Ctrl/Cmd+S and Ctrl/Cmd+P never reach the browser (its "Save page" and print dialogs would open over the
+    // editor), whatever they are bound to and also when their command cannot run here (typing in a field).
+    if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && (event.code === "KeyS" || event.code === "KeyP")) event.preventDefault();
   }
 
   handleKeyUp(event: Pick<KeyboardEvent, "code">): void {
